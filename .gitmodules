@@ -1,3 +1,6 @@
 [submodule "libs/CLI11"]
 	path = libs/CLI11
 	url = https://github.com/CLIUtils/CLI11.git
+[submodule "libs/genesis"]
+	path = libs/genesis
+	url = git@github.com:lczech/genesis.git
