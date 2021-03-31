@@ -1,2 +1,2 @@
-# ganralf
-Genome Analysis for Re-sequenced Allele Frequencies
+# grenedalf
+Genome Analyses of Differential Allele Frequencies
