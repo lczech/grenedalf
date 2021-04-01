@@ -105,4 +105,12 @@ private:
  */
 extern GlobalOptions global_options;
 
+/**
+ * @brief Store the option name for the flag that allows grenedalf to overwrite files.
+ *
+ * We do this in order to have this name available to other parts of the program,
+ * for exmple to give a nice and helpful error message when a file already exists.
+ */
+extern std::string const allow_file_overwriting_flag;
+
 #endif // include guard
