@@ -280,9 +280,12 @@ void make_options_table( CLI::App const& command, std::ostream& os )
 //     Make Subcommands Table
 // -------------------------------------------------------------------------
 
-void make_subcommands_table( std::vector<CLI::App const*> subcomms, std::ostream& os )
-{
-    os << "| Subcommand  | Description |\n";
+void make_subcommands_table(
+    std::vector<CLI::App const*> subcomms,
+    std::ostream& os,
+    std::string const& heading = "Subcommand"
+) {
+    os << "| " << heading << "  | Description |\n";
     os << "| ----------- | ----------- |\n";
 
     for( auto const& subcomm : subcomms ) {
@@ -396,16 +399,46 @@ void make_wiki_home_page( WikiOptions const& options )
     add_markdown_content( options, "Home_header", os );
     os << "\n";
 
-    // Add submodule lists.
+    // Get all top level commands.
     auto subcomms = get_sorted_subcommands( options.app );
-    for( auto const& sc : subcomms ) {
-        if( sc->get_group() == "" ) {
+
+    // Make a list of all top level commands that do not have sub commands, that is,
+    // which are not modules. We make this first, so that we get a nice order.
+    std::vector<CLI::App const*> direct_subcommands;
+    for( auto const& subcomm : subcomms ) {
+        if( subcomm->get_group() == "" ) {
             continue;
         }
 
-        os << "### Module `" << sc->get_name() << "`\n\n";
-        os << sc->get_description() << "\n\n";
-        make_subcommands_table( get_sorted_subcommands( sc ), os );
+        // Get all subcommands of the comamnd, and if there are none, this is a top level command,
+        // and not a module, so then we list it here.
+        auto subsubcomms = get_sorted_subcommands( subcomm );
+        if( subsubcomms.empty() ) {
+            direct_subcommands.push_back( subcomm );
+        }
+    }
+
+    // If we found direct subcommands of the main, make a commands table of them.
+    if( ! direct_subcommands.empty() ) {
+        os << "### Commands:\n\n";
+        make_subcommands_table( direct_subcommands, os, "Command" );
+    }
+
+    // Go through the list again, and add submodule lists for all subcommands
+    // that have child commands of their own.
+    for( auto const& subcomm : subcomms ) {
+        if( subcomm->get_group() == "" ) {
+            continue;
+        }
+
+        // Get all subcommands of the subcommand, and if there are any, make a list of them.
+        // If not, this is a top level command, and not a module, so skip it.
+        auto subsubcomms = get_sorted_subcommands( subcomm );
+        if( !subsubcomms.empty() ) {
+            os << "### Module `" << subcomm->get_name() << "`\n\n";
+            os << subcomm->get_description() << "\n\n";
+            make_subcommands_table( subsubcomms, os );
+        }
     }
 
     // Add home footer.
@@ -433,21 +466,58 @@ void make_wiki_sidebar( WikiOptions const& options )
 
     // Add standard entries
     os << "[Home](../wiki)\n\n";
-    os << "[General Usage](../wiki/General-Usage)\n\n";
-    os << "[Phylogenetic Placement](../wiki/Phylogenetic-Placement)\n\n";
 
-    // Add submodule lists.
+    // Get all top level commands.
     auto subcomms = get_sorted_subcommands( options.app );
-    for( auto const& sc : subcomms ) {
-        if( sc->get_group() == "" ) {
+
+    // Make a list of all top level commands that do not have sub commands, that is,
+    // which are not modules. We make this first, so that we get a nice order.
+    bool has_direct_subcommands = false;
+    for( auto const& subcomm : subcomms ) {
+        if( subcomm->get_group() == "" ) {
             continue;
         }
 
-        os << "Module `" << sc->get_name() << "`\n\n";
-        for( auto const& subcomm : get_sorted_subcommands( sc ) ) {
-            os << " * [" << subcomm->get_name() << "](../wiki/Subcommand:-" << subcomm->get_name() << ")\n";
+        // Get all subcommands of the comamnd, and if there are none, this is a top level command,
+        // and not a module, so then we list it here.
+        auto subsubcomms = get_sorted_subcommands( subcomm );
+        if( subsubcomms.empty() ) {
+
+            // First time we find a command that we want to print, we print a heading as well.
+            if( ! has_direct_subcommands ) {
+                os << "Commands:\n\n";
+                has_direct_subcommands = true;
+            }
+
+            os << " * [" << subcomm->get_name() << "](../wiki/Subcommand:-";
+            os << subcomm->get_name() << ")\n";
         }
-        os << "\n";
+    }
+
+    // After finishing, if we printed any direct commands,
+    // we need some space before moving on to the modules.
+    if( has_direct_subcommands ) {
+        os << "\n\n";
+    }
+
+    // Go through the list again, and add submodule lists for all subcommands
+    // that have child commands of their own.
+    for( auto const& subcomm : subcomms ) {
+        if( subcomm->get_group() == "" ) {
+            continue;
+        }
+
+        // Get all subcommands of the subcommand, and if there are any, make a list of them.
+        // If not, this is a top level command, and not a module, so skip it.
+        auto subsubcomms = get_sorted_subcommands( subcomm );
+        if( !subsubcomms.empty() ) {
+            os << "Module `" << subcomm->get_name() << "`\n\n";
+            for( auto const& subcomm : subsubcomms ) {
+                os << " * [" << subcomm->get_name() << "](../wiki/Subcommand:-";
+                os << subcomm->get_name() << ")\n";
+            }
+            os << "\n";
+        }
     }
 
     os.close();
@@ -459,19 +529,16 @@ void make_wiki_sidebar( WikiOptions const& options )
 
 void run_wiki( WikiOptions const& options )
 {
-    // Get all subcommands of the main app and make wiki pages for all subcommands.
-    // auto subcomms = get_all_subcommands( options.app );
-    // for( auto const& subcomm : subcomms ) {
-    //     make_wiki_command_page( options, *subcomm );
-    // }
-
     // Home page.
     make_wiki_home_page( options );
     make_wiki_sidebar( options );
 
-    // Now, make pages for the commands of the modules.
+    // Now, make pages for the commands of the main app and the modules.
+    // This hence works both if we have sub-commands in modules, and if all commands are directly
+    // commands below main.
     auto subcomms = get_sorted_subcommands( options.app );
     for( auto const& sc : subcomms ) {
+        make_wiki_command_page( options, *sc );
         for( auto const& ssc : get_sorted_subcommands( sc )) {
             make_wiki_command_page( options, *ssc );
         }
