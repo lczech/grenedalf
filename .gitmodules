@@ -3,4 +3,4 @@
 	url = https://github.com/CLIUtils/CLI11.git
 [submodule "libs/genesis"]
 	path = libs/genesis
-	url = git@github.com:lczech/genesis.git
+	url = https://github.com/lczech/genesis.git
