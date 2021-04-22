@@ -23,6 +23,7 @@
 
 #include "CLI/CLI.hpp"
 
+#include "commands/commands.hpp"
 #include "commands/tools.hpp"
 
 #include "options/global.hpp"
@@ -101,6 +102,7 @@ int main( int argc, char** argv )
     global_options.initialize( argc, argv );
 
     // Set up all subcommands.
+    setup_commands( app );
     setup_tools( app );
 
     // -------------------------------------------------------------------------
