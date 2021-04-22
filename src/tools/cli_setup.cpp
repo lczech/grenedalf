@@ -147,8 +147,9 @@ void print_option_values( CLI::App const* subcommand )
 
 void print_citations( std::vector<std::string> const& citations )
 {
+    // TODO The following command might not be the correct one if we re-indroduce the module structure.
     LOG_BOLD << "Run the following command to get the references that need to be cited:";
-    LOG_BOLD << "`grenedalf tools citation " << genesis::utils::join( citations, " " ) << "`";
+    LOG_BOLD << "`grenedalf citation " << genesis::utils::join( citations, " " ) << "`";
     LOG_BOLD;
 }
 
@@ -168,8 +169,8 @@ std::function<void()> grenedalf_cli_callback(
     check_citations( citations );
 
     // If the genesis/grenedalf citation is not present, add it to the front!
-    if( ! genesis::utils::contains( citations, "Czech2020-genesis-and-grenedalf" )) {
-        citations.insert( citations.begin(), "Czech2020-genesis-and-grenedalf" );
+    if( ! genesis::utils::contains( citations, "Czech2021-grenedalf" )) {
+        citations.insert( citations.begin(), "Czech2021-grenedalf" );
     }
 
     // Add the citations to the list, so that they can be used by the wiki command
