@@ -75,8 +75,8 @@ void setup_frequency( CLI::App& app )
     sub->add_option(
         "--na-entry",
         options->na_entry,
-        "Set the text to use for n/a entries (such as frequencies of positions with zero counts). "
-        "This is useful to match expectations of downstream software."
+        "Set the text to use for n/a entries (that is, frequencies of positions with zero counts). "
+        "This is useful to match formatting expectations of downstream software."
     )->group( "Settings" );
 
     // Output
@@ -129,7 +129,7 @@ void run_frequency( FrequencyOptions const& options )
     (*freq_ofs) << "CHROM\tPOS\tREF\tALT";
     for( auto const& sample : options.freq_input.sample_names() ) {
         for( auto const& field : fields ) {
-            (*freq_ofs) << "\t" << field << "." << sample;
+            (*freq_ofs) << "\t" << sample << "." << field;
         }
     }
     (*freq_ofs) << "\n";
@@ -154,7 +154,7 @@ void run_frequency( FrequencyOptions const& options )
                     auto const freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
                     (*freq_ofs) << "\t" << freq;
                 } else {
-                    (*freq_ofs) << "\t" << "NA";
+                    (*freq_ofs) << "\t" << options.na_entry;
                 }
             }
             if( options.write_counts || options.write_all ) {
