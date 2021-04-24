@@ -11,4 +11,4 @@ grenedalf is used via its command line interface, with commands for each task.
 The commands have the general structure:
 <!-- grenedalf <module> <subcommand> <options> -->
 
-    grenedalf <command> <options>
+    grenedalf <command> [options]
