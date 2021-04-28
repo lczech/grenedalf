@@ -92,6 +92,13 @@ private:
         std::string const& group = "Input"
     );
 
+public:
+
+    void add_sliding_window_opts_to_app(
+        CLI::App* sub,
+        std::string const& group = "Sliding Window"
+    );
+
     // -------------------------------------------------------------------------
     //     Run Functions
     // -------------------------------------------------------------------------
@@ -117,6 +124,8 @@ public:
     void prepare_data_pileup_() const;
     void prepare_data_vcf_() const;
 
+    std::vector<std::string> get_sample_name_list( std::string const& value ) const;
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
@@ -126,10 +135,12 @@ private:
     CliOption<std::string> pileup_file_ = "";
     CliOption<std::string> pileup_sample_prefix_ = "Sample_";
     CliOption<std::string> vcf_file_ = "";
-    CliOption<std::string> region_ = "";
+    CliOption<std::string> filter_region_ = "";
+    CliOption<std::string> filter_samples_include_ = "";
+    CliOption<std::string> filter_samples_exclude_ = "";
 
     CliOption<size_t> window_width_  = 1000;
-    CliOption<size_t> window_stride_ = 1000;
+    CliOption<size_t> window_stride_ = 0;
 
     // We have different input data formats, but want to convert all of them to Variant.
     // This is a bit tricky, as we are working with templates for things such as SlidingWindowIterator,

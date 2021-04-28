@@ -33,6 +33,7 @@
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/string.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <memory>
 #include <stdexcept>
@@ -47,25 +48,46 @@ void FrequencyInputOptions::add_frequency_input_opts_to_app(
     std::string const& group
 ) {
     // (void) required;
-    add_pileup_input_opt_to_app( sub, false, group );
     add_vcf_input_opt_to_app( sub, false, group );
-    pileup_file_.option->excludes( vcf_file_.option );
+    add_pileup_input_opt_to_app( sub, false, group );
     vcf_file_.option->excludes( pileup_file_.option );
+    pileup_file_.option->excludes( vcf_file_.option );
 
     // Correct setup check.
     internal_check(
-        region_.option == nullptr,
+        filter_region_.option == nullptr,
         "Cannot use the same FrequencyInputOptions object multiple times."
     );
 
-    // Add option for genomic region
-    region_.option = sub->add_option(
-        "--region",
-        region_.value,
-        "Genomic region to filter for, in the format \"chr\", \"chr:position\", or \"chr:start-end\". "
-        "If not provided, the whole input file is used."
+    // Add option for genomic region filter.
+    filter_region_.option = sub->add_option(
+        "--filter-region",
+        filter_region_.value,
+        "Genomic region to filter for, in the format \"chr\", \"chr:position\", \"chr:start-end\", "
+        "or \"chr:start..end\". If not provided, the whole input file is used."
     );
-    region_.option->group( group );
+    filter_region_.option->group( group );
+
+    // Add option for sample name filter.
+    filter_samples_include_.option = sub->add_option(
+        "--filter-samples-include",
+        filter_samples_include_.value,
+        "Sample names to include (all other samples are excluded); either a comma- or tab-separated "
+        " list, or a file with one sample name per line. If no sample filter is provided, all "
+        "samples in the input file are used."
+    );
+    filter_samples_include_.option->group( group );
+
+    // And the other way round.
+    filter_samples_exclude_.option = sub->add_option(
+        "--filter-samples-exclude",
+        filter_samples_exclude_.value,
+        "Sample names to exclude (all other samples are included); either a comma- or tab-separated "
+        " list, or a file with one sample name per line. If no sample filter is provided, all "
+        "samples in the input file are used."
+    );
+    filter_samples_exclude_.option->group( group );
+    filter_samples_exclude_.option->excludes( filter_samples_include_.option );
 }
 
 CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
@@ -96,7 +118,8 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         "--pileup-sample-prefix",
         pileup_sample_prefix_.value,
         "Pileup files do not contain sample names. This prefix followed by indices 1..n "
-        "is used to obtain unique names per sample that we use in the output."
+        "is used instead to provide unique names per sample that we use in the output and the "
+        "`--filter-samples-include` and `--filter-samples-exclude` options."
     );
     pileup_sample_prefix_.option->group( group );
     pileup_sample_prefix_.option->needs( pileup_file_.option );
@@ -128,6 +151,28 @@ CLI::Option* FrequencyInputOptions::add_vcf_input_opt_to_app(
     }
 
     return vcf_file_.option;
+}
+
+void FrequencyInputOptions::add_sliding_window_opts_to_app(
+    CLI::App* sub,
+    std::string const& group
+) {
+    // Width
+    window_width_.option = sub->add_option(
+        "--window-width",
+        window_width_.value,
+        "Width of each window along the chromosome."
+    );
+    window_width_.option->group( group );
+
+    // Stride
+    window_stride_.option = sub->add_option(
+        "--window-stride",
+        window_stride_.value,
+        "Stride between windows along the chromosome, that is how far to move to get to the next "
+        "window. If set to 0 (default), this is set to the same value as the `--window-width`."
+    );
+    window_stride_.option->group( group );
 }
 
 // =================================================================================================
@@ -227,14 +272,54 @@ void FrequencyInputOptions::prepare_data_pileup_() const
 
     // Open the file, which aleady reads the first line. We use this to get the number of
     // samples in the pileup, and create dummy names for them.
+    // We mgiht later open it again to incorporate the sample name filtering, because to do that,
+    // we first need to know how many samples there are in total...
+    // Maybe there is a smart way to avoid that, but for now, that seems easiest.
     auto it = SimplePileupInputIterator( utils::from_file( pileup_file_.value ), reader );
     auto const smp_cnt = it->samples.size();
     for( size_t i = 0; i < smp_cnt; ++i ) {
         sample_names_.push_back( pileup_sample_prefix_.value + std::to_string(i+1) );
     }
 
+    // Filter sample names as needed. This is a bit cumbersome, but gets the job done.
+    if( ! filter_samples_include_.value.empty() || ! filter_samples_exclude_.value.empty() ) {
+        // Not both can be given at the same time, as we made the options mutually exclusive.
+        assert( filter_samples_include_.value.empty() != filter_samples_exclude_.value.empty() );
+
+        // Get the sample names and prepare a filter vector.
+        // We init the filter so that in the include case, all are false first, and in the exclude
+        // case, all are true first. Then, we can set the listed indices accordingly.
+        // We also need to keep track of which indices we find, so that we can build the proper
+        // name list afterwards. How cumbersome... maybe fix in the future.
+        auto const list = get_sample_name_list( filter_samples_include_.value );
+        auto sample_filter = std::vector<bool>( smp_cnt, filter_samples_exclude_.value.empty() );
+        std::vector<size_t> sample_indices;
+        sample_indices.reserve( list.size() );
+        for( auto const& sn : list ) {
+            auto it = std::find( sample_names_.begin(), sample_names_.end(), sn );
+            if( it == sample_names_.end() ) {
+                throw CLI::ValidationError(
+                    "Invalid sample name used for filtering: \"" + sn  + "\"."
+                );
+            } else {
+                auto const index = it - sample_names_.begin();
+                sample_filter[ index ] = filter_samples_include_.value.empty();
+                sample_indices.push_back( static_cast<size_t>( index ));
+            }
+        }
+
+        // Now restart the iteration, this time with the filtering, and renew the sample names.
+        it = SimplePileupInputIterator(
+            utils::from_file( pileup_file_.value ), sample_filter, reader
+        );
+        sample_names_.clear();
+        for( auto idx : sample_indices ) {
+            sample_names_.push_back( pileup_sample_prefix_.value + std::to_string(idx+1) );
+        }
+    }
+
     // Apply region filter if necessary.
-    if( region_.value.empty() ) {
+    if( filter_region_.value.empty() ) {
         // Create a generator that reads pileup.
         generator_ = LambdaIteratorGenerator<Variant>(
             [it]() mutable -> std::shared_ptr<Variant>{
@@ -248,7 +333,7 @@ void FrequencyInputOptions::prepare_data_pileup_() const
             }
         );
     } else {
-        auto const region = parse_genome_region( region_.value );
+        auto const region = parse_genome_region( filter_region_.value );
         auto region_filtered_range = make_filter_range(
             [region]( SimplePileupReader::Record const& record ){
                 return genesis::population::is_covered( region, record );
@@ -286,16 +371,27 @@ void FrequencyInputOptions::prepare_data_vcf_() const
     assert( ! static_cast<bool>( generator_ ) && sample_names_.empty() );
 
     // Prepare the base iterator.
-    auto vcf_in = VcfInputIterator( vcf_file_.value );
+    // See if we want to filter by sample name, and if so, resolve the name list.
+    auto vcf_in = VcfInputIterator();
+    if( ! filter_samples_include_.value.empty() ) {
+        auto const list = get_sample_name_list( filter_samples_include_.value );
+        vcf_in = VcfInputIterator( vcf_file_.value, list );
+    } else if( ! filter_samples_exclude_.value.empty() ) {
+        auto const list = get_sample_name_list( filter_samples_exclude_.value );
+        vcf_in = VcfInputIterator( vcf_file_.value, list, true );
+    } else {
+        vcf_in = VcfInputIterator( vcf_file_.value );
+    }
     if( !vcf_in.header().has_format("AD") ) {
         throw std::runtime_error(
             "Cannot use VCF input file that does not have the `AD` format field."
         );
     }
 
-    // Get the sample names.
+    // Get the sample names. This will only contain the filtered names.
+    // Then, create a filter over the input that only allows biallelic SNPs with the AD format field.
+    // Everything else we cannot use anyway for our subsequent conversion steps.
     sample_names_ = vcf_in.header().get_sample_names();
-
     auto vcf_range = utils::make_filter_range([]( VcfRecord const& record ){
         bool const is_snp = record.is_snp() && record.get_alternatives_count() == 1;
         bool const has_ad = record.has_format( "AD" );
@@ -303,7 +399,7 @@ void FrequencyInputOptions::prepare_data_vcf_() const
     }, vcf_in, {} );
 
     // Apply region filter if necessary.
-    if( region_.value.empty() ) {
+    if( filter_region_.value.empty() ) {
         // Need variables that can be captures by copy...
         auto beg = vcf_range.begin();
         auto end = vcf_range.end();
@@ -331,7 +427,7 @@ void FrequencyInputOptions::prepare_data_vcf_() const
             }
         );
     } else {
-        auto const region = parse_genome_region( region_.value );
+        auto const region = parse_genome_region( filter_region_.value );
         auto region_filtered_range = make_filter_range(
             [region]( VcfRecord const& record ){
                 return genesis::population::is_covered( region, record );
@@ -353,5 +449,17 @@ void FrequencyInputOptions::prepare_data_vcf_() const
                 }
             }
         );
+    }
+}
+
+std::vector<std::string> FrequencyInputOptions::get_sample_name_list( std::string const& value ) const
+{
+    using namespace genesis::utils;
+
+    // If the input is a file, read it line by line as sample names. Otherwise, split by comma.
+    if( is_file( value ) ) {
+        return file_read_lines( value );
+    } else {
+        return split( value, ",\t" );
     }
 }
