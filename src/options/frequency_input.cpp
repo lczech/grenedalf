@@ -202,10 +202,24 @@ FrequencyInputOptions::get_sliding_window_iterator() const
     using namespace genesis;
     using namespace genesis::population;
 
+    // User-provided sliding window settings
     SlidingWindowIteratorSettings<Variant> settings;
     settings.width = window_width_.value;
     settings.stride = window_stride_.value;
 
+    // Conversion functions for the sliding window iterator.
+    settings.entry_input_function = []( Variant const& variant ){
+        return variant;
+    };
+    settings.chromosome_function = []( Variant const& variant ){
+        return variant.chromosome;
+    };
+    settings.position_function = []( Variant const& variant ){
+        return variant.position;
+    };
+
+    // Make sure that we have the iterator over the input file set up, and then return the
+    // window iterator.
     prepare_data_();
     return make_sliding_window_iterator( settings, generator_.begin(), generator_.end() );
 }
