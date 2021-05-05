@@ -179,11 +179,19 @@ void FrequencyInputOptions::add_sliding_window_opts_to_app(
 //      Run Functions
 // =================================================================================================
 
+// -------------------------------------------------------------------------
+//     sample_names
+// -------------------------------------------------------------------------
+
 std::vector<std::string> const& FrequencyInputOptions::sample_names() const
 {
     prepare_data_();
     return sample_names_;
 }
+
+// -------------------------------------------------------------------------
+//     get_iterator
+// -------------------------------------------------------------------------
 
 genesis::utils::Range<genesis::utils::LambdaIterator<genesis::population::Variant>>
 FrequencyInputOptions::get_iterator() const
@@ -193,11 +201,51 @@ FrequencyInputOptions::get_iterator() const
     return { generator_.begin(), generator_.end() };
 }
 
+// -------------------------------------------------------------------------
+//     get_base_count_sliding_window_iterator
+// -------------------------------------------------------------------------
+
+genesis::population::SlidingWindowIterator<
+    genesis::utils::LambdaIterator<genesis::population::Variant>,
+    genesis::population::Variant,
+    std::vector<genesis::population::BaseCounts>
+>
+FrequencyInputOptions::get_base_count_sliding_window_iterator() const
+{
+    using namespace genesis;
+    using namespace genesis::population;
+
+    // User-provided sliding window settings
+    SlidingWindowIteratorSettings<Variant, std::vector<BaseCounts>> settings;
+    settings.width = window_width_.value;
+    settings.stride = window_stride_.value;
+
+    // Conversion functions for the sliding window iterator.
+    settings.entry_input_function = []( Variant const& variant ){
+        return variant.samples;
+    };
+    settings.chromosome_function = []( Variant const& variant ){
+        return variant.chromosome;
+    };
+    settings.position_function = []( Variant const& variant ){
+        return variant.position;
+    };
+
+    // Make sure that we have the iterator over the input file set up, and then return the
+    // window iterator.
+    prepare_data_();
+    return make_sliding_window_iterator( settings, generator_.begin(), generator_.end() );
+}
+
+// -------------------------------------------------------------------------
+//     get_variant_sliding_window_iterator
+// -------------------------------------------------------------------------
+
 genesis::population::SlidingWindowIterator<
     genesis::utils::LambdaIterator<genesis::population::Variant>,
     genesis::population::Variant
 >
-FrequencyInputOptions::get_sliding_window_iterator() const
+FrequencyInputOptions::get_variant_sliding_window_iterator() const
 {
     using namespace genesis;
     using namespace genesis::population;
@@ -223,6 +271,14 @@ FrequencyInputOptions::get_sliding_window_iterator() const
     prepare_data_();
     return make_sliding_window_iterator( settings, generator_.begin(), generator_.end() );
 }
+
+// =================================================================================================
+//      Internal Helpers
+// =================================================================================================
+
+// -------------------------------------------------------------------------
+//     prepare_data_
+// -------------------------------------------------------------------------
 
 void FrequencyInputOptions::prepare_data_() const
 {
@@ -253,7 +309,7 @@ void FrequencyInputOptions::prepare_data_() const
             vcf_file_.option->get_name() + " as input at the same time."
         );
     }
-    assert( pileup_file_.value == "" ^ vcf_file_.value == "" );
+    assert(( pileup_file_.value == "" ) ^ ( vcf_file_.value == "" ));
 
     // Here, we need to select the different input sources and transform them into a uniform
     // iterator, using lambdas with std::function for type erasure. Additionally, we want region
@@ -270,6 +326,10 @@ void FrequencyInputOptions::prepare_data_() const
         prepare_data_vcf_();
     }
 }
+
+// -------------------------------------------------------------------------
+//     prepare_data_pileup_
+// -------------------------------------------------------------------------
 
 void FrequencyInputOptions::prepare_data_pileup_() const
 {
@@ -375,6 +435,10 @@ void FrequencyInputOptions::prepare_data_pileup_() const
     }
 }
 
+// -------------------------------------------------------------------------
+//     prepare_data_vcf_
+// -------------------------------------------------------------------------
+
 void FrequencyInputOptions::prepare_data_vcf_() const
 {
     using namespace genesis;
@@ -465,6 +529,10 @@ void FrequencyInputOptions::prepare_data_vcf_() const
         );
     }
 }
+
+// -------------------------------------------------------------------------
+//     get_sample_name_list
+// -------------------------------------------------------------------------
 
 std::vector<std::string> FrequencyInputOptions::get_sample_name_list( std::string const& value ) const
 {

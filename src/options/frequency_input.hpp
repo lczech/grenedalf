@@ -105,20 +105,50 @@ public:
 
 public:
 
+    /**
+     * @brief Get all sample names given in the input file that are not filtered out.
+     */
     std::vector<std::string> const& sample_names() const;
 
+    /**
+     * @brief Get an iterator over the positions in the input file.
+     *
+     * This takes care of any filtering of samples, chromosomes, and positions.
+     */
     genesis::utils::Range<genesis::utils::LambdaIterator<genesis::population::Variant>>
     get_iterator() const;
 
+    /**
+     * @brief Get a sliding window iterator that dereferences to a vector of BaseCounts.
+     *
+     * This is slightly faster than iterating over Variant%s, because we can save the extra
+     * effor of copying chromosome names for each entry in the window.
+     */
+    genesis::population::SlidingWindowIterator<
+        genesis::utils::LambdaIterator<genesis::population::Variant>,
+        genesis::population::Variant,
+        std::vector<genesis::population::BaseCounts>
+    >
+    get_base_count_sliding_window_iterator() const;
+
+    /**
+     * @brief Get a sliding window iterator that dereferences to Variant%s.
+     *
+     * This is useful if the per-position reference and alternative base are also needed.
+     * We could also refactor a bit and include those in a new type of class if needed,
+     * but for now, this approach works well enough.
+     */
     genesis::population::SlidingWindowIterator<
         genesis::utils::LambdaIterator<genesis::population::Variant>,
         genesis::population::Variant
     >
-    get_sliding_window_iterator() const;
+    get_variant_sliding_window_iterator() const;
 
     // -------------------------------------------------------------------------
     //     Internal Helpers
     // -------------------------------------------------------------------------
+
+private:
 
     void prepare_data_() const;
     void prepare_data_pileup_() const;
