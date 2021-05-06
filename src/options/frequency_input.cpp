@@ -221,10 +221,10 @@ FrequencyInputOptions::get_base_count_sliding_window_iterator() const
     settings.stride = window_stride_.value;
 
     // Conversion functions for the sliding window iterator.
-    settings.entry_input_function = []( Variant const& variant ){
+    settings.entry_input_function = []( Variant const& variant ) -> std::vector<BaseCounts> const& {
         return variant.samples;
     };
-    settings.chromosome_function = []( Variant const& variant ){
+    settings.chromosome_function = []( Variant const& variant ) -> std::string const& {
         return variant.chromosome;
     };
     settings.position_function = []( Variant const& variant ){
@@ -256,10 +256,10 @@ FrequencyInputOptions::get_variant_sliding_window_iterator() const
     settings.stride = window_stride_.value;
 
     // Conversion functions for the sliding window iterator.
-    settings.entry_input_function = []( Variant const& variant ){
+    settings.entry_input_function = []( Variant const& variant ) -> Variant const& {
         return variant;
     };
-    settings.chromosome_function = []( Variant const& variant ){
+    settings.chromosome_function = []( Variant const& variant ) -> std::string const& {
         return variant.chromosome;
     };
     settings.position_function = []( Variant const& variant ){
@@ -447,6 +447,8 @@ void FrequencyInputOptions::prepare_data_vcf_() const
 
     // Assert that this function is only called in a context where the data is not yet prepared.
     assert( ! static_cast<bool>( generator_ ) && sample_names_.empty() );
+
+    // TODO buffer size
 
     // Prepare the base iterator.
     // See if we want to filter by sample name, and if so, resolve the name list.
