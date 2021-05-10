@@ -163,7 +163,7 @@ private:
 private:
 
     CliOption<std::string> pileup_file_ = "";
-    CliOption<std::string> pileup_sample_prefix_ = "Sample_";
+    CliOption<std::string> pileup_sample_prefix_ = ""; // "Sample_"
     CliOption<std::string> vcf_file_ = "";
     CliOption<std::string> filter_region_ = "";
     CliOption<std::string> filter_samples_include_ = "";

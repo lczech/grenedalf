@@ -105,7 +105,7 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
     pileup_file_.option = sub->add_option(
         "--pileup-file",
         pileup_file_.value,
-        "Path to a (m)pileup file."
+        "Path to an (m)pileup file."
     );
     pileup_file_.option->check( CLI::ExistingFile );
     pileup_file_.option->group( group );
@@ -119,7 +119,9 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         pileup_sample_prefix_.value,
         "Pileup files do not contain sample names. This prefix followed by indices 1..n "
         "is used instead to provide unique names per sample that we use in the output and the "
-        "`--filter-samples-include` and `--filter-samples-exclude` options."
+        "`--filter-samples-include` and `--filter-samples-exclude` options. You can for example "
+        "use \"Sample_\" as a prefix. If not provided, we simply use numbers 1..n as sample names "
+        "in pileup files."
     );
     pileup_sample_prefix_.option->group( group );
     pileup_sample_prefix_.option->needs( pileup_file_.option );
