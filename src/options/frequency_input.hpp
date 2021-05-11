@@ -28,17 +28,15 @@
 
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/formats/simple_pileup_input_iterator.hpp"
-#include "genesis/population/formats/simple_pileup_reader.hpp"
-#include "genesis/population/formats/vcf_input_iterator.hpp"
+#include "genesis/population/variant.hpp"
 #include "genesis/population/window/sliding_window_iterator.hpp"
 #include "genesis/population/window/window.hpp"
-#include "genesis/population/variant.hpp"
 #include "genesis/utils/containers/lambda_iterator.hpp"
 #include "genesis/utils/containers/range.hpp"
 
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 // =================================================================================================
@@ -75,7 +73,8 @@ public:
     void add_frequency_input_opts_to_app(
         CLI::App* sub,
         // bool required = true,
-        std::string const& group = "Input"
+        std::string const& group = "Input",
+        bool with_filters = true
     );
 
 private:
@@ -86,9 +85,25 @@ private:
         std::string const& group = "Input"
     );
 
+    CLI::Option* add_sync_input_opt_to_app(
+        CLI::App* sub,
+        bool required = true,
+        std::string const& group = "Input"
+    );
+
     CLI::Option* add_vcf_input_opt_to_app(
         CLI::App* sub,
         bool required = true,
+        std::string const& group = "Input"
+    );
+
+    CLI::Option* add_sample_name_prefix_opt_to_app(
+        CLI::App* sub,
+        std::string const& group = "Input"
+    );
+
+    void add_filter_opts_to_app(
+        CLI::App* sub,
         std::string const& group = "Input"
     );
 
@@ -152,9 +167,29 @@ private:
 
     void prepare_data_() const;
     void prepare_data_pileup_() const;
+    void prepare_data_sync_() const;
     void prepare_data_vcf_() const;
 
-    std::vector<std::string> get_sample_name_list( std::string const& value ) const;
+    /**
+     * @brief Get the list of sample names to filter, interpreting the given @filter_samples_value
+     * either as a file or as a list of sample names.
+     */
+    std::vector<std::string> get_sample_name_list( std::string const& filter_samples_value ) const;
+
+    /**
+     * @brief Use the sample name filter options to get a vector of bools determining which samples
+     * we want.
+     *
+     * This list of bools is needed by the pileup and sync readers for example, as these file
+     * formats do not have sample names that we can use for filtering.
+     */
+    std::vector<bool> get_sample_filter( std::vector<std::string> const& sample_names ) const;
+
+    /**
+     * @brief Get a list of sample indices that remain after filtering, that is, the indices of
+     * the positions where the provided vector is true.
+     */
+    std::vector<size_t> get_sample_filter_indices( std::vector<bool> const& sample_filter ) const;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -162,13 +197,18 @@ private:
 
 private:
 
+    // Input file types
     CliOption<std::string> pileup_file_ = "";
-    CliOption<std::string> pileup_sample_prefix_ = ""; // "Sample_"
-    CliOption<std::string> vcf_file_ = "";
+    CliOption<std::string> sync_file_   = "";
+    CliOption<std::string> vcf_file_    = "";
+    CliOption<std::string> sample_name_prefix_ = ""; // "Sample_"
+
+    // Filters for rows and columns
     CliOption<std::string> filter_region_ = "";
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
 
+    // Window settings
     CliOption<size_t> window_width_  = 1000;
     CliOption<size_t> window_stride_ = 0;
 

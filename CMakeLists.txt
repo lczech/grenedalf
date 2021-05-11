@@ -128,7 +128,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/tools/cmake/DownloadDependency.cmake" )
 # These are replaced by tools/cmake/update_dependencies.sh to the hashes that are currently checked out.
 # Thus, do not replace the hashes manually!
 SET( CLI11_COMMIT_HASH "5cb3efabce007c3a0230e4cc2e27da491c646b6c" ) #CLI11_COMMIT_HASH#
-SET( genesis_COMMIT_HASH "6ab125f9fef55104d682cdef6b90454d8110c95d" ) #genesis_COMMIT_HASH#
+SET( genesis_COMMIT_HASH "53b4e5857c811c87e21ab12850a85187cc1fbbf6" ) #genesis_COMMIT_HASH#
 
 # Call the github download function, which takes four arguments:
 #  - LIBPATH    : Path to the libracy dir where dependencies are stored.
@@ -149,6 +149,7 @@ endif (APPLE)
 # --------------------------------------------------------------------------------------------------
 
 # Add Genesis as dependency.
+SET(GENESIS_UNITY_BUILD OFF)
 add_subdirectory(${PROJECT_SOURCE_DIR}/libs/genesis)
 
 # Use everything that Genesis exports, just to be sure that we use the same setup.
