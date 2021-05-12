@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_COMMANDS_H_
-#define GRENEDALF_COMMANDS_COMMANDS_H_
+#ifndef GRENEDALF_COMMANDS_FST_H_
+#define GRENEDALF_COMMANDS_FST_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -26,35 +26,40 @@
 
 #include "CLI/CLI.hpp"
 
-#include "commands/frequency.hpp"
-#include "commands/fst.hpp"
-
-#include "options/global.hpp"
-#include "tools/cli_setup.hpp"
+#include "options/file_output.hpp"
+#include "options/frequency_input.hpp"
+#include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
+//      Options
+// =================================================================================================
+
+class FstOptions
+{
+public:
+
+    CliOption<std::string> poolsizes = "";
+
+    CliOption<std::string> method = "conventional";
+    CliOption<bool>        omit_empty_windows = false;
+    CliOption<std::string> comparand = "";
+    CliOption<std::string> second_comparand = "";
+    CliOption<std::string> comparand_list = "";
+    CliOption<std::string> na_entry = "NA";
+
+    FrequencyInputOptions freq_input;
+    FileOutputOptions  file_output;
+
+};
+
+// =================================================================================================
 //      Functions
 // =================================================================================================
 
-inline void setup_commands( CLI::App& app )
-{
-    // Create the module subcommand objects.
-    // auto sub = app.add_subcommand(
-    //     "tools",
-    //     "Auxiliary commands of grenedalf."
-    // );
-    // sub->require_subcommand( 1 );
-
-    // Add module subcommands.
-    setup_frequency( app );
-    setup_fst( app );
-
-    // Add the global options to each of the above subcommands.
-    global_options.add_to_module( app );
-    set_module_help_group( app );
-}
+void setup_fst( CLI::App& app );
+void run_fst( FstOptions const& options );
 
 #endif // include guard
