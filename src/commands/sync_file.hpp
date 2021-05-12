@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_COMMANDS_H_
-#define GRENEDALF_COMMANDS_COMMANDS_H_
+#ifndef GRENEDALF_COMMANDS_SYNC_FILE_H_
+#define GRENEDALF_COMMANDS_SYNC_FILE_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -26,37 +26,30 @@
 
 #include "CLI/CLI.hpp"
 
-#include "commands/frequency.hpp"
-#include "commands/fst.hpp"
-#include "commands/sync_file.hpp"
-
-#include "options/global.hpp"
-#include "tools/cli_setup.hpp"
+#include "options/frequency_input.hpp"
+#include "options/file_output.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
+//      Options
+// =================================================================================================
+
+class SyncFileOptions
+{
+public:
+
+    FrequencyInputOptions freq_input;
+    FileOutputOptions  file_output;
+
+};
+
+// =================================================================================================
 //      Functions
 // =================================================================================================
 
-inline void setup_commands( CLI::App& app )
-{
-    // Create the module subcommand objects.
-    // auto sub = app.add_subcommand(
-    //     "tools",
-    //     "Auxiliary commands of grenedalf."
-    // );
-    // sub->require_subcommand( 1 );
-
-    // Add module subcommands.
-    setup_frequency( app );
-    setup_fst( app );
-    setup_sync_file( app );
-
-    // Add the global options to each of the above subcommands.
-    global_options.add_to_module( app );
-    set_module_help_group( app );
-}
+void setup_sync_file( CLI::App& app );
+void run_sync_file( SyncFileOptions const& options );
 
 #endif // include guard

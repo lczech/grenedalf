@@ -73,8 +73,9 @@ public:
     void add_frequency_input_opts_to_app(
         CLI::App* sub,
         // bool required = true,
-        std::string const& group = "Input",
-        bool with_filters = true
+        bool with_sample_name_prefix = true,
+        bool with_filters = true,
+        std::string const& group = "Input"
     );
 
 private:

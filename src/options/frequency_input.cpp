@@ -54,8 +54,9 @@
 void FrequencyInputOptions::add_frequency_input_opts_to_app(
     CLI::App* sub,
     // bool required,
-    std::string const& group,
-    bool with_filters
+    bool with_sample_name_prefix,
+    bool with_filters,
+    std::string const& group
 ) {
     // (void) required;
 
@@ -73,7 +74,9 @@ void FrequencyInputOptions::add_frequency_input_opts_to_app(
     vcf_file_.option->excludes( sync_file_.option );
 
     // Additional options.
-    add_sample_name_prefix_opt_to_app( sub, group );
+    if( with_sample_name_prefix ) {
+        add_sample_name_prefix_opt_to_app( sub, group );
+    }
     if( with_filters ) {
         add_filter_opts_to_app( sub, group );
     }
