@@ -135,7 +135,7 @@ void run_frequency( FrequencyOptions const& options )
     (*freq_ofs) << "\n";
 
     // Write the table data
-    for( auto freq_it : options.freq_input.get_iterator() ) {
+    for( auto const& freq_it : options.freq_input.get_iterator() ) {
         (*freq_ofs) << freq_it.chromosome;
         (*freq_ofs) << "\t" << freq_it.position;
         (*freq_ofs) << "\t" << freq_it.reference_base;
