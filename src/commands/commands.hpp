@@ -26,6 +26,7 @@
 
 #include "CLI/CLI.hpp"
 
+#include "commands/afs_heatmap.hpp"
 #include "commands/frequency.hpp"
 #include "commands/fst.hpp"
 #include "commands/sync_file.hpp"
@@ -50,6 +51,7 @@ inline void setup_commands( CLI::App& app )
     // sub->require_subcommand( 1 );
 
     // Add module subcommands.
+    setup_afs_heatmap( app );
     setup_frequency( app );
     setup_fst( app );
     setup_sync_file( app );
