@@ -29,6 +29,7 @@
 #include "options/file_output.hpp"
 #include "options/frequency_input.hpp"
 #include "options/poolsizes.hpp"
+#include "options/table_output.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
@@ -50,8 +51,8 @@ public:
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";
     CliOption<std::string> comparand_list = "";
-    CliOption<std::string> na_entry = "NA";
 
+    TableOutputOptions table_output;
     FileOutputOptions  file_output;
 
 };

@@ -71,13 +71,9 @@ void setup_frequency( CLI::App& app )
     write_all_opt->excludes( write_freq_opt );
     write_all_opt->excludes( write_counts_opt );
 
-    // Add an option to set the text for not-a-number.
-    sub->add_option(
-        "--na-entry",
-        options->na_entry,
-        "Set the text to use for n/a entries (that is, frequencies of positions with zero counts). "
-        "This is useful to match formatting expectations of downstream software."
-    )->group( "Settings" );
+    // Add table output options.
+    options->table_output.add_separator_char_opt_to_app( sub );
+    options->table_output.add_na_entry_opt_to_app( sub );
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
@@ -125,11 +121,14 @@ void run_frequency( FrequencyOptions const& options )
                  << "which additional columns to write.";
     }
 
+    // Get the separator char to use for table entries.
+    auto const sep_char = options.table_output.get_separator_char();
+
     // Write the csv header line.
-    (*freq_ofs) << "CHROM\tPOS\tREF\tALT";
+    (*freq_ofs) << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
     for( auto const& sample : options.freq_input.sample_names() ) {
         for( auto const& field : fields ) {
-            (*freq_ofs) << "\t" << sample << "." << field;
+            (*freq_ofs) << sep_char << sample << "." << field;
         }
     }
     (*freq_ofs) << "\n";
@@ -137,9 +136,9 @@ void run_frequency( FrequencyOptions const& options )
     // Write the table data
     for( auto const& freq_it : options.freq_input.get_iterator() ) {
         (*freq_ofs) << freq_it.chromosome;
-        (*freq_ofs) << "\t" << freq_it.position;
-        (*freq_ofs) << "\t" << freq_it.reference_base;
-        (*freq_ofs) << "\t" << freq_it.alternative_base;
+        (*freq_ofs) << sep_char << freq_it.position;
+        (*freq_ofs) << sep_char << freq_it.reference_base;
+        (*freq_ofs) << sep_char << freq_it.alternative_base;
 
         for( auto const& sample : freq_it.samples ) {
             auto const ref_cnt = get_base_count( sample, freq_it.reference_base );
@@ -147,19 +146,19 @@ void run_frequency( FrequencyOptions const& options )
             auto const cnt_sum = ref_cnt + alt_cnt;
 
             if( options.write_coverage || options.write_all ) {
-                (*freq_ofs) << "\t" << cnt_sum;
+                (*freq_ofs) << sep_char << cnt_sum;
             }
             if( options.write_frequency || options.write_all ) {
                 if( cnt_sum > 0 ) {
                     auto const freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
-                    (*freq_ofs) << "\t" << freq;
+                    (*freq_ofs) << sep_char << freq;
                 } else {
-                    (*freq_ofs) << "\t" << options.na_entry;
+                    (*freq_ofs) << sep_char << options.table_output.get_na_entry();
                 }
             }
             if( options.write_counts || options.write_all ) {
-                (*freq_ofs) << "\t" << ( ref_cnt );
-                (*freq_ofs) << "\t" << ( alt_cnt );
+                (*freq_ofs) << sep_char << ( ref_cnt );
+                (*freq_ofs) << sep_char << ( alt_cnt );
             }
         }
 

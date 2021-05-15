@@ -26,8 +26,9 @@
 
 #include "CLI/CLI.hpp"
 
-#include "options/frequency_input.hpp"
 #include "options/file_output.hpp"
+#include "options/frequency_input.hpp"
+#include "options/table_output.hpp"
 
 #include <string>
 #include <vector>
@@ -44,9 +45,9 @@ public:
     bool write_frequency;
     bool write_counts;
     bool write_all;
-    std::string na_entry = "NA";
 
     FrequencyInputOptions freq_input;
+    TableOutputOptions table_output;
     FileOutputOptions  file_output;
 
 };

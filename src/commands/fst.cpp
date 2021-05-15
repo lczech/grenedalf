@@ -56,9 +56,17 @@ void setup_fst( CLI::App& app )
         "Compute F_ST in windows or at individual positions along the genome."
     );
 
+    // -------------------------------------------------------------------------
+    //     Input
+    // -------------------------------------------------------------------------
+
     // Required input of some frequency format, and settings for the sliding window.
     options->freq_input.add_frequency_input_opts_to_app( sub );
     options->freq_input.add_sliding_window_opts_to_app( sub );
+
+    // -------------------------------------------------------------------------
+    //     Settings
+    // -------------------------------------------------------------------------
 
     // Settings: Pool sizes
     options->poolsizes.add_poolsizes_opt_to_app( sub );
@@ -121,13 +129,13 @@ void setup_fst( CLI::App& app )
     options->comparand_list.option->excludes( options->comparand.option );
     options->comparand_list.option->excludes( options->second_comparand.option );
 
-    // Add an option to set the text for not-a-number.
-    options->na_entry.option = sub->add_option(
-        "--na-entry",
-        options->na_entry.value,
-        "Set the text to use for n/a entries (that is, windows that contain no values). "
-        "This is useful to match formatting expectations of downstream software."
-    )->group( "Settings" );
+    // -------------------------------------------------------------------------
+    //     Output
+    // -------------------------------------------------------------------------
+
+    // Add table output options.
+    options->table_output.add_separator_char_opt_to_app( sub );
+    options->table_output.add_na_entry_opt_to_app( sub );
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
@@ -228,6 +236,10 @@ void run_fst( FstOptions const& options )
     // Output preparation.
     options.file_output.check_output_files_nonexistence( "fst", "csv" );
 
+    // -------------------------------------------------------------------------
+    //     Preparation
+    // -------------------------------------------------------------------------
+
     // Use an enum for the method, which is faster to check in the main loop than doing
     // string comparisons all the time. We could use a bool here, but let's be prepared for
     // any additional future F_ST methods.
@@ -261,11 +273,18 @@ void run_fst( FstOptions const& options )
     );
     LOG_MSG << "Computing F_ST between " << sample_pairs.size() << " pairs of samples.";
 
+    // Get the separator char to use for table entries.
+    auto const sep_char = options.table_output.get_separator_char();
+
+    // -------------------------------------------------------------------------
+    //     Table Header
+    // -------------------------------------------------------------------------
+
     // Prepare output file and write header line with all pairs of samples.
     auto fst_ofs = options.file_output.get_output_target( "fst", "csv" );
-    (*fst_ofs) << "CHROM\tSTART\tEND\tSNPS";
+    (*fst_ofs) << "CHROM" << sep_char << "START" << sep_char << "END" << sep_char << "SNPS";
     for( auto const& pair : sample_pairs ) {
-        (*fst_ofs) << "\t" << sample_names[pair.first] << "." << sample_names[pair.second];
+        (*fst_ofs) << sep_char << sample_names[pair.first] << "." << sample_names[pair.second];
     }
     (*fst_ofs) << "\n";
 
@@ -275,6 +294,10 @@ void run_fst( FstOptions const& options )
         pool_sizes.size() == sample_names.size(),
         "Inconsistent number of samples and number of pool sizes."
     );
+
+    // -------------------------------------------------------------------------
+    //     Main Loop
+    // -------------------------------------------------------------------------
 
     // Iterate the file and compute per-window F_ST.
     auto window_it = options.freq_input.get_base_count_sliding_window_iterator();
@@ -294,9 +317,9 @@ void run_fst( FstOptions const& options )
 
         // Write fixed columns.
         (*fst_ofs) << window.chromosome();
-        (*fst_ofs) << "\t" << window.first_position();
-        (*fst_ofs) << "\t" << window.last_position();
-        (*fst_ofs) << "\t" << window.entry_count();
+        (*fst_ofs) << sep_char << window.first_position();
+        (*fst_ofs) << sep_char << window.last_position();
+        (*fst_ofs) << sep_char << window.entry_count();
 
         // Compute F_ST in parallel over the different pairs of samples.
         #pragma omp parallel for
@@ -350,9 +373,9 @@ void run_fst( FstOptions const& options )
         // Write the per-pair F_ST values in the correct order.
         for( auto const& fst : window_fst ) {
             if( std::isfinite( fst ) ) {
-                (*fst_ofs) << "\t" << fst;
+                (*fst_ofs) << sep_char << fst;
             } else {
-                (*fst_ofs) << "\t" << options.na_entry.value;
+                (*fst_ofs) << sep_char << options.table_output.get_na_entry();
             }
         }
         (*fst_ofs) << "\n";
