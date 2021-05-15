@@ -24,6 +24,7 @@
 #include "commands/afs_heatmap.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
+#include "tools/misc.hpp"
 
 #include "genesis/population/functions/base_counts.hpp"
 #include "genesis/population/functions/genome_heatmap.hpp"
@@ -43,6 +44,22 @@
 #ifdef GENESIS_OPENMP
 #   include <omp.h>
 #endif
+
+// =================================================================================================
+//      Enum Mapping
+// =================================================================================================
+
+std::vector<std::pair<std::string, FrequencySpectrumType>> const spectrum_type_map = {
+    { "folded",   FrequencySpectrumType::kFolded },
+    { "unfolded", FrequencySpectrumType::kUnfolded }
+};
+
+std::vector<std::pair<std::string, FrequencyAverageMethod>> const average_method_map = {
+    { "arithmetic", FrequencyAverageMethod::kArithmetic },
+    { "geometric",  FrequencyAverageMethod::kGeometric },
+    { "harmonic",   FrequencyAverageMethod::kHarmonic },
+    { "counts",     FrequencyAverageMethod::kCounts }
+};
 
 // =================================================================================================
 //      Setup
@@ -79,9 +96,9 @@ void setup_afs_heatmap( CLI::App& app )
     options->max_frequency.option = sub->add_option(
         "--max-frequency",
         options->max_frequency.value,
-        "Maximum frequency, that is, the y-axis cutoff. Frequencies above the maximum will be "
-        "assinged to the highest bin. When using `--spectrum-type folded`, consider setting "
-        "this option to 0.5, as that is the maximum of the folded spectrum."
+        "Maximum frequency, that is, the y-axis cutoff; default is 1.0. Frequencies above the "
+        "maximum will be assinged to the highest bin. When using `--spectrum-type folded`, "
+        "consider setting this option to 0.5, as that is the maximum of the folded spectrum."
         // "If not provided, defaults to 1.0 when using `--spectrum-type unfolded` (default), "
         // "and to 0.5 when using `--spectrum-type folded`."
     );
@@ -102,15 +119,11 @@ void setup_afs_heatmap( CLI::App& app )
         "count/frequency after the major (most common) allele, with frequencies in range [0, 0.5])."
     );
     options->spectrum_type.option->group( "Settings" );
-    std::vector<std::pair<std::string, FrequencySpectrumType>> const spectrum_type_map = {
-        { "folded",   FrequencySpectrumType::kFolded },
-        { "unfolded", FrequencySpectrumType::kUnfolded }
-    };
     options->spectrum_type.option->transform(
-        CLI::CheckedTransformer( spectrum_type_map, CLI::ignore_case )
+        CLI::IsMember( enum_map_keys( spectrum_type_map ), CLI::ignore_case )
     );
     // options->spectrum_type.option->transform(
-    //     CLI::IsMember({ "folded", "unfolded" }, CLI::ignore_case )
+    //     CLI::CheckedTransformer( spectrum_type_map, CLI::ignore_case )
     // );
 
     // How to compute the average of the per sample frequencies
@@ -126,17 +139,11 @@ void setup_afs_heatmap( CLI::App& app )
         "in samples that do not have any alternative/minor allele counts."
     );
     options->average_method.option->group( "Settings" );
-    std::vector<std::pair<std::string, FrequencyAverageMethod>> const average_method_map = {
-        { "arithmetic", FrequencyAverageMethod::kArithmetic },
-        { "geometric",  FrequencyAverageMethod::kGeometric },
-        { "harmonic",   FrequencyAverageMethod::kHarmonic },
-        { "counts",     FrequencyAverageMethod::kCounts }
-    };
     options->average_method.option->transform(
-        CLI::CheckedTransformer( average_method_map, CLI::ignore_case )
+        CLI::IsMember( enum_map_keys( average_method_map ), CLI::ignore_case )
     );
     // options->average_method.option->transform(
-    //     CLI::IsMember({ "arithmetic", "geometric", "harmonic", "counts" }, CLI::ignore_case )
+    //     CLI::CheckedTransformer( average_method_map, CLI::ignore_case )
     // );
 
     // What to do with undetermined ("N") reference allele positions
@@ -235,7 +242,7 @@ Nucleotide get_main_allele_(
     };
 
     // First, do the unfolded case, that is, get the reference base from the variant.
-    if( options.spectrum_type.value == FrequencySpectrumType::kUnfolded ) {
+    if( options.spectrum_type_enum == FrequencySpectrumType::kUnfolded ) {
         auto const nc = get_nucleotide_( variant.reference_base );
         if( nc != Nucleotide::kN ) {
             // If we found a proper reference base, we are good, and can return it.
@@ -309,7 +316,7 @@ double compute_frequency_(
         throw std::domain_error( "Internal error: Invalid reference/major allele." );
     };
 
-    if( options.average_method.value == FrequencyAverageMethod::kCounts ) {
+    if( options.average_method_enum == FrequencyAverageMethod::kCounts ) {
 
         // Sum up all counts of the samples. We simply sum up all four counts for the "alternative",
         // with no checks, as this is way quicker than first finding the second most common count,
@@ -351,7 +358,7 @@ double compute_frequency_(
         }
 
         // Average the frequencies.
-        switch( options.average_method.value ) {
+        switch( options.average_method_enum ) {
             case FrequencyAverageMethod::kArithmetic: {
                 return arithmetic_mean( frequencies );
             }
@@ -394,6 +401,14 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
             "Invalid resolution value: " + std::to_string( options.resolution.value ) + " <= 1"
         );
     }
+
+    // Set the enum values.
+    options.spectrum_type_enum  = get_enum_map_value(
+        spectrum_type_map, options.spectrum_type.value
+    );
+    options.average_method_enum = get_enum_map_value(
+        average_method_map, options.average_method.value
+    );
 
     // Set max frequency to 0.5 if it is not given and we are using the folded spectrum.
     // double max_frequency = options->max_frequency.value;

@@ -26,9 +26,12 @@
 
 #include "CLI/CLI.hpp"
 
+#include "genesis/utils/text/string.hpp"
+
 #include <iosfwd>
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 // =================================================================================================
 //      Legacy Commands
@@ -84,6 +87,45 @@ inline void internal_check(
             "Internal error: " + error_message
         );
     }
+}
+
+/**
+ * @brief Helper function to get the keys of a map (we use a vector of pairs to keep the order).
+ * This allows to easilty set up CLI options with enums and translate to the underlying value
+ * from a string, while also giving nicer user output and help than the CLI11 default for enums.
+ */
+template<class T>
+std::vector<std::string> enum_map_keys( std::vector<std::pair<std::string, T>> const& map )
+{
+    std::vector<std::string> result;
+    result.reserve( map.size() );
+    for( auto const& kv : map ) {
+        result.emplace_back( kv.first );
+    }
+    return result;
+}
+
+/**
+ * @brief Helper function to translate the keys of a map (we use a vector of pairs to keep the order).
+ * This allows to easilty set up CLI options with enums and translate to the underlying value
+ * from a string, while also giving nicer user output and help than the CLI11 default for enums.
+ */
+template<class T>
+T get_enum_map_value( std::vector<std::pair<std::string, T>> const& map, std::string const& key )
+{
+    // Case insensitive comparison.
+    auto const key_lower = genesis::utils::to_lower( key );
+    for( auto const& kv : map ) {
+        if( genesis::utils::to_lower( kv.first ) == key_lower ) {
+            return kv.second;
+        }
+    }
+
+    // This case should not happen if we used enum_map_keys before to restrict the CLI11 options,
+    // as CLI11 will to the check already for us.
+    throw std::domain_error(
+        "Internal error: Key \"" + key + "\" not found in list of possible values."
+    );
 }
 
 #endif // include guard

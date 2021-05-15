@@ -69,10 +69,14 @@ public:
     CliOption<size_t> resolution = 100;
     CliOption<double> max_frequency = 1.0;
 
-    CliOption<FrequencySpectrumType> spectrum_type = FrequencySpectrumType::kUnfolded;
-    CliOption<FrequencyAverageMethod> average_method = FrequencyAverageMethod::kHarmonic;
-    CliOption<bool> fold_undetermined = false;
+    // For the enum types, we use a string for the CLI option for nice user output and help,
+    // but internally convert to the enum for speed reasons.
+    CliOption<std::string> spectrum_type = "unfolded";
+    CliOption<std::string> average_method = "harmonic";
+    mutable FrequencySpectrumType spectrum_type_enum;
+    mutable FrequencyAverageMethod average_method_enum;
 
+    CliOption<bool> fold_undetermined = false;
     CliOption<bool> individual_bmps = false;
 
     FrequencyInputOptions freq_input;
