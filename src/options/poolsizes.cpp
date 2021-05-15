@@ -45,7 +45,7 @@ void PoolsizesOptions::add_poolsizes_opt_to_app(
     poolsizes.option = sub->add_option(
         "--poolsizes",
         poolsizes.value,
-        "Poolsizes for all samples that are use (not filtered out). Either a single number that "
+        "Poolsizes for all samples that are used (not filtered out). Either a single number that "
         "is used for all samples, or a path to a file that contains a tab-separated list of sample "
         "names and pool sizes, with one sample/size entry per line."
     );

@@ -28,7 +28,6 @@
 
 #include "tools/cli_option.hpp"
 
-
 #include <functional>
 #include <string>
 #include <utility>
@@ -76,7 +75,7 @@ public:
     // -------------------------------------------------------------------------
 
     /**
-     * Brief Get the pool sizes for the given samples, optionally filtered.
+     * @brief Get the pool sizes for the given samples, optionally filtered.
      *
      * If the @p sample_filter is provided, it needs to have the same length as the @p sample_names.
      * Then, only pool sizes for sample names for which the filter is true are required to be given.
