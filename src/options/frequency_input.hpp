@@ -73,8 +73,8 @@ public:
     void add_frequency_input_opts_to_app(
         CLI::App* sub,
         // bool required = true,
-        bool with_sample_name_prefix = true,
-        bool with_filters = true,
+        bool with_sample_name_opts = true,
+        bool with_filter_opts = true,
         std::string const& group = "Input"
     );
 
@@ -98,7 +98,7 @@ private:
         std::string const& group = "Input"
     );
 
-    CLI::Option* add_sample_name_prefix_opt_to_app(
+    void add_sample_name_opts_to_app(
         CLI::App* sub,
         std::string const& group = "Input"
     );
@@ -172,10 +172,21 @@ private:
     void prepare_data_vcf_() const;
 
     /**
-     * @brief Get the list of sample names to filter, interpreting the given @filter_samples_value
-     * either as a file or as a list of sample names.
+     * @brief Get a list of sample names, for example for pileup or sync files that do not have
+     * sample names in the file, or to filter by sample name. The given @p list is interpreted
+     * either as a file with one sample name per line, or as a list of sample names, tab or comma
+     * separated.
      */
-    std::vector<std::string> get_sample_name_list( std::string const& filter_samples_value ) const;
+    std::vector<std::string> get_sample_name_list( std::string const& list ) const;
+
+    /**
+     * @brief Subset a sample names list by only returning a list of sample names for which
+     * the bool vector is true. Both vectors hence need to have the same size.
+     */
+    std::vector<std::string> get_sample_name_subset(
+        std::vector<std::string> const& sample_names,
+        std::vector<bool> const& sample_filter
+    ) const;
 
     /**
      * @brief Use the sample name filter options to get a vector of bools determining which samples
@@ -202,6 +213,7 @@ private:
     CliOption<std::string> pileup_file_ = "";
     CliOption<std::string> sync_file_   = "";
     CliOption<std::string> vcf_file_    = "";
+    CliOption<std::string> sample_name_list_ = "";
     CliOption<std::string> sample_name_prefix_ = ""; // "Sample_"
 
     // Filters for rows and columns

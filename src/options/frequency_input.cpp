@@ -54,8 +54,8 @@
 void FrequencyInputOptions::add_frequency_input_opts_to_app(
     CLI::App* sub,
     // bool required,
-    bool with_sample_name_prefix,
-    bool with_filters,
+    bool with_sample_name_opts,
+    bool with_filter_opts,
     std::string const& group
 ) {
     // (void) required;
@@ -74,10 +74,10 @@ void FrequencyInputOptions::add_frequency_input_opts_to_app(
     vcf_file_.option->excludes( sync_file_.option );
 
     // Additional options.
-    if( with_sample_name_prefix ) {
-        add_sample_name_prefix_opt_to_app( sub, group );
+    if( with_sample_name_opts ) {
+        add_sample_name_opts_to_app( sub, group );
     }
-    if( with_filters ) {
+    if( with_filter_opts ) {
         add_filter_opts_to_app( sub, group );
     }
 }
@@ -170,17 +170,31 @@ CLI::Option* FrequencyInputOptions::add_vcf_input_opt_to_app(
 //     Additional Input Options
 // -------------------------------------------------------------------------
 
-CLI::Option* FrequencyInputOptions::add_sample_name_prefix_opt_to_app(
+void FrequencyInputOptions::add_sample_name_opts_to_app(
     CLI::App* sub,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
-        sample_name_prefix_.option == nullptr,
+        sample_name_prefix_.option == nullptr && sample_name_list_.option == nullptr,
         "Cannot use the same FrequencyInputOptions object multiple times."
     );
 
-    // Pileup does not have sample names, so offer a prefix option for this.
+    // Name list option.
+    sample_name_list_.option = sub->add_option(
+        "--sample-name-list",
+        sample_name_prefix_.value,
+        "Some file types do not contain sample names, such as (m)pileup or sync files. For such "
+        "file types, sample names can here be provided as either a comma- or tab-separated "
+        "list, or as a file with one sample name per line, in the same order as samples are in "
+        "the actual input file. We then use these names in the output and the "
+        "`--filter-samples-include` and `--filter-samples-exclude` options."
+        "If not provided, we simply use numbers 1..n as sample names for these files types. "
+        "Alternatively, use `--sample-name-prefix` to provide a prefix for this sample numbering."
+    );
+    sample_name_list_.option->group( group );
+
+    // Prefix option.
     sample_name_prefix_.option = sub->add_option(
         "--sample-name-prefix",
         sample_name_prefix_.value,
@@ -188,12 +202,15 @@ CLI::Option* FrequencyInputOptions::add_sample_name_prefix_opt_to_app(
         "file types, this prefix followed by indices 1..n is used instead to provide unique names "
         "per sample that we use in the output and the `--filter-samples-include` and "
         "`--filter-samples-exclude` options. You can for example use \"Sample_\" as a prefix. "
-        "If not provided, we simply use numbers 1..n as sample names for these files."
+        "If not provided, we simply use numbers 1..n as sample names for these files types. "
+        "Alternatively, use `--sample-name-list` to directly provide a list of sample names."
     );
     sample_name_prefix_.option->group( group );
     // sample_name_prefix_.option->needs( pileup_file_.option );
 
-    return sample_name_prefix_.option;
+    // The two ways of specifying sample names are mutually exclusive.
+    sample_name_list_.option->excludes( sample_name_prefix_.option );
+    sample_name_prefix_.option->excludes( sample_name_list_.option );
 }
 
 void FrequencyInputOptions::add_filter_opts_to_app(
@@ -220,7 +237,7 @@ void FrequencyInputOptions::add_filter_opts_to_app(
         "--filter-samples-include",
         filter_samples_include_.value,
         "Sample names to include (all other samples are excluded); either a comma- or tab-separated "
-        " list, or a file with one sample name per line. If no sample filter is provided, all "
+        "list, or a file with one sample name per line. If no sample filter is provided, all "
         "samples in the input file are used."
     );
     filter_samples_include_.option->group( group );
@@ -230,11 +247,14 @@ void FrequencyInputOptions::add_filter_opts_to_app(
         "--filter-samples-exclude",
         filter_samples_exclude_.value,
         "Sample names to exclude (all other samples are included); either a comma- or tab-separated "
-        " list, or a file with one sample name per line. If no sample filter is provided, all "
+        "list, or a file with one sample name per line. If no sample filter is provided, all "
         "samples in the input file are used."
     );
     filter_samples_exclude_.option->group( group );
+
+    // Include and exclude are mutually exclusive.
     filter_samples_exclude_.option->excludes( filter_samples_include_.option );
+    filter_samples_include_.option->excludes( filter_samples_exclude_.option );
 }
 
 // -------------------------------------------------------------------------
@@ -393,11 +413,16 @@ void FrequencyInputOptions::prepare_data_() const
         );
     }
 
-    // If a sample name prefix is given, we check that this is only for the allowed file types.
-    if( sample_name_prefix_.option && *sample_name_prefix_.option  ) {
+    // If a sample name prefix or a list is given,
+    // we check that this is only for the allowed file types.
+    if(
+        ( sample_name_list_.option   && *sample_name_list_.option ) ||
+        ( sample_name_prefix_.option && *sample_name_prefix_.option )
+    ) {
         if( ! is_pileup && ! is_sync ) {
             throw CLI::ValidationError(
-                "Can only use " + sample_name_prefix_.option->get_name()  + " for input file "
+                "Can only use " + sample_name_list_.option->get_name() + " or " +
+                sample_name_prefix_.option->get_name() + " for input file "
                 "formats that do not already have sample sames, such as (m)pileup or sync files."
             );
         }
@@ -461,30 +486,40 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         );
     }
     auto const smp_cnt = it->samples.size();
-    for( size_t i = 0; i < smp_cnt; ++i ) {
-        sample_names_.push_back( sample_name_prefix_.value + std::to_string(i+1) );
+    if( sample_name_list_.option && *sample_name_list_.option ) {
+        sample_names_ = get_sample_name_list( sample_name_list_.value );
+        if( sample_names_.size() != smp_cnt ) {
+            throw CLI::ValidationError(
+                sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
+                "Invalid sample names list that contains a different number of names than "
+                "the (m)pileup file has samples."
+            );
+        }
+    } else {
+        for( size_t i = 0; i < smp_cnt; ++i ) {
+            sample_names_.push_back( sample_name_prefix_.value + std::to_string(i+1) );
+        }
     }
+    assert( sample_names_.size() == smp_cnt );
 
     // Filter sample names as needed. This is a bit cumbersome, but gets the job done.
     if( ! filter_samples_include_.value.empty() || ! filter_samples_exclude_.value.empty() ) {
         // Not both can be given at the same time, as we made the options mutually exclusive.
         assert( filter_samples_include_.value.empty() != filter_samples_exclude_.value.empty() );
 
-        // Get the filter, as bool (which samples to use), and as indices of these samples.
+        // Get the filter, as bool (which samples to use).
         auto const sample_filter  = get_sample_filter( sample_names_ );
-        auto const sample_indices = get_sample_filter_indices( sample_filter );
 
-        // Now restart the iteration, this time with the filtering, and renew the sample names.
+        // Now restart the iteration, this time with the filtering.
         // We simply do an internal check to verify the file - we checked already above when
         // opening it for the first time, so it should be okay now as well.
         it = SimplePileupInputIterator(
             utils::from_file( pileup_file_.value ), sample_filter, reader
         );
         internal_check( it.good(), "Pileup file became invalid." );
-        sample_names_.clear();
-        for( auto idx : sample_indices ) {
-            sample_names_.push_back( sample_name_prefix_.value + std::to_string(idx+1) );
-        }
+
+        // Renew the sample names to only contain those that are not filtered out.
+        sample_names_ = get_sample_name_subset( sample_names_, sample_filter );
     }
 
     // Apply region filter if necessary.
@@ -561,28 +596,38 @@ void FrequencyInputOptions::prepare_data_sync_() const
         );
     }
     auto const smp_cnt = it->samples.size();
-    for( size_t i = 0; i < smp_cnt; ++i ) {
-        sample_names_.push_back( sample_name_prefix_.value + std::to_string(i+1) );
+    if( sample_name_list_.option && *sample_name_list_.option ) {
+        sample_names_ = get_sample_name_list( sample_name_list_.value );
+        if( sample_names_.size() != smp_cnt ) {
+            throw CLI::ValidationError(
+                sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
+                "Invalid sample names list that contains a different number of names than "
+                "the sync file has samples."
+            );
+        }
+    } else {
+        for( size_t i = 0; i < smp_cnt; ++i ) {
+            sample_names_.push_back( sample_name_prefix_.value + std::to_string(i+1) );
+        }
     }
+    assert( sample_names_.size() == smp_cnt );
 
     // Filter sample names as needed. This is a bit cumbersome, but gets the job done.
     if( ! filter_samples_include_.value.empty() || ! filter_samples_exclude_.value.empty() ) {
         // Not both can be given at the same time, as we made the options mutually exclusive.
         assert( filter_samples_include_.value.empty() != filter_samples_exclude_.value.empty() );
 
-        // Get the filter, as bool (which samples to use), and as indices of these samples.
+        // Get the filter, as bool (which samples to use).
         auto const sample_filter  = get_sample_filter( sample_names_ );
-        auto const sample_indices = get_sample_filter_indices( sample_filter );
 
-        // Now restart the iteration, this time with the filtering, and renew the sample names.
+        // Now restart the iteration, this time with the filtering.
         // We simply do an internal check to verify the file - we checked already above when
         // opening it for the first time, so it should be okay now as well.
         it = SyncInputIterator( from_file( sync_file_.value ), sample_filter );
         internal_check( it.good(), "Sync file became invalid." );
-        sample_names_.clear();
-        for( auto idx : sample_indices ) {
-            sample_names_.push_back( sample_name_prefix_.value + std::to_string(idx+1) );
-        }
+
+        // Renew the sample names to only contain those that are not filtered out.
+        sample_names_ = get_sample_name_subset( sample_names_, sample_filter );
     }
 
     // Apply region filter if necessary.
@@ -730,16 +775,35 @@ void FrequencyInputOptions::prepare_data_vcf_() const
 //     Sample Name Filtering
 // -------------------------------------------------------------------------
 
-std::vector<std::string> FrequencyInputOptions::get_sample_name_list( std::string const& value ) const
+std::vector<std::string> FrequencyInputOptions::get_sample_name_list( std::string const& list ) const
 {
     using namespace genesis::utils;
 
     // If the input is a file, read it line by line as sample names. Otherwise, split by comma.
-    if( is_file( value ) ) {
-        return file_read_lines( value );
+    if( is_file( list ) ) {
+        return file_read_lines( list );
     } else {
-        return split( value, ",\t" );
+        return split( list, ",\t" );
     }
+}
+
+std::vector<std::string> FrequencyInputOptions::get_sample_name_subset(
+    std::vector<std::string> const& sample_names,
+    std::vector<bool> const& sample_filter
+) const {
+    if( sample_names.size() != sample_filter.size() ) {
+        throw std::runtime_error(
+            "Internal error: get_sample_name_subset() called with different sized vectors."
+        );
+    }
+
+    std::vector<std::string> result;
+    for( size_t i = 0; i < sample_names.size(); ++i ) {
+        if( sample_filter[i] ) {
+            result.push_back( sample_names[i] );
+        }
+    }
+    return result;
 }
 
 std::vector<bool> FrequencyInputOptions::get_sample_filter(
