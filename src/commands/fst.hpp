@@ -28,6 +28,7 @@
 
 #include "options/file_output.hpp"
 #include "options/frequency_input.hpp"
+#include "options/poolsizes.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
@@ -41,7 +42,8 @@ class FstOptions
 {
 public:
 
-    CliOption<std::string> poolsizes = "";
+    FrequencyInputOptions freq_input;
+    PoolsizesOptions poolsizes;
 
     CliOption<std::string> method = "conventional";
     CliOption<bool>        omit_empty_windows = false;
@@ -50,7 +52,6 @@ public:
     CliOption<std::string> comparand_list = "";
     CliOption<std::string> na_entry = "NA";
 
-    FrequencyInputOptions freq_input;
     FileOutputOptions  file_output;
 
 };

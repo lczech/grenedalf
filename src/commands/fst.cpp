@@ -60,16 +60,8 @@ void setup_fst( CLI::App& app )
     options->freq_input.add_frequency_input_opts_to_app( sub );
     options->freq_input.add_sliding_window_opts_to_app( sub );
 
-    // Settings: Pool Sizes
-    options->poolsizes.option = sub->add_option(
-        "--poolsizes",
-        options->poolsizes.value,
-        "Poolsizes for all samples for which F_ST is to be computed. Either a single number that "
-        "is used for all samples, or a path to a file that contains a tab-separated list of sample "
-        "names and pool sizes, with one sample/size entry per line."
-    );
-    options->poolsizes.option->group( "Settings" );
-    // options->poolsizes.option->required();
+    // Settings: Pool sizes
+    options->poolsizes.add_poolsizes_opt_to_app( sub );
 
     // Settings: F_ST Method
     options->method.option = sub->add_option(
@@ -222,99 +214,6 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
     return sample_pairs;
 }
 
-std::vector<size_t> get_pool_sizes(
-    FstOptions const& options,
-    std::vector<std::pair<size_t, size_t>> const& sample_pairs
-) {
-    using namespace genesis::utils;
-
-    // Convert a pool size to a number, or throw.
-    auto convert_poolsize_ = [&]( std::string const& str ){
-        try {
-            return convert_from_string<size_t>( str );
-        } catch(...) {
-            throw CLI::ValidationError(
-                options.poolsizes.option->get_name(),
-                "Invalid pool size value: " + str
-            );
-        }
-    };
-
-    // Get the pool sizes, depending on input type either from file, or as a single number.
-    auto const& sample_names = options.freq_input.sample_names();
-    auto result = std::vector<size_t>( sample_names.size(), 0 );
-    if( is_file( options.poolsizes.value )) {
-
-        // Read the file line by line and make a map from sample names to pool sizes.
-        auto const lines = file_read_lines( options.poolsizes.value );
-        std::unordered_map<std::string, size_t> ps_map;
-        for( size_t i = 0; i < lines.size(); ++i ) {
-            auto const& line = lines[i];
-
-            // Dissect the line and see if we got a sample name and a number.
-            auto const pair = split( line, "\t", false );
-            if( pair.size() != 2 ) {
-                throw CLI::ValidationError(
-                    options.poolsizes.option->get_name() + "(" +
-                    options.poolsizes.value + ")",
-                    "Invalid line that does not contain sample name and a pool size (line " +
-                    std::to_string( i + 1 ) + ")."
-                );
-            }
-
-            // Duplicate check.
-            if( ps_map.count( pair[0] )) {
-                throw CLI::ValidationError(
-                    options.poolsizes.option->get_name() + "(" +
-                    options.poolsizes.value + ")",
-                    "Invalid line that does not contain sample name and a pool size (line " +
-                    std::to_string( i + 1 ) + ")."
-                );
-            }
-
-            // Add the entry.
-            assert( ps_map.count( pair[0] ) == 0 );
-            ps_map[ pair[0] ] = convert_poolsize_( pair[1] );
-        }
-
-        // Get all sample indices that we are actually interested in.
-        // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
-        auto used_samples = std::vector<bool>( sample_names.size(), false );
-        for( auto const& sp : sample_pairs ) {
-            used_samples[ sp.first ]  = true;
-            used_samples[ sp.second ] = true;
-        }
-
-        // Now, fill the vector of pool sizes with values in the correct order
-        // (that is, using the sample name order).
-        // Throw if the sample needs to be given (it's in the used list), but isn't in the file.
-        for( size_t i = 0; i < sample_names.size(); ++i ) {
-            if( ! used_samples[i] ) {
-                continue;
-            }
-
-            auto const& sn = sample_names[i];
-            if( ps_map.count(sn) > 0 ) {
-                result[i] = ps_map[sn];
-            } else {
-                throw CLI::ValidationError(
-                    options.poolsizes.option->get_name() + "(" +
-                    options.poolsizes.value + ")",
-                    "Sample name \"" + sn +  "\" missing from pool size file."
-                );
-            }
-        }
-    } else {
-
-        // Just give every sample the same pool size.
-        auto const ps = convert_poolsize_( options.poolsizes.value );
-        for( auto& entry : result ) {
-            entry = ps;
-        }
-    }
-    return result;
-}
-
 // =================================================================================================
 //      Run
 // =================================================================================================
@@ -341,18 +240,28 @@ void run_fst( FstOptions const& options )
         : Method::kKarlsson
     );
 
-    // Get indices of all pairs of samples for which we want to compute F_ST,
-    // and their pool sizes.
+    // Get indices of all pairs of samples for which we want to compute F_ST.
     auto const sample_pairs = get_sample_pairs_( options );
+
+    // Get all sample indices that we are actually interested in.
+    // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
+    auto const& sample_names = options.freq_input.sample_names();
+    auto used_samples = std::vector<bool>( sample_names.size(), false );
+    for( auto const& sp : sample_pairs ) {
+        used_samples[ sp.first ]  = true;
+        used_samples[ sp.second ] = true;
+    }
+    assert( used_samples.size() == sample_names.size() );
+
+    // Get the pool sizes for all samples that we are interested in.
     auto const pool_sizes = ( method == Method::kConventional
-        ? get_pool_sizes( options, sample_pairs )
+        ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
         : std::vector<size_t>{}
     );
     LOG_MSG << "Computing F_ST between " << sample_pairs.size() << " pairs of samples.";
 
     // Prepare output file and write header line with all pairs of samples.
     auto fst_ofs = options.file_output.get_output_target( "fst", "csv" );
-    auto const& sample_names = options.freq_input.sample_names();
     (*fst_ofs) << "CHROM\tSTART\tEND\tSNPS";
     for( auto const& pair : sample_pairs ) {
         (*fst_ofs) << "\t" << sample_names[pair.first] << "." << sample_names[pair.second];
