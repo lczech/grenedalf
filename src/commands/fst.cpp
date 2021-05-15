@@ -139,6 +139,7 @@ void setup_fst( CLI::App& app )
         sub,
         {
             // Citation keys as needed
+            "Kofler2011-PoPoolation2"
         },
         [ options ]() {
             run_fst( *options );

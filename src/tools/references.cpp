@@ -66,7 +66,29 @@ static std::unordered_map<std::string, Citation> citations_ = {
         "",
         "2021",
         ""
-    }}
+    }},
+    { "Kofler2011-PoPoolation", {
+        {
+            { "Robert", "Kofler" }, { "Pablo", "Orozco-terWengel" }, { "Nicola", "De Maio" },
+            { "Ram Vinay", "Pandey" }, { "Viola", "Nolte" }, { "Andreas", "Futschik" },
+            { "Carolin", "Kosiol" }, { "Christian", "Schlötterer" }
+        },
+        "PoPoolation: A Toolbox for Population Genetic Analysis of Next Generation Sequencing Data from Pooled Individuals",
+        "PLoS ONE",
+        "6",
+        "1",
+        "2011",
+        "10.1371/journal.pone.0015925"
+    }},
+    { "Kofler2011-PoPoolation2", {
+        {{ "Robert", "Kofler" }, { "Ram Vinay", "Pandey" }, { "Christian", "Schlötterer" }},
+        "PoPoolation2: identifying differentiation between populations using sequencing of pooled DNA samples (Pool-Seq)",
+        "Bioinformatics",
+        "27",
+        "24",
+        "2011",
+        "10.1093/bioinformatics/btr589"
+    }},
 };
 
 // -------------------------------------------------------------------------

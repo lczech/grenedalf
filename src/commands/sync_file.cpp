@@ -55,6 +55,7 @@ void setup_sync_file( CLI::App& app )
         sub,
         {
             // Citation keys as needed
+            "Kofler2011-PoPoolation2"
         },
         [ options ]() {
             run_sync_file( *options );
