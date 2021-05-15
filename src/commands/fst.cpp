@@ -56,8 +56,7 @@ void setup_fst( CLI::App& app )
         "Compute F_ST in windows or at individual positions along the genome."
     );
 
-    // Required input of some frequency format (mpileup or vcf at the moment),
-    // and settings for the sliding window.
+    // Required input of some frequency format, and settings for the sliding window.
     options->freq_input.add_frequency_input_opts_to_app( sub );
     options->freq_input.add_sliding_window_opts_to_app( sub );
 
@@ -84,6 +83,8 @@ void setup_fst( CLI::App& app )
     options->method.option->transform(
         CLI::IsMember({ "conventional", "karlsson" }, CLI::ignore_case )
     );
+
+    // TODO need settings for min/max coverage etc. see prototype implementations!
 
     // Settings: Omit Empty Windows
     options->omit_empty_windows.option = sub->add_flag(
@@ -124,6 +125,7 @@ void setup_fst( CLI::App& app )
         "pairwise F_ST values are computed."
     );
     options->comparand_list.option->group( "Settings" );
+    options->comparand_list.option->check( CLI::ExistingFile );
     options->comparand_list.option->excludes( options->comparand.option );
     options->comparand_list.option->excludes( options->second_comparand.option );
 

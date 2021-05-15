@@ -97,6 +97,8 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         "Cannot use the same FrequencyInputOptions object multiple times."
     );
 
+    // TODO add options for reading: with quality, with ancestral base, quality encoding
+
     // Add the option
     pileup_file_.option = sub->add_option(
         "--pileup-file",
@@ -308,6 +310,7 @@ FrequencyInputOptions::get_base_count_sliding_window_iterator() const
 
     // Conversion functions for the sliding window iterator.
     settings.entry_input_function = []( Variant const& variant ) -> std::vector<BaseCounts> const& {
+        // TODO move instead?!
         return variant.samples;
     };
     settings.chromosome_function = []( Variant const& variant ) -> std::string const& {
@@ -343,6 +346,7 @@ FrequencyInputOptions::get_variant_sliding_window_iterator() const
 
     // Conversion functions for the sliding window iterator.
     settings.entry_input_function = []( Variant const& variant ) -> Variant const& {
+        // TODO move instead?!
         return variant;
     };
     settings.chromosome_function = []( Variant const& variant ) -> std::string const& {
