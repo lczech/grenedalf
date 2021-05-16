@@ -111,6 +111,17 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         pileup_file_.option->required();
     }
 
+    // Min phred score
+    min_phred_score_.option = sub->add_option(
+        "--min-phred-score",
+        min_phred_score_.value,
+        "Minimum phred quality score [0-90] for a base in (m)pileup files to be considered. "
+        "Default is 0, meaning no filtering by phred quality score."
+    );
+    min_phred_score_.option->group( group );
+    min_phred_score_.option->check( CLI::Range( 0, 90 ));
+    min_phred_score_.option->needs( pileup_file_.option );
+
     return pileup_file_.option;
 }
 
@@ -488,6 +499,7 @@ void FrequencyInputOptions::prepare_data_pileup_() const
     // and different columns in the pileup file.
     // TODO add pileup settings!
     auto reader = SimplePileupReader();
+    auto const min_phred_score = min_phred_score_.value;
     // reader.quality_encoding( genesis::sequence::QualityEncoding::kIllumina13 );
 
     // Open the file, which aleady reads the first line. We use this to get the number of
@@ -505,7 +517,7 @@ void FrequencyInputOptions::prepare_data_pileup_() const
     }
     auto const smp_cnt = it->samples.size();
     if( sample_name_list_.option && *sample_name_list_.option ) {
-        sample_names_ = get_sample_name_list( sample_name_list_.value );
+        sample_names_ = get_sample_name_list_( sample_name_list_.value );
         if( sample_names_.size() != smp_cnt ) {
             throw CLI::ValidationError(
                 sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
@@ -526,7 +538,7 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         assert( filter_samples_include_.value.empty() != filter_samples_exclude_.value.empty() );
 
         // Get the filter, as bool (which samples to use).
-        auto const sample_filter  = get_sample_filter( sample_names_ );
+        auto const sample_filter  = get_sample_filter_( sample_names_ );
 
         // Now restart the iteration, this time with the filtering.
         // We simply do an internal check to verify the file - we checked already above when
@@ -537,16 +549,16 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         internal_check( it.good(), "Pileup file became invalid." );
 
         // Renew the sample names to only contain those that are not filtered out.
-        sample_names_ = get_sample_name_subset( sample_names_, sample_filter );
+        sample_names_ = get_sample_name_subset_( sample_names_, sample_filter );
     }
 
     // Apply region filter if necessary.
     if( filter_region_.value.empty() ) {
         // Create a generator that reads pileup.
         generator_ = LambdaIteratorGenerator<Variant>(
-            [it]() mutable -> std::shared_ptr<Variant>{
+            [ it, min_phred_score ]() mutable -> std::shared_ptr<Variant>{
                 if( it ) {
-                    auto res = std::make_shared<Variant>( convert_to_variant(*it) );
+                    auto res = std::make_shared<Variant>( convert_to_variant( *it, min_phred_score ));
                     ++it;
                     return res;
                 } else {
@@ -568,9 +580,9 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         auto beg = region_filtered_range.begin();
         auto end = region_filtered_range.end();
         generator_ = LambdaIteratorGenerator<Variant>(
-            [beg, end]() mutable -> std::shared_ptr<Variant>{
+            [ beg, end, min_phred_score ]() mutable -> std::shared_ptr<Variant>{
                 if( beg != end ) {
-                    auto res = std::make_shared<Variant>( convert_to_variant( *beg ));
+                    auto res = std::make_shared<Variant>( convert_to_variant( *beg, min_phred_score ));
                     ++beg;
                     return res;
                 } else {
@@ -615,7 +627,7 @@ void FrequencyInputOptions::prepare_data_sync_() const
     }
     auto const smp_cnt = it->samples.size();
     if( sample_name_list_.option && *sample_name_list_.option ) {
-        sample_names_ = get_sample_name_list( sample_name_list_.value );
+        sample_names_ = get_sample_name_list_( sample_name_list_.value );
         if( sample_names_.size() != smp_cnt ) {
             throw CLI::ValidationError(
                 sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
@@ -636,7 +648,7 @@ void FrequencyInputOptions::prepare_data_sync_() const
         assert( filter_samples_include_.value.empty() != filter_samples_exclude_.value.empty() );
 
         // Get the filter, as bool (which samples to use).
-        auto const sample_filter  = get_sample_filter( sample_names_ );
+        auto const sample_filter  = get_sample_filter_( sample_names_ );
 
         // Now restart the iteration, this time with the filtering.
         // We simply do an internal check to verify the file - we checked already above when
@@ -645,7 +657,7 @@ void FrequencyInputOptions::prepare_data_sync_() const
         internal_check( it.good(), "Sync file became invalid." );
 
         // Renew the sample names to only contain those that are not filtered out.
-        sample_names_ = get_sample_name_subset( sample_names_, sample_filter );
+        sample_names_ = get_sample_name_subset_( sample_names_, sample_filter );
     }
 
     // Apply region filter if necessary.
@@ -711,10 +723,10 @@ void FrequencyInputOptions::prepare_data_vcf_() const
     // See if we want to filter by sample name, and if so, resolve the name list.
     auto vcf_in = VcfInputIterator();
     if( ! filter_samples_include_.value.empty() ) {
-        auto const list = get_sample_name_list( filter_samples_include_.value );
+        auto const list = get_sample_name_list_( filter_samples_include_.value );
         vcf_in = VcfInputIterator( vcf_file_.value, list );
     } else if( ! filter_samples_exclude_.value.empty() ) {
-        auto const list = get_sample_name_list( filter_samples_exclude_.value );
+        auto const list = get_sample_name_list_( filter_samples_exclude_.value );
         vcf_in = VcfInputIterator( vcf_file_.value, list, true );
     } else {
         vcf_in = VcfInputIterator( vcf_file_.value );
@@ -793,7 +805,7 @@ void FrequencyInputOptions::prepare_data_vcf_() const
 //     Sample Name Filtering
 // -------------------------------------------------------------------------
 
-std::vector<std::string> FrequencyInputOptions::get_sample_name_list( std::string const& list ) const
+std::vector<std::string> FrequencyInputOptions::get_sample_name_list_( std::string const& list ) const
 {
     using namespace genesis::utils;
 
@@ -805,13 +817,13 @@ std::vector<std::string> FrequencyInputOptions::get_sample_name_list( std::strin
     }
 }
 
-std::vector<std::string> FrequencyInputOptions::get_sample_name_subset(
+std::vector<std::string> FrequencyInputOptions::get_sample_name_subset_(
     std::vector<std::string> const& sample_names,
     std::vector<bool> const& sample_filter
 ) const {
     if( sample_names.size() != sample_filter.size() ) {
         throw std::runtime_error(
-            "Internal error: get_sample_name_subset() called with different sized vectors."
+            "Internal error: get_sample_name_subset_() called with different sized vectors."
         );
     }
 
@@ -824,7 +836,7 @@ std::vector<std::string> FrequencyInputOptions::get_sample_name_subset(
     return result;
 }
 
-std::vector<bool> FrequencyInputOptions::get_sample_filter(
+std::vector<bool> FrequencyInputOptions::get_sample_filter_(
     std::vector<std::string> const& sample_names
 ) const {
 
@@ -834,11 +846,11 @@ std::vector<bool> FrequencyInputOptions::get_sample_filter(
 
     // This function is only called when we actually have sample name filters given by the user.
     // Also, Not both can be given at the same time, as we made the options mutually exclusive.
-    internal_check( is_include || is_exclude, "get_sample_filter() with no sample names" );
-    internal_check( is_include != is_exclude, "get_sample_filter() with include and exclude" );
+    internal_check( is_include || is_exclude, "get_sample_filter_() with no sample names" );
+    internal_check( is_include != is_exclude, "get_sample_filter_() with include and exclude" );
 
     // Get the sample names, depending on which type (inc/exc) we have.
-    auto const list = get_sample_name_list(
+    auto const list = get_sample_name_list_(
         is_include ? filter_samples_include_.value : filter_samples_exclude_.value
     );
 
@@ -861,7 +873,7 @@ std::vector<bool> FrequencyInputOptions::get_sample_filter(
     return sample_filter;
 }
 
-std::vector<size_t> FrequencyInputOptions::get_sample_filter_indices(
+std::vector<size_t> FrequencyInputOptions::get_sample_filter_indices_(
     std::vector<bool> const& sample_filter
 ) const {
     std::vector<size_t> sample_indices;

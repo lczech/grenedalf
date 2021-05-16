@@ -166,7 +166,7 @@ void run_diversity( DiversityOptions const& options )
     for( size_t i = 0; i < sample_names.size(); ++i ) {
         pool_settings[i].window_width          = window_width_and_stride.first;
         pool_settings[i].window_stride         = window_width_and_stride.second;
-        // pool_settings[i].min_phred_score       = 0;
+        // pool_settings[i].min_phred_score       = options.freq_input...;
         pool_settings[i].poolsize              = pool_sizes[i];
         pool_settings[i].min_allele_count      = options.min_allele_count.value;
         pool_settings[i].min_coverage          = options.min_coverage.value;

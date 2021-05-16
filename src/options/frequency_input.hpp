@@ -121,6 +121,10 @@ public:
 
 public:
 
+    // -------------------------------------
+    //     Getters
+    // -------------------------------------
+
     /**
      * @brief Get all sample names given in the input file that are not filtered out.
      */
@@ -130,6 +134,10 @@ public:
      * @brief Get the specified window width and stride.
      */
     std::pair<size_t, size_t> get_window_width_and_stride() const;
+
+    // -------------------------------------
+    //     Iteration
+    // -------------------------------------
 
     /**
      * @brief Get an iterator over the positions in the input file.
@@ -182,13 +190,13 @@ private:
      * either as a file with one sample name per line, or as a list of sample names, tab or comma
      * separated.
      */
-    std::vector<std::string> get_sample_name_list( std::string const& list ) const;
+    std::vector<std::string> get_sample_name_list_( std::string const& list ) const;
 
     /**
      * @brief Subset a sample names list by only returning a list of sample names for which
      * the bool vector is true. Both vectors hence need to have the same size.
      */
-    std::vector<std::string> get_sample_name_subset(
+    std::vector<std::string> get_sample_name_subset_(
         std::vector<std::string> const& sample_names,
         std::vector<bool> const& sample_filter
     ) const;
@@ -200,13 +208,13 @@ private:
      * This list of bools is needed by the pileup and sync readers for example, as these file
      * formats do not have sample names that we can use for filtering.
      */
-    std::vector<bool> get_sample_filter( std::vector<std::string> const& sample_names ) const;
+    std::vector<bool> get_sample_filter_( std::vector<std::string> const& sample_names ) const;
 
     /**
      * @brief Get a list of sample indices that remain after filtering, that is, the indices of
      * the positions where the provided vector is true.
      */
-    std::vector<size_t> get_sample_filter_indices( std::vector<bool> const& sample_filter ) const;
+    std::vector<size_t> get_sample_filter_indices_( std::vector<bool> const& sample_filter ) const;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -216,6 +224,7 @@ private:
 
     // Input file types
     CliOption<std::string> pileup_file_ = "";
+    CliOption<unsigned char> min_phred_score_ = 0;
     CliOption<std::string> sync_file_   = "";
     CliOption<std::string> vcf_file_    = "";
     CliOption<std::string> sample_name_list_ = "";
