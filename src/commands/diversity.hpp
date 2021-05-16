@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_COMMANDS_H_
-#define GRENEDALF_COMMANDS_COMMANDS_H_
+#ifndef GRENEDALF_COMMANDS_DIVERSITY_H_
+#define GRENEDALF_COMMANDS_DIVERSITY_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -26,41 +26,43 @@
 
 #include "CLI/CLI.hpp"
 
-#include "commands/afs_heatmap.hpp"
-#include "commands/diversity.hpp"
-#include "commands/frequency.hpp"
-#include "commands/fst.hpp"
-#include "commands/sync_file.hpp"
-
-#include "options/global.hpp"
-#include "tools/cli_setup.hpp"
+#include "options/file_output.hpp"
+#include "options/frequency_input.hpp"
+#include "options/poolsizes.hpp"
+#include "options/table_output.hpp"
+#include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
+//      Options
+// =================================================================================================
+
+class DiversityOptions
+{
+public:
+
+    FrequencyInputOptions freq_input;
+    PoolsizesOptions poolsizes;
+
+    // Using defaults from PoPollation, see Variance-sliding.pl
+    CliOption<size_t> min_allele_count = 2;
+    CliOption<size_t> min_coverage = 4;
+    CliOption<size_t> max_coverage = 1000000;
+    CliOption<double> min_coverage_fraction = 0.6;
+    CliOption<bool> with_popoolation_bugs = false;
+
+    TableOutputOptions table_output;
+    FileOutputOptions  file_output;
+
+};
+
+// =================================================================================================
 //      Functions
 // =================================================================================================
 
-inline void setup_commands( CLI::App& app )
-{
-    // Create the module subcommand objects.
-    // auto sub = app.add_subcommand(
-    //     "tools",
-    //     "Auxiliary commands of grenedalf."
-    // );
-    // sub->require_subcommand( 1 );
-
-    // Add module subcommands.
-    setup_afs_heatmap( app );
-    setup_diversity( app );
-    setup_frequency( app );
-    setup_fst( app );
-    setup_sync_file( app );
-
-    // Add the global options to each of the above subcommands.
-    global_options.add_to_module( app );
-    set_module_help_group( app );
-}
+void setup_diversity( CLI::App& app );
+void run_diversity( DiversityOptions const& options );
 
 #endif // include guard
