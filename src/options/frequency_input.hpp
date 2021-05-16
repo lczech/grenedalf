@@ -73,8 +73,8 @@ public:
     void add_frequency_input_opts_to_app(
         CLI::App* sub,
         // bool required = true,
-        bool with_sample_name_opts = true,
-        bool with_filter_opts = true,
+        // bool with_sample_name_opts = true,
+        // bool with_filter_opts = true,
         std::string const& group = "Input"
     );
 
@@ -98,6 +98,8 @@ private:
         std::string const& group = "Input"
     );
 
+public:
+
     void add_sample_name_opts_to_app(
         CLI::App* sub,
         std::string const& group = "Input"
@@ -105,10 +107,8 @@ private:
 
     void add_filter_opts_to_app(
         CLI::App* sub,
-        std::string const& group = "Input"
+        std::string const& group = "Filtering"
     );
-
-public:
 
     void add_sliding_window_opts_to_app(
         CLI::App* sub,
@@ -125,6 +125,11 @@ public:
      * @brief Get all sample names given in the input file that are not filtered out.
      */
     std::vector<std::string> const& sample_names() const;
+
+    /**
+     * @brief Get the specified window width and stride.
+     */
+    std::pair<size_t, size_t> get_window_width_and_stride() const;
 
     /**
      * @brief Get an iterator over the positions in the input file.

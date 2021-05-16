@@ -54,8 +54,8 @@
 void FrequencyInputOptions::add_frequency_input_opts_to_app(
     CLI::App* sub,
     // bool required,
-    bool with_sample_name_opts,
-    bool with_filter_opts,
+    // bool with_sample_name_opts,
+    // bool with_filter_opts,
     std::string const& group
 ) {
     // (void) required;
@@ -73,13 +73,13 @@ void FrequencyInputOptions::add_frequency_input_opts_to_app(
     vcf_file_.option->excludes( pileup_file_.option );
     vcf_file_.option->excludes( sync_file_.option );
 
-    // Additional options.
-    if( with_sample_name_opts ) {
-        add_sample_name_opts_to_app( sub, group );
-    }
-    if( with_filter_opts ) {
-        add_filter_opts_to_app( sub, group );
-    }
+    // // Additional options.
+    // if( with_sample_name_opts ) {
+    //     add_sample_name_opts_to_app( sub, group );
+    // }
+    // if( with_filter_opts ) {
+    //     add_filter_opts_to_app( sub, group );
+    // }
 }
 
 // -------------------------------------------------------------------------
@@ -155,7 +155,7 @@ CLI::Option* FrequencyInputOptions::add_vcf_input_opt_to_app(
     vcf_file_.option = sub->add_option(
         "--vcf-file",
         vcf_file_.value,
-        "Path to a VCF file."
+        "Path to a VCF file with per-sample `AD` (alleleic depth) fields."
     );
     vcf_file_.option->check( CLI::ExistingFile );
     vcf_file_.option->group( group );
@@ -188,7 +188,7 @@ void FrequencyInputOptions::add_sample_name_opts_to_app(
         "file types, sample names can here be provided as either a comma- or tab-separated "
         "list, or as a file with one sample name per line, in the same order as samples are in "
         "the actual input file. We then use these names in the output and the "
-        "`--filter-samples-include` and `--filter-samples-exclude` options."
+        "`--filter-samples-include` and `--filter-samples-exclude` options. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
         "Alternatively, use `--sample-name-prefix` to provide a prefix for this sample numbering."
     );
@@ -199,9 +199,9 @@ void FrequencyInputOptions::add_sample_name_opts_to_app(
         "--sample-name-prefix",
         sample_name_prefix_.value,
         "Some file types do not contain sample names, such as (m)pileup or sync files. For such "
-        "file types, this prefix followed by indices 1..n is used instead to provide unique names "
-        "per sample that we use in the output and the `--filter-samples-include` and "
-        "`--filter-samples-exclude` options. You can for example use \"Sample_\" as a prefix. "
+        "file types, this prefix followed by indices 1..n can be used instead to provide unique "
+        "names per sample that we use in the output and the `--filter-samples-include` and "
+        "`--filter-samples-exclude` options. For example, use \"Sample_\" as a prefix. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
         "Alternatively, use `--sample-name-list` to directly provide a list of sample names."
     );
@@ -295,6 +295,24 @@ std::vector<std::string> const& FrequencyInputOptions::sample_names() const
 {
     prepare_data_();
     return sample_names_;
+}
+
+// -------------------------------------------------------------------------
+//     get_window_width_and_stride
+// -------------------------------------------------------------------------
+
+std::pair<size_t, size_t> FrequencyInputOptions::get_window_width_and_stride() const
+{
+    // We need to check the stride here ourselves. For the actual window iterator, this is done
+    // in the iterator constructor, but when this function here is called, that might not have
+    // happened yet, and so we need to do the check ourselves.
+    if( window_stride_.value == 0 ) {
+        // stride == 0 --> use stride == width
+        return { window_width_.value, window_width_.value };
+    } else {
+        // stride != 0 --> just use it as is
+        return { window_width_.value, window_stride_.value };
+    }
 }
 
 // -------------------------------------------------------------------------

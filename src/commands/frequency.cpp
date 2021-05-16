@@ -42,6 +42,8 @@ void setup_frequency( CLI::App& app )
 
     // Required input of some frequency format (mpileup or vcf at the moment).
     options->freq_input.add_frequency_input_opts_to_app( sub );
+    options->freq_input.add_sample_name_opts_to_app( sub );
+    options->freq_input.add_filter_opts_to_app( sub );
 
     // Which columns to write
     auto write_coverage_opt = sub->add_flag(

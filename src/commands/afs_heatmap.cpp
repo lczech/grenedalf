@@ -75,7 +75,9 @@ void setup_afs_heatmap( CLI::App& app )
     );
 
     // Required input of some frequency format, and settings for the sliding window.
-    options->freq_input.add_frequency_input_opts_to_app( sub, false );
+    options->freq_input.add_frequency_input_opts_to_app( sub );
+    options->freq_input.add_sample_name_opts_to_app( sub );
+    options->freq_input.add_filter_opts_to_app( sub );
     options->freq_input.add_sliding_window_opts_to_app( sub );
 
     // -------------------------------------------------------------------------
