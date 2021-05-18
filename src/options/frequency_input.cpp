@@ -34,6 +34,7 @@
 #include "genesis/population/functions/genome_region.hpp"
 #include "genesis/population/functions/variant.hpp"
 #include "genesis/population/genome_region.hpp"
+#include "genesis/sequence/functions/quality.hpp"
 #include "genesis/utils/containers/filter_iterator.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -97,7 +98,7 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         "Cannot use the same FrequencyInputOptions object multiple times."
     );
 
-    // TODO add options for reading: with quality, with ancestral base, quality encoding
+    // TODO add options for reading: with quality, with ancestral base
 
     // Add the option
     pileup_file_.option = sub->add_option(
@@ -111,6 +112,26 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         pileup_file_.option->required();
     }
 
+    // Quality encoding.
+    quality_encoding_.option = sub->add_option(
+        "--quality-encoding",
+        quality_encoding_.value,
+        "Encoding of the quality scores of the bases in (m)pileup files. "
+        "Default is `\"sanger\"`, which seems to be the most common these days. "
+        "Both `\"sanger\"` and `\"illumina-1.8\"` are identical and use an ASCII offset of 33, "
+        "while `\"illumina-1.3\"` and `\"illumina-1.5\"` are identical with an ASCII offset of 64 "
+        "(we provide different names for completeness). Lastly, `\"solexa\"` has an offset of 64, "
+        "but uses a different equation (not phred score) for the encoding."
+    );
+    quality_encoding_.option->group( group );
+    quality_encoding_.option->transform(
+        CLI::IsMember(
+            { "sanger", "illumina-1.3", "illumina-1.5", "illumina-1.8", "solexa" },
+            CLI::ignore_case
+        )
+    );
+    quality_encoding_.option->needs( pileup_file_.option );
+
     // Min phred score
     min_phred_score_.option = sub->add_option(
         "--min-phred-score",
@@ -119,7 +140,7 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         "Default is 0, meaning no filtering by phred quality score."
     );
     min_phred_score_.option->group( group );
-    min_phred_score_.option->check( CLI::Range( 0, 90 ));
+    min_phred_score_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
     min_phred_score_.option->needs( pileup_file_.option );
 
     return pileup_file_.option;
@@ -196,8 +217,8 @@ void FrequencyInputOptions::add_sample_name_opts_to_app(
         "--sample-name-list",
         sample_name_prefix_.value,
         "Some file types do not contain sample names, such as (m)pileup or sync files. For such "
-        "file types, sample names can here be provided as either a comma- or tab-separated "
-        "list, or as a file with one sample name per line, in the same order as samples are in "
+        "file types, sample names can here be provided as either (1) a comma- or tab-separated "
+        "list, or (2) as a file with one sample name per line, in the same order as samples are in "
         "the actual input file. We then use these names in the output and the "
         "`--filter-samples-include` and `--filter-samples-exclude` options. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
@@ -247,9 +268,11 @@ void FrequencyInputOptions::add_filter_opts_to_app(
     filter_samples_include_.option = sub->add_option(
         "--filter-samples-include",
         filter_samples_include_.value,
-        "Sample names to include (all other samples are excluded); either a comma- or tab-separated "
-        "list, or a file with one sample name per line. If no sample filter is provided, all "
-        "samples in the input file are used."
+        "Sample names to include (all other samples are excluded); either (1) a comma- or "
+        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
+        "is provided, all samples in the input file are used. The option considers "
+        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
+        "names."
     );
     filter_samples_include_.option->group( group );
 
@@ -257,9 +280,11 @@ void FrequencyInputOptions::add_filter_opts_to_app(
     filter_samples_exclude_.option = sub->add_option(
         "--filter-samples-exclude",
         filter_samples_exclude_.value,
-        "Sample names to exclude (all other samples are included); either a comma- or tab-separated "
-        "list, or a file with one sample name per line. If no sample filter is provided, all "
-        "samples in the input file are used."
+        "Sample names to exclude (all other samples are included); either (1) a comma- or "
+        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
+        "is provided, all samples in the input file are used. The option considers "
+        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
+        "names."
     );
     filter_samples_exclude_.option->group( group );
 
@@ -494,13 +519,26 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         "prepare_data_pileup_() called in an invalid context."
     );
 
-    // Prepare the base Reader. Currently not really needed, as we use default settings anyway,
-    // but we will want to adjust that in the future to accomodate things like quality encoding
-    // and different columns in the pileup file.
-    // TODO add pileup settings!
+    // Prepare the base Reader with settings as needed. The quality encoding is a bit redundant,
+    // as some of the offsets are the same, but let's be thorough to be future proof.
     auto reader = SimplePileupReader();
+    if( quality_encoding_.value == "sanger" ) {
+        reader.quality_encoding( genesis::sequence::QualityEncoding::kSanger );
+    } else if( quality_encoding_.value == "illumina-1.3" ) {
+        reader.quality_encoding( genesis::sequence::QualityEncoding::kIllumina13 );
+    } else if( quality_encoding_.value == "illumina-1.5" ) {
+        reader.quality_encoding( genesis::sequence::QualityEncoding::kIllumina15 );
+    } else if( quality_encoding_.value == "illumina-1.8" ) {
+        reader.quality_encoding( genesis::sequence::QualityEncoding::kIllumina18 );
+    } else if( quality_encoding_.value == "solexa" ) {
+        reader.quality_encoding( genesis::sequence::QualityEncoding::kSolexa );
+    } else {
+        throw CLI::ValidationError(
+            quality_encoding_.option->get_name() + "(" + quality_encoding_.value + ")",
+            "Invalid quality encoding."
+        );
+    }
     auto const min_phred_score = min_phred_score_.value;
-    // reader.quality_encoding( genesis::sequence::QualityEncoding::kIllumina13 );
 
     // Open the file, which aleady reads the first line. We use this to get the number of
     // samples in the pileup, and create dummy names for them.

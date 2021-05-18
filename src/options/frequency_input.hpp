@@ -224,7 +224,10 @@ private:
 
     // Input file types
     CliOption<std::string> pileup_file_ = "";
-    CliOption<unsigned char> min_phred_score_ = 0;
+    // CliOption<bool> with_quality_string_ = true;
+    // CliOption<bool> with_ancestral_base_ = false;
+    CliOption<std::string> quality_encoding_ = "sanger";
+    CliOption<size_t> min_phred_score_ = 0;
     CliOption<std::string> sync_file_   = "";
     CliOption<std::string> vcf_file_    = "";
     CliOption<std::string> sample_name_list_ = "";
