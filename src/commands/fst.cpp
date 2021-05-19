@@ -273,7 +273,12 @@ void run_fst( FstOptions const& options )
         ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
         : std::vector<size_t>{}
     );
-    LOG_MSG << "Computing F_ST between " << sample_pairs.size() << " pairs of samples.";
+    if( sample_pairs.empty() ) {
+        LOG_WARN << "No pairs of samples selected, which will produce empty output. Stopping now.";
+        return;
+    }
+    LOG_MSG << "Computing F_ST between " << sample_pairs.size()
+            << " pair" << ( sample_pairs.size() > 1 ? "s" : "" ) << " of samples.";
 
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();

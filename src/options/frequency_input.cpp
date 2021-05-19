@@ -137,6 +137,7 @@ CLI::Option* FrequencyInputOptions::add_pileup_input_opt_to_app(
         "--min-phred-score",
         min_phred_score_.value,
         "Minimum phred quality score [0-90] for a base in (m)pileup files to be considered. "
+        "Bases below this are ignored when computing allele frequencies. "
         "Default is 0, meaning no filtering by phred quality score."
     );
     min_phred_score_.option->group( group );
