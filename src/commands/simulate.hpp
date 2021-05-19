@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_COMMANDS_H_
-#define GRENEDALF_COMMANDS_COMMANDS_H_
+#ifndef GRENEDALF_COMMANDS_SIMULATE_H_
+#define GRENEDALF_COMMANDS_SIMULATE_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -26,43 +26,49 @@
 
 #include "CLI/CLI.hpp"
 
-#include "commands/afs_heatmap.hpp"
-#include "commands/diversity.hpp"
-#include "commands/frequency.hpp"
-#include "commands/fst.hpp"
-#include "commands/simulate.hpp"
-#include "commands/sync_file.hpp"
+#include "options/file_output.hpp"
+#include "tools/cli_option.hpp"
 
-#include "options/global.hpp"
-#include "tools/cli_setup.hpp"
-
+#include <cstdint>
 #include <string>
 #include <vector>
+
+// =================================================================================================
+//      Options
+// =================================================================================================
+
+class SimulateOptions
+{
+public:
+
+    // General options
+    CliOption<std::string> format = "pileup";
+    CliOption<std::uint32_t> random_seed;
+
+    // Samples and pool
+    CliOption<std::string> pool_sizes;
+
+    // Chromosome and positions
+    CliOption<std::string> chromosome = "A";
+    CliOption<double> mutation_rate = 1e-8;
+    CliOption<size_t> mutation_count;
+    CliOption<size_t> length;
+    CliOption<bool> omit_invariant_positions = false;
+
+    // Pileup quality scores
+    CliOption<bool> with_quality_scores = false;
+    CliOption<size_t> min_phred_score = 10;
+    CliOption<size_t> max_phred_score = 40;
+
+    FileOutputOptions  file_output;
+
+};
 
 // =================================================================================================
 //      Functions
 // =================================================================================================
 
-inline void setup_commands( CLI::App& app )
-{
-    // Create the module subcommand objects.
-    // auto sub = app.add_subcommand(
-    //     "tools",
-    //     "Auxiliary commands of grenedalf."
-    // );
-    // sub->require_subcommand( 1 );
-
-    // Add module subcommands.
-    setup_afs_heatmap( app );
-    setup_diversity( app );
-    setup_frequency( app );
-    setup_fst( app );
-    setup_simulate( app );
-    setup_sync_file( app );
-
-    // Add the global options to each of the above subcommands.
-    global_options.add_to_module( app );
-    set_module_help_group( app );
-}
+void setup_simulate( CLI::App& app );
+void run_simulate( SimulateOptions const& options );
 
 #endif // include guard
