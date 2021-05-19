@@ -88,7 +88,7 @@ std::vector<size_t> PoolsizesOptions::get_pool_sizes(
     // Convert a pool size to a number, or throw.
     auto convert_poolsize_ = [&]( std::string const& str ){
         try {
-            return convert_from_string<size_t>( str );
+            return convert_from_string<size_t>( trim( str ));
         } catch(...) {
             throw CLI::ValidationError(
                 poolsizes.option->get_name(),
