@@ -69,8 +69,7 @@ void setup_diversity( CLI::App& app )
     options->measure.option = sub->add_option(
         "--measure",
         options->measure.value,
-        "Diversity measure to compute, \"all\", \"theta-pi\", \"theta-watterson\", or \"tajimas-d\". "
-        "Default is \"all\"."
+        "Diversity measure to compute."
     );
     options->measure.option->group( "Settings" );
     options->measure.option->transform(
@@ -81,28 +80,31 @@ void setup_diversity( CLI::App& app )
     options->min_allele_count.option = sub->add_option(
         "--min-allele-count",
         options->min_allele_count.value,
-        "Minimum allele count"
+        "Minimum allele count of the minor allele. Used for the identification of SNPs."
     )->group( "Settings" );
 
     // Minimum coverage
     options->min_coverage.option = sub->add_option(
         "--min-coverage",
         options->min_coverage.value,
-        "Minimum coverage"
+        "Minimum coverage of a site. Sites with a lower coverage will not be considered "
+        "for SNP identification and coverage estimation."
     )->group( "Settings" );
 
     // Maximum coverage
     options->max_coverage.option = sub->add_option(
         "--max-coverage",
         options->max_coverage.value,
-        "Maximum coverage"
+        "Maximum coverage used for SNP identification. Coverage in ALL populations has to be lower "
+        "or equal to this threshold, otherwise no SNP will be called."
     )->group( "Settings" );
 
     // Minimum coverage fraction
     options->min_coverage_fraction.option = sub->add_option(
         "--min-coverage-fraction",
         options->min_coverage_fraction.value,
-        "Minimum coverage fraction"
+        "Minimum coverage fraction of a window being between `--min-coverage` and `--max-coverage` "
+        "in ALL populations that needs to be reached in order to compute the diversity measures."
     )->group( "Settings" );
 
     // -------------------------------------------------------------------------
@@ -383,7 +385,9 @@ void run_diversity( DiversityOptions const& options )
                 window.begin(), window.end()
             );
 
-            // Compute diversity measures for the sample.
+            // Compute diversity measures for the sample. We always compute all measures,
+            // even if not all of them will be written afterwards. It's fast enough anyway,
+            // and most of the compute time is spent in parsing, so that's okay and easier.
             sample_divs[i] = pool_diversity_measures( pool_settings[i], range.begin(), range.end() );
         }
 
