@@ -128,7 +128,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/tools/cmake/DownloadDependency.cmake" )
 # These are replaced by tools/cmake/update_dependencies.sh to the hashes that are currently checked out.
 # Thus, do not replace the hashes manually!
 SET( CLI11_COMMIT_HASH "5cb3efabce007c3a0230e4cc2e27da491c646b6c" ) #CLI11_COMMIT_HASH#
-SET( genesis_COMMIT_HASH "95b3e9ae235a63206ff5784325a7c587d417cebf" ) #genesis_COMMIT_HASH#
+SET( genesis_COMMIT_HASH "d958b5c9a5fe631184ba314979ab017308e0f7d6" ) #genesis_COMMIT_HASH#
 
 # Call the github download function, which takes four arguments:
 #  - LIBPATH    : Path to the libracy dir where dependencies are stored.

@@ -26,8 +26,8 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/simple_pileup_input_iterator.hpp"
-#include "genesis/population/formats/simple_pileup_reader.hpp"
+#include "genesis/population/formats/variant_pileup_input_iterator.hpp"
+#include "genesis/population/formats/variant_pileup_reader.hpp"
 #include "genesis/population/formats/sync_input_iterator.hpp"
 #include "genesis/population/formats/sync_reader.hpp"
 #include "genesis/population/formats/vcf_input_iterator.hpp"
@@ -522,7 +522,7 @@ void FrequencyInputOptions::prepare_data_pileup_() const
 
     // Prepare the base Reader with settings as needed. The quality encoding is a bit redundant,
     // as some of the offsets are the same, but let's be thorough to be future proof.
-    auto reader = SimplePileupReader();
+    auto reader = VariantPileupReader();
     if( quality_encoding_.value == "sanger" ) {
         reader.quality_encoding( genesis::sequence::QualityEncoding::kSanger );
     } else if( quality_encoding_.value == "illumina-1.3" ) {
@@ -539,14 +539,14 @@ void FrequencyInputOptions::prepare_data_pileup_() const
             "Invalid quality encoding."
         );
     }
-    auto const min_phred_score = min_phred_score_.value;
+    reader.min_phred_score( min_phred_score_.value );
 
     // Open the file, which aleady reads the first line. We use this to get the number of
     // samples in the pileup, and create dummy names for them.
     // We might later open it again to incorporate the sample name filtering, because to do that,
     // we first need to know how many samples there are in total...
     // Maybe there is a smart way to avoid that, but for now, that seems easiest.
-    auto it = SimplePileupInputIterator( utils::from_file( pileup_file_.value ), reader );
+    auto it = VariantPileupInputIterator( utils::from_file( pileup_file_.value ), reader );
     if( ! it ) {
         throw CLI::ValidationError(
             pileup_file_.option->get_name() + "(" +
@@ -582,7 +582,7 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         // Now restart the iteration, this time with the filtering.
         // We simply do an internal check to verify the file - we checked already above when
         // opening it for the first time, so it should be okay now as well.
-        it = SimplePileupInputIterator(
+        it = VariantPileupInputIterator(
             utils::from_file( pileup_file_.value ), sample_filter, reader
         );
         internal_check( it.good(), "Pileup file became invalid." );
@@ -595,9 +595,9 @@ void FrequencyInputOptions::prepare_data_pileup_() const
     if( filter_region_.value.empty() ) {
         // Create a generator that reads pileup.
         generator_ = LambdaIteratorGenerator<Variant>(
-            [ it, min_phred_score ]() mutable -> std::shared_ptr<Variant>{
+            [ it ]() mutable -> std::shared_ptr<Variant>{
                 if( it ) {
-                    auto res = std::make_shared<Variant>( convert_to_variant( *it, min_phred_score ));
+                    auto res = std::make_shared<Variant>( *it );
                     ++it;
                     return res;
                 } else {
@@ -608,20 +608,20 @@ void FrequencyInputOptions::prepare_data_pileup_() const
     } else {
         auto const region = parse_genome_region( filter_region_.value );
         auto region_filtered_range = make_filter_range(
-            [region]( SimplePileupReader::Record const& record ){
-                return genesis::population::is_covered( region, record );
+            [region]( Variant const& variant ){
+                return genesis::population::is_covered( region, variant );
             },
             // Use the iterator and a default constructed dummy as begin and end.
-            it, SimplePileupInputIterator()
+            it, VariantPileupInputIterator()
         );
 
         // Create a generator that reads pileup and filters by region.
         auto beg = region_filtered_range.begin();
         auto end = region_filtered_range.end();
         generator_ = LambdaIteratorGenerator<Variant>(
-            [ beg, end, min_phred_score ]() mutable -> std::shared_ptr<Variant>{
+            [ beg, end ]() mutable -> std::shared_ptr<Variant>{
                 if( beg != end ) {
-                    auto res = std::make_shared<Variant>( convert_to_variant( *beg, min_phred_score ));
+                    auto res = std::make_shared<Variant>( *beg );
                     ++beg;
                     return res;
                 } else {
