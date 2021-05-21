@@ -89,14 +89,14 @@ void setup_fst( CLI::App& app )
     // TODO need settings for min/max coverage etc. see prototype implementations!
 
     // Settings: Omit Empty Windows
-    options->omit_empty_windows.option = sub->add_flag(
-        "--omit-empty-windows",
-        options->omit_empty_windows.value,
-        "Do not output empty windows (without any SNPs). This is particularly relevant when choosing "
-        "`--window-width 1` (or other small window sizes), in order to not produce output for "
-        "every position in the genome."
+    options->omit_na_windows.option = sub->add_flag(
+        "--omit-na-windows",
+        options->omit_na_windows.value,
+        "Do not output windows where all values are n/a (e.g., without any SNPs). This is "
+        "particularly relevant when choosing `--window-width 1` (or other small window sizes), "
+        "in order to not produce output for invariant positions in the genome."
     );
-    options->omit_empty_windows.option->group( "Settings" );
+    options->omit_na_windows.option->group( "Settings" );
 
     // Settings: Comparand
     options->comparand.option = sub->add_option(
@@ -307,6 +307,8 @@ void run_fst( FstOptions const& options )
     // -------------------------------------------------------------------------
 
     // Iterate the file and compute per-window F_ST.
+    size_t win_cnt = 0;
+    size_t nan_cnt = 0;
     auto window_it = options.freq_input.get_base_count_sliding_window_iterator();
     auto window_fst = std::vector<double>( sample_pairs.size() );
     for( ; window_it; ++window_it ) {
@@ -318,15 +320,10 @@ void run_fst( FstOptions const& options )
         }
 
         // Skip empty windows if the user wants to.
-        if( window.empty() && options.omit_empty_windows.value ) {
+        if( window.empty() && options.omit_na_windows.value ) {
+            ++nan_cnt;
             continue;
         }
-
-        // Write fixed columns.
-        (*fst_ofs) << window.chromosome();
-        (*fst_ofs) << sep_char << window.first_position();
-        (*fst_ofs) << sep_char << window.last_position();
-        (*fst_ofs) << sep_char << window.entry_count();
 
         // Compute F_ST in parallel over the different pairs of samples.
         #pragma omp parallel for
@@ -377,14 +374,36 @@ void run_fst( FstOptions const& options )
             }
         }
 
-        // Write the per-pair F_ST values in the correct order.
-        for( auto const& fst : window_fst ) {
-            if( std::isfinite( fst ) ) {
-                (*fst_ofs) << sep_char << fst;
-            } else {
-                (*fst_ofs) << sep_char << options.table_output.get_na_entry();
+        // Write the values, unless all of them are nan, then we might skip.
+        if(
+            options.omit_na_windows.value &&
+            std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
+                return std::isfinite( v );
+            })
+        ) {
+            ++nan_cnt;
+        } else {
+            ++win_cnt;
+
+            // Write fixed columns.
+            (*fst_ofs) << window.chromosome();
+            (*fst_ofs) << sep_char << window.first_position();
+            (*fst_ofs) << sep_char << window.last_position();
+            (*fst_ofs) << sep_char << window.entry_count();
+
+            // Write the per-pair F_ST values in the correct order.
+            for( auto const& fst : window_fst ) {
+                if( std::isfinite( fst ) ) {
+                    (*fst_ofs) << sep_char << fst;
+                } else {
+                    (*fst_ofs) << sep_char << options.table_output.get_na_entry();
+                }
             }
+            (*fst_ofs) << "\n";
         }
-        (*fst_ofs) << "\n";
     }
+
+    // Final user output.
+    LOG_MSG << "Processed " << win_cnt << " windows with F_ST values, and skipped "
+            << nan_cnt << " windows without any F_ST values.";
 }

@@ -47,7 +47,7 @@ public:
     PoolsizesOptions poolsizes;
 
     CliOption<std::string> method = "conventional";
-    CliOption<bool>        omit_empty_windows = false;
+    CliOption<bool>        omit_na_windows = false;
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";
     CliOption<std::string> comparand_list = "";
