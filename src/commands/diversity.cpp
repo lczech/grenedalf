@@ -180,7 +180,7 @@ void run_diversity( DiversityOptions const& options )
     // -------------------------------------------------------------------------
     // Prepare output file and write fixed header fields.
     auto div_ofs = options.file_output.get_output_target( "diversity", "csv" );
-    (*div_ofs) << "CHROM" << sep_char << "START" << sep_char << "END" << sep_char << "SNPS";
+    (*div_ofs) << "CHROM" << sep_char << "START" << sep_char << "END";
 
     // Make the header per-sample fields.
     std::vector<std::string> fields;
@@ -237,7 +237,6 @@ void run_diversity( DiversityOptions const& options )
         (*div_ofs) << window.chromosome();
         (*div_ofs) << sep_char << window.first_position();
         (*div_ofs) << sep_char << window.last_position();
-        (*div_ofs) << sep_char << window.entry_count();
 
         // Compute diversity in parallel over samples.
         #pragma omp parallel for
