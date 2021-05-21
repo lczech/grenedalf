@@ -206,6 +206,16 @@ void FileOutputOptions::check_output_files_nonexistence(
 }
 
 void FileOutputOptions::check_output_files_nonexistence(
+    std::vector<std::string> const& infixes, std::string const& extension
+) const {
+    std::vector<std::pair<std::string, std::string>> list;
+    for( auto const& infix : infixes ) {
+        list.emplace_back( infix, extension );
+    }
+    check_output_files_nonexistence( list );
+}
+
+void FileOutputOptions::check_output_files_nonexistence(
     std::string const& infix, std::vector<std::string> const& extensions
 ) const {
     std::vector<std::pair<std::string, std::string>> list;
@@ -268,7 +278,6 @@ void FileOutputOptions::check_output_files_nonexistence(
             if( match_wildcards( dirfile, path ) ) {
 
                 // If we have a match, report with a nice full file name with directory.
-                auto const dir = genesis::utils::dir_normalize_path( out_dir_ );
                 report_file_( get_output_filename( in_ex.first, in_ex.second ));
             }
         }

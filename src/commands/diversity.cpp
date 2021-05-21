@@ -92,23 +92,40 @@ void setup_diversity( CLI::App& app )
         "Minimum coverage fraction"
     )->group( "Settings" );
 
-    // Add an option to purposely activate the PoPollation bugs that we discovered.
-    // The option is hidden for now, to not raise too much awareness before the issue is solved
-    // in a way that works well for everyone.
+    // -------------------------------------------------------------------------
+    //     Formatting and Compatibility
+    // -------------------------------------------------------------------------
+
+    // Add table output options.
+    auto sep_opt = options->table_output.add_separator_char_opt_to_app( sub );
+    auto nan_opt = options->table_output.add_na_entry_opt_to_app( sub );
+
+    // Add an option to purposely activate the PoPoolation bugs that we discovered.
     options->with_popoolation_bugs.option = sub->add_flag(
-        "--with-popoolation-bugs",
+        "--popoolation-corrected-tajimas-d",
         options->with_popoolation_bugs.value,
-        "If set, imitate the two major bugs of PoPoolation that we (likely) found, which yield "
-        "numerically different results. We offer this option for comparability with PoPoolation."
-    )->group("");
+        "If set, use the pool-sequencing correction term for Tajima's D as implemented in "
+        "PoPoolation <=1.2.2, which contains two major bugs that alter numerical results. "
+        "We here offer to imitate these bugs for comparability with PoPoolation."
+    )->group( "Compatibility" );
+
+    // PoPoolation output format
+    options->popoolation_format.option = sub->add_flag(
+        "--popoolation-format",
+        options->popoolation_format.value,
+        "If set, instead of writing one output table for all measures and all samples, "
+        "write the results in separate files for each sample and for each measure of "
+        "Theta Pi, Theta Watterson, and Tajima's D, following the format of PoPoolation."
+    )->group( "Compatibility" );
+
+    // Exclude separator char option and na entry in PoPoolation compatibility mode,
+    // as we have to use their values in that case.
+    sep_opt->excludes( options->popoolation_format.option );
+    nan_opt->excludes( options->popoolation_format.option );
 
     // -------------------------------------------------------------------------
     //     Output
     // -------------------------------------------------------------------------
-
-    // Add table output options.
-    options->table_output.add_separator_char_opt_to_app( sub );
-    options->table_output.add_na_entry_opt_to_app( sub );
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
@@ -138,25 +155,39 @@ void run_diversity( DiversityOptions const& options )
     using namespace genesis::utils;
     using BaseCountWindow = Window<std::vector<BaseCounts>>;
 
-    // Output preparation.
-    options.file_output.check_output_files_nonexistence( "diversity", "csv" );
+    // Get all samples names from the input file.
+    auto const& sample_names = options.freq_input.sample_names();
 
-    // Get the separator char to use for table entries.
-    auto const sep_char = options.table_output.get_separator_char();
+    // Output file checks.
+    if( options.popoolation_format.value ) {
+        for( auto const& sample_name : sample_names ) {
+            options.file_output.check_output_files_nonexistence(
+                "diversity-" + sample_name + "-theta-pi", "csv"
+            );
+            options.file_output.check_output_files_nonexistence(
+                "diversity-" + sample_name + "-theta-watterson", "csv"
+            );
+            options.file_output.check_output_files_nonexistence(
+                "diversity-" + sample_name + "-tajimas-d", "csv"
+            );
+        }
+    } else {
+        options.file_output.check_output_files_nonexistence( "diversity", "csv" );
+    }
 
     // -------------------------------------------------------------------------
     //     Settings
     // -------------------------------------------------------------------------
 
-    // Get the pool sizes and sample names.
-    auto const& sample_names = options.freq_input.sample_names();
-    auto const pool_sizes = options.poolsizes.get_pool_sizes( sample_names );
-
+    // Warn the user about the PoPoolation bugs.
     if( options.with_popoolation_bugs.value ) {
-        LOG_WARN << "Option `--with-popoolation-bugs` was activated. "
+        LOG_WARN << "Option `" << options.with_popoolation_bugs.option->get_name() << "` was activated. "
                  << "Note that this yields numerically different results and that this option is "
-                 << "provided solely for comparability with results obtained with PoPoolation.";
+                 << "provided solely for comparability with results obtained from PoPoolation.";
     }
+
+    // Get the pool sizes.
+    auto const pool_sizes = options.poolsizes.get_pool_sizes( sample_names );
 
     // Prepare pool settings for each sample. We need to copy the options over to our settings class.
     // Bit cumbersome, but makes the internal handling easier...
@@ -175,51 +206,114 @@ void run_diversity( DiversityOptions const& options )
         pool_settings[i].with_popoolation_bugs = options.with_popoolation_bugs.value;
     }
 
-    // -------------------------------------------------------------------------
-    //     Table Header
-    // -------------------------------------------------------------------------
-    // Prepare output file and write fixed header fields.
-    auto div_ofs = options.file_output.get_output_target( "diversity", "csv" );
-    (*div_ofs) << "CHROM" << sep_char << "START" << sep_char << "END";
+    // Get the separator char to use for table entries.
+    auto const sep_char = options.table_output.get_separator_char();
 
-    // Make the header per-sample fields.
-    std::vector<std::string> fields;
-    fields.push_back( "theta_pi_abs" );
-    fields.push_back( "theta_pi_rel" );
-    fields.push_back( "theta_watterson_abs" );
-    fields.push_back( "theta_watterson_rel" );
-    fields.push_back( "tajimas_d" );
-    fields.push_back( "variant_count" );
-    fields.push_back( "snp_count" );
-    fields.push_back( "coverage_count" );
-    fields.push_back( "coverage_fraction" );
+    // -------------------------------------------------------------------------
+    //     File Output and Table Header
+    // -------------------------------------------------------------------------
 
-    // Write all fields for all samples.
-    for( auto const& sample : sample_names ) {
-        for( auto const& field : fields ) {
-            (*div_ofs) << sep_char << sample << "." << field;
+    // Prepare output file and write fixed header fields. We need all pointers, for our
+    // and for the PoPoolation format, in order to avoid code duplication in the computation.
+    std::shared_ptr<genesis::utils::BaseOutputTarget> table_ofs;
+    std::vector<std::shared_ptr<genesis::utils::BaseOutputTarget>> popoolation_theta_pi_ofss;
+    std::vector<std::shared_ptr<genesis::utils::BaseOutputTarget>> popoolation_theta_wa_ofss;
+    std::vector<std::shared_ptr<genesis::utils::BaseOutputTarget>> popoolation_tajima_d_ofss;
+
+    if( options.popoolation_format.value ) {
+
+        // Open the three PoPoolation file formats for each sample.
+        for( auto const& sample_name : sample_names ) {
+            popoolation_theta_pi_ofss.emplace_back(
+                options.file_output.get_output_target(
+                    "diversity-" + sample_name + "-theta-pi", "csv"
+                )
+            );
+            popoolation_theta_wa_ofss.emplace_back(
+                options.file_output.get_output_target(
+                    "diversity-" + sample_name + "-theta-watterson", "csv"
+                )
+            );
+            popoolation_tajima_d_ofss.emplace_back(
+                options.file_output.get_output_target(
+                    "diversity-" + sample_name + "-tajimas-d", "csv"
+                )
+            );
         }
+
+    } else {
+
+        // Open and prepare our table format
+        table_ofs = options.file_output.get_output_target( "diversity", "csv" );
+        (*table_ofs) << "chrom" << sep_char << "start" << sep_char << "end";
+
+        // Make the header per-sample fields.
+        std::vector<std::string> fields;
+        // fields.push_back( "variant_count" );
+        // fields.push_back( "coverage_count" );
+        fields.push_back( "snp_count" );
+        fields.push_back( "coverage_fraction" );
+        fields.push_back( "theta_pi_abs" );
+        fields.push_back( "theta_pi_rel" );
+        fields.push_back( "theta_watterson_abs" );
+        fields.push_back( "theta_watterson_rel" );
+        fields.push_back( "tajimas_d" );
+
+        // Write all fields for all samples.
+        for( auto const& sample : sample_names ) {
+            for( auto const& field : fields ) {
+                (*table_ofs) << sep_char << sample << "." << field;
+            }
+        }
+        (*table_ofs) << "\n";
     }
-    (*div_ofs) << "\n";
+
+    // -------------------------------------------------------------------------
+    //     Write Helper Functions
+    // -------------------------------------------------------------------------
+
+    // Helper function to write a field value to one of the tables.
+    // Only used for our table format, as PoPoolation needs a bit of a different formatting.
+    auto write_table_field_ = [&]( double value ){
+        if( std::isfinite( value ) ) {
+            (*table_ofs) << sep_char << value;
+        } else {
+            (*table_ofs) << sep_char << options.table_output.get_na_entry();
+        }
+    };
+
+    // The popoolation table formats use the same format, so let's make one function to rule them all!
+    // We take the PoolDiversityResults here for the general values, and then the actual data
+    // value again, so that we don't have to switch to get it.
+    // Format: "2R	19500	0	0.000	na" or "A	1500	101	1.000	1.920886709" for example.
+    auto write_popoolation_line_ = [](
+        std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
+        BaseCountWindow const& window,
+        PoolDiversityResults const& results,
+        double value
+    ){
+        // Write fixed columns.
+        (*ofs) << window.chromosome();
+        (*ofs) << "\t" << window.anchor_position( WindowAnchorType::kIntervalMidpoint );
+        (*ofs) << "\t" << results.snp_count;
+        (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << results.coverage_fraction;
+        if( std::isfinite( value ) ) {
+            (*ofs) << "\t" << std::fixed << std::setprecision( 9 ) << value;
+        } else {
+            (*ofs) << "\tna";
+        }
+        (*ofs) << "\n";
+    };
 
     // -------------------------------------------------------------------------
     //     Main Loop
     // -------------------------------------------------------------------------
 
-    // Helper function to write a field value to the table.
-    auto write_field = [&]( double value ){
-        if( std::isfinite( value ) ) {
-            (*div_ofs) << sep_char << value;
-        } else {
-            (*div_ofs) << sep_char << options.table_output.get_na_entry();
-        }
-    };
-
     // Iterate the file and compute per-window diversitye measures.
     // We run the samples in parallel, storing their results before writing to the output file.
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
     auto window_it = options.freq_input.get_base_count_sliding_window_iterator();
-    auto window_div = std::vector<PoolDiversityResults>( sample_names.size() );
+    auto sample_divs = std::vector<PoolDiversityResults>( sample_names.size() );
     for( ; window_it; ++window_it ) {
         auto const& window = *window_it;
 
@@ -232,11 +326,6 @@ void run_diversity( DiversityOptions const& options )
         // if( window.empty() && options.omit_empty_windows.value ) {
         //     continue;
         // }
-
-        // Write fixed columns.
-        (*div_ofs) << window.chromosome();
-        (*div_ofs) << sep_char << window.first_position();
-        (*div_ofs) << sep_char << window.last_position();
 
         // Compute diversity in parallel over samples.
         #pragma omp parallel for
@@ -255,21 +344,63 @@ void run_diversity( DiversityOptions const& options )
             );
 
             // Compute diversity measures for the sample.
-            window_div[i] = pool_diversity_measures( pool_settings[i], range.begin(), range.end() );
+            sample_divs[i] = pool_diversity_measures( pool_settings[i], range.begin(), range.end() );
         }
 
-        // Write the per-pair diversity values in the correct order.
-        for( auto const& div : window_div ) {
-            write_field( div.theta_pi_absolute );
-            write_field( div.theta_pi_relative );
-            write_field( div.theta_watterson_absolute );
-            write_field( div.theta_watterson_relative );
-            write_field( div.tajima_d );
-            write_field( div.variant_count );
-            write_field( div.snp_count );
-            write_field( div.coverage_count );
-            write_field( div.coverage_fraction );
+        // Write the data, depending on the format.
+        if( options.popoolation_format.value ) {
+
+            // Write to all individual files for each sample and each value.
+            for( size_t i = 0; i < sample_divs.size(); ++i ) {
+                // Theta Pi
+                write_popoolation_line_(
+                    popoolation_theta_pi_ofss[i],
+                    window,
+                    sample_divs[i],
+                    sample_divs[i].theta_pi_relative
+                );
+
+                // Theta Watterson
+                write_popoolation_line_(
+                    popoolation_theta_wa_ofss[i],
+                    window,
+                    sample_divs[i],
+                    sample_divs[i].theta_watterson_relative
+                );
+
+                // Tajima's D
+                write_popoolation_line_(
+                    popoolation_tajima_d_ofss[i],
+                    window,
+                    sample_divs[i],
+                    sample_divs[i].tajima_d
+                );
+            }
+
+        } else {
+
+            // Write fixed columns.
+            (*table_ofs) << window.chromosome();
+            (*table_ofs) << sep_char << window.first_position();
+            (*table_ofs) << sep_char << window.last_position();
+
+            // Write the per-pair diversity values in the correct order.
+            for( auto const& sample_div : sample_divs ) {
+                // Meta info per sample
+                // (*table_ofs) << sep_char << sample_div.variant_count;
+                // (*table_ofs) << sep_char << sample_div.coverage_count;
+                (*table_ofs) << sep_char << sample_div.snp_count;
+                (*table_ofs) << sep_char << std::fixed << std::setprecision( 3 )
+                             << sample_div.coverage_fraction;
+
+                // Values
+                write_table_field_( sample_div.theta_pi_absolute );
+                write_table_field_( sample_div.theta_pi_relative );
+                write_table_field_( sample_div.theta_watterson_absolute );
+                write_table_field_( sample_div.theta_watterson_relative );
+                write_table_field_( sample_div.tajima_d );
+            }
+            (*table_ofs) << "\n";
         }
-        (*div_ofs) << "\n";
     }
 }

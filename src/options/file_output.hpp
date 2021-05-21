@@ -202,6 +202,10 @@ public:
     ) const;
 
     void check_output_files_nonexistence(
+        std::vector<std::string> const& infixes, std::string const& extension
+    ) const;
+
+    void check_output_files_nonexistence(
         std::string const& infix, std::vector<std::string> const& extensions
     ) const;
 

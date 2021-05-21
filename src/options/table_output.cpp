@@ -37,7 +37,7 @@
 //      Setup Functions
 // =================================================================================================
 
-void TableOutputOptions::add_separator_char_opt_to_app(
+CLI::Option* TableOutputOptions::add_separator_char_opt_to_app(
     CLI::App* sub,
     std::string const& group
 ) {
@@ -49,9 +49,10 @@ void TableOutputOptions::add_separator_char_opt_to_app(
         CLI::IsMember({ "comma", "tab", "space", "semicolon" }, CLI::ignore_case )
     );
     separator_char_.option->group( group );
+    return separator_char_.option;
 }
 
-void TableOutputOptions::add_na_entry_opt_to_app(
+CLI::Option* TableOutputOptions::add_na_entry_opt_to_app(
     CLI::App* sub,
     std::string const& group
 ) {
@@ -64,6 +65,7 @@ void TableOutputOptions::add_na_entry_opt_to_app(
         "This is useful to match formatting expectations of downstream software."
     );
     na_entry_.option->group( group );
+    return na_entry_.option;
 }
 
 // =================================================================================================

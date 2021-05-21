@@ -65,12 +65,12 @@ public:
     //     Setup Functions
     // -------------------------------------------------------------------------
 
-    void add_separator_char_opt_to_app(
+    CLI::Option* add_separator_char_opt_to_app(
         CLI::App* sub,
         std::string const& group = "Formatting"
     );
 
-    void add_na_entry_opt_to_app(
+    CLI::Option* add_na_entry_opt_to_app(
         CLI::App* sub,
         std::string const& group = "Formatting"
     );

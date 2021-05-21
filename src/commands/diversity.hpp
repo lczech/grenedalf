@@ -51,7 +51,10 @@ public:
     CliOption<size_t> min_coverage = 4;
     CliOption<size_t> max_coverage = 1000000;
     CliOption<double> min_coverage_fraction = 0.6;
+
+    // Compatibility
     CliOption<bool> with_popoolation_bugs = false;
+    CliOption<bool> popoolation_format = false;
 
     TableOutputOptions table_output;
     FileOutputOptions  file_output;
