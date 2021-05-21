@@ -43,10 +43,12 @@ class DiversityOptions
 {
 public:
 
+    // Data input
     FrequencyInputOptions freq_input;
     PoolsizesOptions poolsizes;
 
     // Using defaults from PoPollation, see Variance-sliding.pl
+    CliOption<std::string> measure = "all";
     CliOption<size_t> min_allele_count = 2;
     CliOption<size_t> min_coverage = 4;
     CliOption<size_t> max_coverage = 1000000;

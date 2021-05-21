@@ -29,6 +29,7 @@
 #include "genesis/population/functions/base_counts.hpp"
 #include "genesis/population/functions/diversity.hpp"
 #include "genesis/population/functions/variant.hpp"
+#include "genesis/utils/text/string.hpp"
 
 #include <cassert>
 
@@ -63,6 +64,18 @@ void setup_diversity( CLI::App& app )
 
     // Settings: Pool sizes
     options->poolsizes.add_poolsizes_opt_to_app( sub );
+
+    // Measure
+    options->measure.option = sub->add_option(
+        "--measure",
+        options->measure.value,
+        "Diversity measure to compute, \"all\", \"theta-pi\", \"theta-watterson\", or \"tajimas-d\". "
+        "Default is \"all\"."
+    );
+    options->measure.option->group( "Settings" );
+    options->measure.option->transform(
+        CLI::IsMember({ "all", "theta-pi", "theta-watterson", "tajimas-d" }, CLI::ignore_case )
+    );
 
     // Minimum allele count
     options->min_allele_count.option = sub->add_option(
@@ -158,18 +171,31 @@ void run_diversity( DiversityOptions const& options )
     // Get all samples names from the input file.
     auto const& sample_names = options.freq_input.sample_names();
 
+    // Get the measures to compute. At least one of them will be active.
+    auto const measure = to_lower( options.measure.value );
+    bool const compute_theta_pi = ( measure == "all" || measure == "theta-pi" );
+    bool const compute_theta_wa = ( measure == "all" || measure == "theta-watterson" );
+    bool const compute_tajima_d = ( measure == "all" || measure == "tajimas-d" );
+    assert( compute_theta_pi || compute_theta_wa || compute_tajima_d );
+
     // Output file checks.
     if( options.popoolation_format.value ) {
         for( auto const& sample_name : sample_names ) {
-            options.file_output.check_output_files_nonexistence(
-                "diversity-" + sample_name + "-theta-pi", "csv"
-            );
-            options.file_output.check_output_files_nonexistence(
-                "diversity-" + sample_name + "-theta-watterson", "csv"
-            );
-            options.file_output.check_output_files_nonexistence(
-                "diversity-" + sample_name + "-tajimas-d", "csv"
-            );
+            if( compute_theta_pi ) {
+                options.file_output.check_output_files_nonexistence(
+                    "diversity-" + sample_name + "-theta-pi", "csv"
+                );
+            }
+            if( compute_theta_wa ) {
+                options.file_output.check_output_files_nonexistence(
+                    "diversity-" + sample_name + "-theta-watterson", "csv"
+                );
+            }
+            if( compute_tajima_d ) {
+                options.file_output.check_output_files_nonexistence(
+                    "diversity-" + sample_name + "-tajimas-d", "csv"
+                );
+            }
         }
     } else {
         options.file_output.check_output_files_nonexistence( "diversity", "csv" );
@@ -224,21 +250,27 @@ void run_diversity( DiversityOptions const& options )
 
         // Open the three PoPoolation file formats for each sample.
         for( auto const& sample_name : sample_names ) {
-            popoolation_theta_pi_ofss.emplace_back(
-                options.file_output.get_output_target(
-                    "diversity-" + sample_name + "-theta-pi", "csv"
-                )
-            );
-            popoolation_theta_wa_ofss.emplace_back(
-                options.file_output.get_output_target(
-                    "diversity-" + sample_name + "-theta-watterson", "csv"
-                )
-            );
-            popoolation_tajima_d_ofss.emplace_back(
-                options.file_output.get_output_target(
-                    "diversity-" + sample_name + "-tajimas-d", "csv"
-                )
-            );
+            if( compute_theta_pi ) {
+                popoolation_theta_pi_ofss.emplace_back(
+                    options.file_output.get_output_target(
+                        "diversity-" + sample_name + "-theta-pi", "csv"
+                    )
+                );
+            }
+            if( compute_theta_wa ) {
+                popoolation_theta_wa_ofss.emplace_back(
+                    options.file_output.get_output_target(
+                        "diversity-" + sample_name + "-theta-watterson", "csv"
+                    )
+                );
+            }
+            if( compute_tajima_d ) {
+                popoolation_tajima_d_ofss.emplace_back(
+                    options.file_output.get_output_target(
+                        "diversity-" + sample_name + "-tajimas-d", "csv"
+                    )
+                );
+            }
         }
 
     } else {
@@ -249,15 +281,23 @@ void run_diversity( DiversityOptions const& options )
 
         // Make the header per-sample fields.
         std::vector<std::string> fields;
+
         // fields.push_back( "variant_count" );
         // fields.push_back( "coverage_count" );
         fields.push_back( "snp_count" );
         fields.push_back( "coverage_fraction" );
-        fields.push_back( "theta_pi_abs" );
-        fields.push_back( "theta_pi_rel" );
-        fields.push_back( "theta_watterson_abs" );
-        fields.push_back( "theta_watterson_rel" );
-        fields.push_back( "tajimas_d" );
+
+        if( compute_theta_pi ) {
+            fields.push_back( "theta_pi_abs" );
+            fields.push_back( "theta_pi_rel" );
+        }
+        if( compute_theta_wa ) {
+            fields.push_back( "theta_watterson_abs" );
+            fields.push_back( "theta_watterson_rel" );
+        }
+        if( compute_tajima_d ) {
+            fields.push_back( "tajimas_d" );
+        }
 
         // Write all fields for all samples.
         for( auto const& sample : sample_names ) {
@@ -276,7 +316,7 @@ void run_diversity( DiversityOptions const& options )
     // Only used for our table format, as PoPoolation needs a bit of a different formatting.
     auto write_table_field_ = [&]( double value ){
         if( std::isfinite( value ) ) {
-            (*table_ofs) << sep_char << value;
+            (*table_ofs) << sep_char << std::defaultfloat << std::setprecision( 9 ) << value;
         } else {
             (*table_ofs) << sep_char << options.table_output.get_na_entry();
         }
@@ -353,28 +393,34 @@ void run_diversity( DiversityOptions const& options )
             // Write to all individual files for each sample and each value.
             for( size_t i = 0; i < sample_divs.size(); ++i ) {
                 // Theta Pi
-                write_popoolation_line_(
-                    popoolation_theta_pi_ofss[i],
-                    window,
-                    sample_divs[i],
-                    sample_divs[i].theta_pi_relative
-                );
+                if( compute_theta_pi ) {
+                    write_popoolation_line_(
+                        popoolation_theta_pi_ofss[i],
+                        window,
+                        sample_divs[i],
+                        sample_divs[i].theta_pi_relative
+                    );
+                }
 
                 // Theta Watterson
-                write_popoolation_line_(
-                    popoolation_theta_wa_ofss[i],
-                    window,
-                    sample_divs[i],
-                    sample_divs[i].theta_watterson_relative
-                );
+                if( compute_theta_wa ) {
+                    write_popoolation_line_(
+                        popoolation_theta_wa_ofss[i],
+                        window,
+                        sample_divs[i],
+                        sample_divs[i].theta_watterson_relative
+                    );
+                }
 
                 // Tajima's D
-                write_popoolation_line_(
-                    popoolation_tajima_d_ofss[i],
-                    window,
-                    sample_divs[i],
-                    sample_divs[i].tajima_d
-                );
+                if( compute_tajima_d ) {
+                    write_popoolation_line_(
+                        popoolation_tajima_d_ofss[i],
+                        window,
+                        sample_divs[i],
+                        sample_divs[i].tajima_d
+                    );
+                }
             }
 
         } else {
@@ -394,11 +440,17 @@ void run_diversity( DiversityOptions const& options )
                              << sample_div.coverage_fraction;
 
                 // Values
-                write_table_field_( sample_div.theta_pi_absolute );
-                write_table_field_( sample_div.theta_pi_relative );
-                write_table_field_( sample_div.theta_watterson_absolute );
-                write_table_field_( sample_div.theta_watterson_relative );
-                write_table_field_( sample_div.tajima_d );
+                if( compute_theta_pi ) {
+                    write_table_field_( sample_div.theta_pi_absolute );
+                    write_table_field_( sample_div.theta_pi_relative );
+                }
+                if( compute_theta_wa ) {
+                    write_table_field_( sample_div.theta_watterson_absolute );
+                    write_table_field_( sample_div.theta_watterson_relative );
+                }
+                if( compute_tajima_d ) {
+                    write_table_field_( sample_div.tajima_d );
+                }
             }
             (*table_ofs) << "\n";
         }
