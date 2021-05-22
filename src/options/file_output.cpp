@@ -246,9 +246,13 @@ void FileOutputOptions::check_output_files_nonexistence(
         if( genesis::utils::Options::get().allow_file_overwriting() ) {
             if( warned_names.count( path ) == 0 ) {
                 if( count_substring_occurrences( path, "*" ) > 0 ) {
-                    LOG_WARN << "Warning: Output files already exist and will be overwritten: " + path;
+                    LOG_WARN << "Warning: Output files already exist and will be overwritten: "
+                             << path;
+                    LOG_BOLD;
                 } else {
-                    LOG_WARN << "Warning: Output file already exists and will be overwritten: " + path;
+                    LOG_WARN << "Warning: Output file already exists and will be overwritten: "
+                             << path;
+                    LOG_BOLD;
                 }
                 warned_names.emplace( path );
             }

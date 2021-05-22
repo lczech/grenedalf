@@ -351,6 +351,11 @@ void run_diversity( DiversityOptions const& options )
     //     Main Loop
     // -------------------------------------------------------------------------
 
+    // A bit of user output to keep 'em happy. Chromsomes, windows, positions.
+    size_t chr_cnt = 0;
+    size_t win_cnt = 0;
+    size_t pos_cnt = 0;
+
     // Iterate the file and compute per-window diversitye measures.
     // We run the samples in parallel, storing their results before writing to the output file.
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
@@ -358,10 +363,13 @@ void run_diversity( DiversityOptions const& options )
     auto sample_divs = std::vector<PoolDiversityResults>( sample_names.size() );
     for( ; window_it; ++window_it ) {
         auto const& window = *window_it;
+        ++win_cnt;
+        pos_cnt += window.size();
 
         // Some user output to report progress.
         if( window_it.is_first_window() ) {
             LOG_MSG << "At chromosome " << window.chromosome();
+            ++chr_cnt;
         }
 
         // Skip empty windows if the user wants to.
@@ -459,4 +467,8 @@ void run_diversity( DiversityOptions const& options )
             (*table_ofs) << "\n";
         }
     }
+
+    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
+            << " with " << pos_cnt << " total position" << ( pos_cnt != 1 ? "s" : "" )
+            << " in " << win_cnt << " window" << ( win_cnt != 1 ? "s" : "" );
 }
