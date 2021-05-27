@@ -371,6 +371,10 @@ void run_diversity( DiversityOptions const& options )
             LOG_MSG << "At chromosome " << window.chromosome();
             ++chr_cnt;
         }
+        LOG_MSG2 << "    At window "
+                 << window.chromosome() << ":"
+                 << window.first_position() << "-"
+                 <<  window.last_position();
 
         // Skip empty windows if the user wants to.
         // if( window.empty() && options.omit_empty_windows.value ) {
