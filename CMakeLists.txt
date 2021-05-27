@@ -106,7 +106,7 @@ endif ()
 
 set (CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -std=c++11 ${WARN_FLAGS}")
 set (CMAKE_CXX_FLAGS_DEBUG   "-O2 -DDEBUG -g -ggdb3 -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
-set (CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" )
+set (CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" )
 
 IF(GRENEDALF_BUILD_STATIC)
     # Use different ways of telling CMake to build static, just to be sure.
@@ -128,7 +128,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/tools/cmake/DownloadDependency.cmake" )
 # These are replaced by tools/cmake/update_dependencies.sh to the hashes that are currently checked out.
 # Thus, do not replace the hashes manually!
 SET( CLI11_COMMIT_HASH "5cb3efabce007c3a0230e4cc2e27da491c646b6c" ) #CLI11_COMMIT_HASH#
-SET( genesis_COMMIT_HASH "ee7e1230ef8b50346917a1e57604a138dd34d342" ) #genesis_COMMIT_HASH#
+SET( genesis_COMMIT_HASH "227259ffe82b3288c236b3c3904e8f8e018b69e3" ) #genesis_COMMIT_HASH#
 
 # Call the github download function, which takes four arguments:
 #  - LIBPATH    : Path to the libracy dir where dependencies are stored.
