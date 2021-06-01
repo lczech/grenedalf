@@ -307,16 +307,21 @@ void run_fst( FstOptions const& options )
     // -------------------------------------------------------------------------
 
     // Iterate the file and compute per-window F_ST.
+    size_t chr_cnt = 0;
     size_t win_cnt = 0;
+    size_t pos_cnt = 0;
     size_t nan_cnt = 0;
+
     auto window_it = options.freq_input.get_base_count_sliding_window_iterator();
     auto window_fst = std::vector<double>( sample_pairs.size() );
     for( ; window_it; ++window_it ) {
         auto const& window = *window_it;
+        pos_cnt += window.size();
 
         // Some user output to report progress.
         if( window_it.is_first_window() ) {
             LOG_MSG << "At chromosome " << window.chromosome();
+            ++chr_cnt;
         }
 
         // Skip empty windows if the user wants to.
@@ -324,6 +329,11 @@ void run_fst( FstOptions const& options )
             ++nan_cnt;
             continue;
         }
+
+        LOG_MSG2 << "    At window "
+                 << window.chromosome() << ":"
+                 << window.first_position() << "-"
+                 <<  window.last_position();
 
         // Compute F_ST in parallel over the different pairs of samples.
         #pragma omp parallel for
@@ -404,6 +414,9 @@ void run_fst( FstOptions const& options )
     }
 
     // Final user output.
-    LOG_MSG << "Processed " << win_cnt << " windows with F_ST values, and skipped "
-            << nan_cnt << " windows without any F_ST values.";
+    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
+            << " with " << pos_cnt << " total position" << ( pos_cnt != 1 ? "s" : "" )
+            << " in " << win_cnt << " window" << ( win_cnt != 1 ? "s" : "" )
+            << " with F_ST values, and skipped " << nan_cnt << " windows"
+            << ( nan_cnt != 1 ? "s" : "" ) << " without any F_ST values.";
 }
