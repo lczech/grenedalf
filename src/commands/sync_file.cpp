@@ -79,6 +79,6 @@ void run_sync_file( SyncFileOptions const& options )
     // Write the sync data
     for( auto const& freq_it : options.freq_input.get_iterator() ) {
         to_sync( freq_it, sync_ofs->ostream() );
-        (*sync_ofs) << "\n";
+        // (*sync_ofs) << "\n";
     }
 }
