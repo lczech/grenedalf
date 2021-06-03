@@ -38,6 +38,7 @@
 #include <random>
 #include <stdexcept>
 #include <unordered_set>
+#include <utility>
 
 // =================================================================================================
 //      Setup
@@ -73,14 +74,19 @@ void setup_simulate( CLI::App& app )
     options->random_seed.option->group( "Settings" );
 
     // Pool Sizes
-    options->pool_sizes.option = sub->add_option(
-        "--pool-sizes",
-        options->pool_sizes.value,
-        "Pool sizes of the samples to simulate, as a comma- or tab-separated list. "
+    options->coverages.option = sub->add_option(
+        "--coverages",
+        options->coverages.value,
+        "Coverages of the samples to simulate, as a comma- or tab-separated list. "
+        "The coverage of each sample is used at the total count per position to randomly distribute "
+        "across nucleotides. Per sample, the list can either contain a single number, which will "
+        "be used as the coverage for that sample at each position, or it can be two numbers "
+        "separated by a slash, which will be used as min/max to generate random coverage at "
+        "each position. "
         "The length of this list is also used to determine the number of samples to simulate."
     );
-    options->pool_sizes.option->group( "Samples" );
-    options->pool_sizes.option->required();
+    options->coverages.option->group( "Samples" );
+    options->coverages.option->required();
 
     // Chromosome
     options->chromosome.option = sub->add_option(
@@ -106,8 +112,8 @@ void setup_simulate( CLI::App& app )
     options->mutation_count.option = sub->add_option(
         "--mutation-count",
         options->mutation_count.value,
-        "Number of mutations to simulate in total across the chromosome. "
-        "This is the length of the output file being produced."
+        "Number of mutations to simulate in total across the chromosome, "
+        "spread across the `--length`."
     );
     options->mutation_count.option->group( "Genome" );
 
@@ -208,21 +214,34 @@ SimulateFormat get_format( SimulateOptions const& options )
 }
 
 /**
- * @brief Parse the pool sizes option, which gives the number of samples, and their pool sizes.
+ * @brief Parse the coverages option, which gives the number of samples, and their coverages.
  */
-std::vector<size_t> get_pool_sizes_( SimulateOptions const& options )
+std::vector<std::pair<size_t,size_t>> get_coverages_( SimulateOptions const& options )
 {
     using namespace genesis::utils;
 
-    auto const vals = split( options.pool_sizes.value, ",\t" );
-    auto result = std::vector<size_t>( vals.size() );
+    auto const vals = split( options.coverages.value, ",\t" );
+    auto result = std::vector<std::pair<size_t,size_t>>( vals.size() );
     for( size_t i = 0; i < vals.size(); ++i ) {
         try {
-            result[i] = convert_from_string<size_t>( trim( vals[i] ));
+            auto const minmax = split( trim( vals[i] ), "/" );
+            if( minmax.size() == 1 ) {
+                auto const num = convert_from_string<size_t>( trim( minmax[0] ));
+                result[i] = { num, num };
+            } else if( minmax.size() == 2 ) {
+                auto const min = convert_from_string<size_t>( trim( minmax[0] ));
+                auto const max = convert_from_string<size_t>( trim( minmax[1] ));
+                if( min > max ) {
+                    throw std::runtime_error("Invalid coverage value with min > max");
+                }
+                result[i] = { min, max };
+            } else {
+                throw std::runtime_error("Invalid coverage value.");
+            }
         } catch(...) {
             throw CLI::ValidationError(
-                options.pool_sizes.option->get_name(),
-                "Invalid pool size value: " + vals[i]
+                options.coverages.option->get_name(),
+                "Invalid coverage value: " + vals[i]
             );
         }
     }
@@ -284,8 +303,8 @@ void run_simulate( SimulateOptions const& options )
         );
     }
 
-    // Get pool sizes and sample count.
-    auto const pool_sizes = get_pool_sizes_( options );
+    // Get coverages and sample count (length of coverage list).
+    auto const sample_coverages = get_coverages_( options );
 
     // Get and check mutation count to avoid infinite loop when picking mutation positions.
     if( ! *options.mutation_count.option && ! *options.mutation_rate.option ) {
@@ -307,8 +326,8 @@ void run_simulate( SimulateOptions const& options )
         );
     }
     LOG_MSG << "Generating genome of length " << options.length.value << " with a total of "
-            << mutation_count << " mutated positions, for " << pool_sizes.size()
-            << " sample" << ( pool_sizes.size() == 1 ? "" : "s" ) << ".";
+            << mutation_count << " mutated positions, for " << sample_coverages.size()
+            << " sample" << ( sample_coverages.size() == 1 ? "" : "s" ) << ".";
     if( mutation_count == 0 ) {
         LOG_WARN << "Zero mutations will be produced. All positions in the file will be invariant. "
                  << "Consider increasing " << options.mutation_rate.option->get_name();
@@ -333,6 +352,12 @@ void run_simulate( SimulateOptions const& options )
         options.min_phred_score.value,
         options.max_phred_score.value
     );
+
+    // Prepare distributions for per sample coverages.
+    std::vector<std::uniform_int_distribution<size_t>> sample_coverage_distribs;
+    for( auto const& coverage : sample_coverages ) {
+        sample_coverage_distribs.emplace_back( coverage.first, coverage.second );
+    }
 
     // -------------------------------------------------------------------------
     //     Run the generation
@@ -360,7 +385,9 @@ void run_simulate( SimulateOptions const& options )
         (*sim_ofs) << "\t" << allele_to_char_( a1 );
 
         // Go through all samples.
-        for( auto const pool_size : pool_sizes ) {
+        for( size_t s = 0; s < sample_coverages.size(); ++s ) {
+            // Simulate a coverage for the sample.
+            auto const coverage = sample_coverage_distribs[s]( engine );
 
             // Draw major allele frequency for the sample. If this is an invariant position,
             // we use a frequency of 1, and with that can simply use the same code for
@@ -371,28 +398,28 @@ void run_simulate( SimulateOptions const& options )
                 : allele_freq_distrib( engine )
             ;
 
-            // Distribute the pool size to the two alleles. For simplicity, we assume
-            // read count = pool size at every position. Might elaborate on this in the future.
+            // Distribute the coverage to the two alleles. For simplicity, we assume
+            // read count = coverage at every position. Might elaborate on this in the future.
             // We use an array of counts to store them, in the order of sync files, ATCG N D.
             // This works for now. For pileup, we just access the two alleles that we need,
             // but ignore the rest.
             std::array<size_t, 6> counts = { 0, 0, 0, 0, 0, 0 };
-            counts[ a1 ] = pool_size * fraction;
-            counts[ a2 ] = pool_size - counts[ a1 ];
+            counts[ a1 ] = coverage * fraction;
+            counts[ a2 ] = coverage - counts[ a1 ];
 
             // Write sample.
             switch( format ) {
                 case SimulateFormat::kPileup: {
                     // Pileup needs repeated chars of each of the two alleles.
                     // For simplicity, we just output both of them in order.
-                    (*sim_ofs) << "\t" << pool_size << "\t";
+                    (*sim_ofs) << "\t" << coverage << "\t";
                     (*sim_ofs) << std::string( counts[ a1 ], allele_to_char_( a1 ) );
                     (*sim_ofs) << std::string( counts[ a2 ], allele_to_char_( a2 ) );
 
                     // Draw and write some random quality scores if needed.
                     if( options.with_quality_scores.value ) {
                         (*sim_ofs) << "\t";
-                        for( size_t i = 0; i < pool_size; ++i ) {
+                        for( size_t i = 0; i < coverage; ++i ) {
                             auto const score = phred_scores_distrib( engine );
                             (*sim_ofs) << quality_encode_from_phred_score( score );
                         }

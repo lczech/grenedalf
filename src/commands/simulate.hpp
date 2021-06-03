@@ -45,8 +45,8 @@ public:
     CliOption<std::string> format = "pileup";
     CliOption<std::uint32_t> random_seed;
 
-    // Samples and pool
-    CliOption<std::string> pool_sizes;
+    // Sample coverages, as single numbers, or as min/max entries per sample.
+    CliOption<std::string> coverages;
 
     // Chromosome and positions
     CliOption<std::string> chromosome = "A";
