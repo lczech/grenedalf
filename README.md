@@ -9,6 +9,8 @@ Its main focus are statistical analyses such as Tajima's D and Fst, following th
 [PoPoolation](https://sourceforge.net/projects/popoolation/) and
 [PoPoolation2](https://sourceforge.net/projects/popoolation2/).
 
+**Remark:** grenedalf is quite young and in activate development. The interface will change frequently in the near future. Until we publish a release version, everything is considered to be in beta status. [Feedback](https://github.com/lczech/grenedalf/issues) on functionality, interface, and features is highly appreciated!
+
 Setup
 -------------------
 
@@ -41,6 +43,7 @@ The commands have the general structure:
 
     grenedalf <command> <options>
 
+Use the `--help` flag of grenedalf or of each command for usage information.
 See [**the Wiki pages**](https://github.com/lczech/grenedalf/wiki)
 for the full list of all subcommands and their documentation.
 
