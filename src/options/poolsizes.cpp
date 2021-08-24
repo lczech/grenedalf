@@ -52,7 +52,7 @@ void PoolsizesOptions::add_poolsizes_opt_to_app(
         "(3) a path to a file with one pool size per line, in the same order as the samples in the "
         "input file (that is, same as (2), but in a file instead of on the command line), or "
         "(4) a path to a file that contains a comma- or tab-separated list of sample names and "
-        "pool sizes, with one name/size pair per line, in any order."
+        "pool sizes, with one name/size pair per line, in any order of lines."
     );
     poolsizes.option->group( group );
     if( required ) {
@@ -81,7 +81,7 @@ std::vector<size_t> PoolsizesOptions::get_pool_sizes(
     if( ! *poolsizes.option ) {
         throw CLI::ValidationError(
             poolsizes.option->get_name(),
-            "Option `--poolsizes` needs to be provided."
+            "Option `--pool-sizes` needs to be provided."
         );
     }
 
