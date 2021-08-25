@@ -79,6 +79,14 @@ void setup_frequency( CLI::App& app )
         "which contain the REF and ALT counts."
     )->group( "Settings" );
 
+    // Invariant site handling
+    options->omit_invariants.option = sub->add_flag(
+        "--omit-invariants",
+        options->omit_invariants.value,
+        "If set, do not write rows that have no alternative counts. This is particularly useful "
+        "for (m)pileup input, which otherwise produces an output row for each position."
+    )->group( "Settings" );
+
     // Add table output options.
     options->table_output.add_separator_char_opt_to_app( sub );
     options->table_output.add_na_entry_opt_to_app( sub );
@@ -153,8 +161,25 @@ void run_frequency( FrequencyOptions const& options )
 
     // Process the input file line by line and write the table data
     size_t line_cnt = 0;
+    size_t skip_cnt = 0;
     for( auto const& freq_it : options.freq_input.get_iterator() ) {
         ++line_cnt;
+
+        // If we want to omit invariant sites from the output, we need to do a prior check
+        // whether the position is invariant or not. We only do this if needed, in order to
+        // not slow down the case when we do not want to omit.
+        if( options.omit_invariants.value ) {
+            size_t ref_cnt = 0;
+            size_t alt_cnt = 0;
+            for( auto const& sample : freq_it.samples ) {
+                ref_cnt += get_base_count( sample, freq_it.reference_base );
+                alt_cnt += get_base_count( sample, freq_it.alternative_base );
+            }
+            if( ref_cnt == 0 || alt_cnt == 0 ) {
+                ++skip_cnt;
+                continue;
+            }
+        }
 
         // Write fixed columns
         (*freq_ofs) << freq_it.chromosome;
@@ -223,5 +248,11 @@ void run_frequency( FrequencyOptions const& options )
         (*freq_ofs) << "\n";
     }
 
-    LOG_MSG << "Processed " << line_cnt << " genome positions of the input file.";
+    // Output, depending on the setting, to keep it clean.
+    if( options.omit_invariants.value ) {
+        LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
+                << "and thereof skipped " << skip_cnt << " due to being invariant sites.";
+    } else {
+        LOG_MSG << "Processed " << line_cnt << " genome positions of the input file.";
+    }
 }

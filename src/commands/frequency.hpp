@@ -42,10 +42,11 @@ class FrequencyOptions
 {
 public:
 
-    CliOption<std::string> type  = "both";
-    CliOption<bool> no_coverage  = false;
-    CliOption<bool> no_frequency = false;
-    CliOption<bool> no_counts    = false;
+    CliOption<std::string> type     = "both";
+    CliOption<bool> no_coverage     = false;
+    CliOption<bool> no_frequency    = false;
+    CliOption<bool> no_counts       = false;
+    CliOption<bool> omit_invariants = false;
 
     FrequencyInputOptions freq_input;
     TableOutputOptions table_output;
