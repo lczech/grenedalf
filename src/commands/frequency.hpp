@@ -29,6 +29,7 @@
 #include "options/file_output.hpp"
 #include "options/frequency_input.hpp"
 #include "options/table_output.hpp"
+#include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
@@ -41,10 +42,10 @@ class FrequencyOptions
 {
 public:
 
-    bool write_coverage;
-    bool write_frequency;
-    bool write_counts;
-    bool write_all;
+    CliOption<std::string> types = "both";
+    CliOption<bool> no_coverage  = false;
+    CliOption<bool> no_frequency = false;
+    CliOption<bool> no_counts    = false;
 
     FrequencyInputOptions freq_input;
     TableOutputOptions table_output;
