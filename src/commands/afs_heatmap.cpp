@@ -264,7 +264,7 @@ Nucleotide get_main_allele_(
     // Also, if the above did not yield a valid reference base, e.g. the reference base of the
     // variant is 'N' or '.', we instead use the folded approach.
     // First, get the sum of all counts of the variant sorted, most common first.
-    auto const order = sorted_variant_counts( variant, false );
+    auto const order = sorted_base_counts( variant, false );
 
     // If the most common one has a count of 0, this is not really a variant, so return N.
     // If not, return the symbol of the most common one.
