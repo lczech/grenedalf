@@ -42,7 +42,7 @@ class FrequencyOptions
 {
 public:
 
-    CliOption<std::string> types = "both";
+    CliOption<std::string> type  = "both";
     CliOption<bool> no_coverage  = false;
     CliOption<bool> no_frequency = false;
     CliOption<bool> no_counts    = false;

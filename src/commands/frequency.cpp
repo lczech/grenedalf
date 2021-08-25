@@ -47,15 +47,15 @@ void setup_frequency( CLI::App& app )
     options->freq_input.add_filter_opts_to_app( sub );
 
     // What type of columns to produce.
-    options->types.option = sub->add_option(
-        "--types",
-        options->types.value,
-        "Select which types of columns to output: Either per-sample counts and frequencies, "
+    options->type.option = sub->add_option(
+        "--type",
+        options->type.value,
+        "Select which type of columns to output: Either per-sample counts and frequencies, "
         "or the total counts and frequencies across all samples, "
         "using the sum of the per-sample REF and ALT counts, or both (default)."
     );
-    options->types.option->group( "Settings" );
-    options->types.option->transform(
+    options->type.option->group( "Settings" );
+    options->type.option->transform(
         CLI::IsMember({ "samples", "total", "both" }, CLI::ignore_case )
     );
 
@@ -132,8 +132,8 @@ void run_frequency( FrequencyOptions const& options )
     auto const sep_char = options.table_output.get_separator_char();
 
     // Which types of columns to output: per sample and/or totals
-    bool const write_columns = options.types.value == "samples" || options.types.value == "both";
-    bool const write_total   = options.types.value == "total"   || options.types.value == "both";
+    bool const write_columns = options.type.value == "samples" || options.type.value == "both";
+    bool const write_total   = options.type.value == "total"   || options.type.value == "both";
 
     // Write the csv header line.
     (*freq_ofs) << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
