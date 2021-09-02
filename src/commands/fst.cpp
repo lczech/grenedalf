@@ -417,6 +417,6 @@ void run_fst( FstOptions const& options )
     LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
             << " with " << pos_cnt << " total position" << ( pos_cnt != 1 ? "s" : "" )
             << " in " << win_cnt << " window" << ( win_cnt != 1 ? "s" : "" )
-            << " with F_ST values, and skipped " << nan_cnt << " windows"
+            << " with F_ST values, and skipped " << nan_cnt << " window"
             << ( nan_cnt != 1 ? "s" : "" ) << " without any F_ST values.";
 }
