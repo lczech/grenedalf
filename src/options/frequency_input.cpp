@@ -560,8 +560,9 @@ void FrequencyInputOptions::prepare_data_pileup_() const
         if( sample_names_.size() != smp_cnt ) {
             throw CLI::ValidationError(
                 sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
-                "Invalid sample names list that contains a different number of names than "
-                "the (m)pileup file has samples."
+                "Invalid sample names list that contains " + std::to_string( sample_names_.size() ) +
+                " name entries, which is incongruous with the (m)pileup file, which contains " +
+                std::to_string( smp_cnt ) + " samples."
             );
         }
     } else {
@@ -670,8 +671,9 @@ void FrequencyInputOptions::prepare_data_sync_() const
         if( sample_names_.size() != smp_cnt ) {
             throw CLI::ValidationError(
                 sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
-                "Invalid sample names list that contains a different number of names than "
-                "the sync file has samples."
+                "Invalid sample names list that contains " + std::to_string( sample_names_.size() ) +
+                " name entries, which is incongruous with the sync file, which contains " +
+                std::to_string( smp_cnt ) + " samples."
             );
         }
     } else {
