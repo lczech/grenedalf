@@ -216,7 +216,7 @@ void FrequencyInputOptions::add_sample_name_opts_to_app(
     // Name list option.
     sample_name_list_.option = sub->add_option(
         "--sample-name-list",
-        sample_name_prefix_.value,
+        sample_name_list_.value,
         "Some file types do not contain sample names, such as (m)pileup or sync files. For such "
         "file types, sample names can here be provided as either (1) a comma- or tab-separated "
         "list, or (2) as a file with one sample name per line, in the same order as samples are in "
