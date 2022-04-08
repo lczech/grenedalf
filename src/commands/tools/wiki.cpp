@@ -467,6 +467,7 @@ void make_wiki_home_page( WikiOptions const& options )
         // If not, this is a top level command, and not a module, so skip it.
         auto subsubcomms = get_sorted_subcommands( subcomm );
         if( !subsubcomms.empty() ) {
+            os << "<br />\n";
             os << "### Module `" << subcomm->get_name() << "`\n\n";
             os << subcomm->get_description() << "\n\n";
             make_subcommands_table( subsubcomms, os );
