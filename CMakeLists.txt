@@ -1,5 +1,5 @@
 # grenedalf - Genome Analyses of Differential Allele Frequencies
-# Copyright (C) 2020-2021 Lucas Czech
+# Copyright (C) 2020-2022 Lucas Czech
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,12 @@ set (CMAKE_DISABLE_SOURCE_CHANGES  ON)
 # as normal Clang. See https://cmake.org/cmake/help/v3.0/policy/CMP0025.html
 # This is important for the test cmake script, where we need to set some warnings for clang,
 # but not for apple clang.
-cmake_policy(SET CMP0025 NEW)
+if( NOT ( CMAKE_VERSION VERSION_LESS 3.0 ))
+    # Appleclang compatibility
+    cmake_policy(SET CMP0025 NEW)
+    # Support for :: aliasing, used in new way to include OpenMP
+    cmake_policy(SET CMP0028 NEW)
+endif()
 
 # --------------------------------------------------------------------------------------------------
 #   Project Definition and Requirements
@@ -74,7 +79,7 @@ set( EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin )
 # final binary at least on the same system.
 option ( GRENEDALF_BUILD_STATIC  "Build the static version of the executable." OFF )
 
-if( GRENEDALF_BUILD_STATIC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+if( GRENEDALF_BUILD_STATIC AND ( NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" ))
     string(ASCII 27 Esc)
     message( STATUS "${Esc}[31m"
         "Compiler is not GCC. This might cause trouble with statically linking system libraries "
@@ -128,7 +133,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/tools/cmake/DownloadDependency.cmake" )
 # These are replaced by tools/cmake/update_dependencies.sh to the hashes that are currently checked out.
 # Thus, do not replace the hashes manually!
 SET( CLI11_COMMIT_HASH "5cb3efabce007c3a0230e4cc2e27da491c646b6c" ) #CLI11_COMMIT_HASH#
-SET( genesis_COMMIT_HASH "00cb9880a8942cd518533f795d2ab55462a7a73e" ) #genesis_COMMIT_HASH#
+SET( genesis_COMMIT_HASH "6f58d1fdba9d40f604bd4d99df3ac316f31cc974" ) #genesis_COMMIT_HASH#
 
 # Call the github download function, which takes four arguments:
 #  - LIBPATH    : Path to the libracy dir where dependencies are stored.
