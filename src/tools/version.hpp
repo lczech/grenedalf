@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,19 +32,22 @@
 
 inline std::string grenedalf_version()
 {
-    return "v0.0.0"; // #GRENEDALF_VERSION#
+    return "v0.1.0"; // #GRENEDALF_VERSION#
 }
 
 inline std::string grenedalf_header()
 {
     return "\
-                                         __ \n\
-                               |      / /   \n\
-   ___  ___  ___  ___  ___  ___| ___ ( (    \n\
-  |   )|   )|___)|   )|___)|   )|   )| |___ \n\
-  |__/ |    |__  |  / |__  |__/ |__/|| |    \n\
-  __/                                       \n\
-       " + grenedalf_version() + " (c) 2020-2021 by Lucas Czech\n";
+                                                 ,--;                           \n\
+                                                 \\  \\          ----.            \n\
+    ,-----.           ,----.;---.  ,--.  ,----.   \\  \\   ---.   |  |    ;-.----.\n\
+   /  ---./ ;-,----. / .---'|  , `.|  | / .---' ,--'  \\   \\  \\  |  |    | .---' \n\
+  |  ( .---.|  ´` .'|  `--  |  |`  `  ||  `--  / .--.  )/ .-. \\ |  |    | `--,  \n\
+   \\  --'  ||  |\\  \\ \\ `---.|  |  \\   | \\ `---.\\ `--' //  `-'  \\|  '---.| |`    \n\
+    `----´ '`--' '--' `----'`--'   `--:  `----' `----' `------'.`------'| |     \n\
+                                                                        | |     \n\
+       ========================================================////-    ,-'     \n\
+       " + grenedalf_version() + " (c) 2020-2022 by Lucas Czech\n";
 }
 
 inline std::string grenedalf_title()
