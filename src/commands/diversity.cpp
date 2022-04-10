@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,9 +26,9 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/base_counts.hpp"
 #include "genesis/population/functions/diversity.hpp"
-#include "genesis/population/functions/variant.hpp"
+#include "genesis/population/functions/functions.hpp"
+#include "genesis/population/window/functions.hpp"
 #include "genesis/utils/text/string.hpp"
 
 #include <cassert>
@@ -53,10 +53,10 @@ void setup_diversity( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Required input of some frequency format, and settings for the sliding window.
-    options->freq_input.add_frequency_input_opts_to_app( sub );
-    options->freq_input.add_sample_name_opts_to_app( sub );
-    options->freq_input.add_filter_opts_to_app( sub );
-    options->freq_input.add_sliding_window_opts_to_app( sub );
+    options->variant_input.add_frequency_input_opts_to_app( sub );
+    options->variant_input.add_sample_name_opts_to_app( sub );
+    options->variant_input.add_filter_opts_to_app( sub );
+    options->window.add_window_opts_to_app( sub );
 
     // -------------------------------------------------------------------------
     //     Settings
@@ -99,13 +99,15 @@ void setup_diversity( CLI::App& app )
         "or equal to this threshold, otherwise no SNP will be called."
     )->group( "Settings" );
 
+    // TODO reactivate
+
     // Minimum coverage fraction
-    options->min_coverage_fraction.option = sub->add_option(
-        "--min-coverage-fraction",
-        options->min_coverage_fraction.value,
-        "Minimum coverage fraction of a window being between `--min-coverage` and `--max-coverage` "
-        "in ALL populations that needs to be reached in order to compute the diversity measures."
-    )->group( "Settings" );
+    // options->min_coverage_fraction.option = sub->add_option(
+    //     "--min-coverage-fraction",
+    //     options->min_coverage_fraction.value,
+    //     "Minimum coverage fraction of a window being between `--min-coverage` and `--max-coverage` "
+    //     "in ALL populations that needs to be reached in order to compute the diversity measures."
+    // )->group( "Settings" );
 
     // -------------------------------------------------------------------------
     //     Formatting and Compatibility
@@ -168,10 +170,10 @@ void run_diversity( DiversityOptions const& options )
 {
     using namespace genesis::population;
     using namespace genesis::utils;
-    using BaseCountWindow = Window<std::vector<BaseCounts>>;
+    using VariantWindow = Window<genesis::population::Variant>;
 
     // Get all samples names from the input file.
-    auto const& sample_names = options.freq_input.sample_names();
+    auto const& sample_names = options.variant_input.sample_names();
 
     // Get the measures to compute. At least one of them will be active.
     auto const measure = to_lower( options.measure.value );
@@ -209,28 +211,26 @@ void run_diversity( DiversityOptions const& options )
 
     // Warn the user about the PoPoolation bugs.
     if( options.with_popoolation_bugs.value ) {
-        LOG_WARN << "Option `" << options.with_popoolation_bugs.option->get_name() << "` was activated. "
-                 << "Note that this yields numerically different results and that this option is "
-                 << "provided solely for comparability with results obtained from PoPoolation.";
+        LOG_WARN << "Option `" << options.with_popoolation_bugs.option->get_name()
+                 << "` was activated. Note that this yields numerically different results "
+                 << "from the intended measure as described by the publication of Kofler et al, "
+                 << "and that this option is provided solely for comparability with results "
+                 << "obtained from PoPoolation.";
     }
 
     // Get the pool sizes.
     auto const pool_sizes = options.poolsizes.get_pool_sizes( sample_names );
 
-    // Prepare pool settings for each sample. We need to copy the options over to our settings class.
+    // Prepare pool settings for each sample. We need to copy the options over to our settings class,
+    // as the pool size is different for each sample.
     // Bit cumbersome, but makes the internal handling easier...
     // Some are commented out, as they are currently not used by any diversity computation.
     auto pool_settings = std::vector<PoolDiversitySettings>( sample_names.size() );
-    auto const window_width_and_stride = options.freq_input.get_window_width_and_stride();
     for( size_t i = 0; i < sample_names.size(); ++i ) {
-        pool_settings[i].window_width          = window_width_and_stride.first;
-        pool_settings[i].window_stride         = window_width_and_stride.second;
-        // pool_settings[i].min_phred_score       = options.freq_input...;
         pool_settings[i].poolsize              = pool_sizes[i];
         pool_settings[i].min_allele_count      = options.min_allele_count.value;
         pool_settings[i].min_coverage          = options.min_coverage.value;
         pool_settings[i].max_coverage          = options.max_coverage.value;
-        pool_settings[i].min_coverage_fraction = options.min_coverage_fraction.value;
         pool_settings[i].with_popoolation_bugs = options.with_popoolation_bugs.value;
     }
 
@@ -324,21 +324,33 @@ void run_diversity( DiversityOptions const& options )
         }
     };
 
+    auto coverage_fraction_ = [](
+        VariantWindow const& window,
+        PoolDiversityResults const& results
+    ) {
+        // Compute cov frac.
+        auto const coverage = static_cast<double>( results.coverage_count );
+        auto const window_width = static_cast<double>( window.width() );
+        return coverage / window_width;
+    };
+
     // The popoolation table formats use the same format, so let's make one function to rule them all!
     // We take the PoolDiversityResults here for the general values, and then the actual data
     // value again, so that we don't have to switch to get it.
     // Format: "2R	19500	0	0.000	na" or "A	1500	101	1.000	1.920886709" for example.
-    auto write_popoolation_line_ = [](
+    auto write_popoolation_line_ = [ &coverage_fraction_ ](
         std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
-        BaseCountWindow const& window,
+        VariantWindow const& window,
         PoolDiversityResults const& results,
         double value
-    ){
+    ) {
+        auto const coverage_fraction = coverage_fraction_( window, results );
+
         // Write fixed columns.
         (*ofs) << window.chromosome();
-        (*ofs) << "\t" << window.anchor_position( WindowAnchorType::kIntervalMidpoint );
+        (*ofs) << "\t" << anchor_position( window, WindowAnchorType::kIntervalMidpoint );
         (*ofs) << "\t" << results.snp_count;
-        (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << results.coverage_fraction;
+        (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << coverage_fraction;
         if( std::isfinite( value ) ) {
             (*ofs) << "\t" << std::fixed << std::setprecision( 9 ) << value;
         } else {
@@ -359,22 +371,24 @@ void run_diversity( DiversityOptions const& options )
     // Iterate the file and compute per-window diversitye measures.
     // We run the samples in parallel, storing their results before writing to the output file.
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
-    auto window_it = options.freq_input.get_base_count_sliding_window_iterator();
+    auto window_it = options.window.get_variant_window_iterator(
+        options.variant_input.get_iterator()
+    );
     auto sample_divs = std::vector<PoolDiversityResults>( sample_names.size() );
-    for( ; window_it; ++window_it ) {
-        auto const& window = *window_it;
+    for( auto cur_it = window_it.begin(); cur_it != window_it.end(); ++cur_it ) {
+        auto const& window = *cur_it;
         ++win_cnt;
         pos_cnt += window.size();
 
         // Some user output to report progress.
-        if( window_it.is_first_window() ) {
+        if( cur_it.is_first_window() ) {
             LOG_MSG << "At chromosome " << window.chromosome();
             ++chr_cnt;
         }
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"
                  << window.first_position() << "-"
-                 <<  window.last_position();
+                 << window.last_position();
 
         // Skip empty windows if the user wants to.
         // if( window.empty() && options.omit_empty_windows.value ) {
@@ -387,15 +401,18 @@ void run_diversity( DiversityOptions const& options )
 
             // Select sample i within the current window.
             auto range = make_transform_range(
-                [i]( BaseCountWindow::Entry const& entry ) -> BaseCounts const& {
+                [i]( VariantWindow::Entry const& entry ) -> BaseCounts const& {
                     internal_check(
-                        i < entry.data.size(),
+                        i < entry.data.samples.size(),
                         "Inconsistent number of samples in input file."
                     );
-                    return entry.data[i];
+                    return entry.data.samples[i];
                 },
                 window.begin(), window.end()
             );
+
+            // TODO refine the below to apply the filtering beforehand,
+            // instead of repeated in that convenience function pool_diversity_measures()
 
             // Compute diversity measures for the sample. We always compute all measures,
             // even if not all of them will be written afterwards. It's fast enough anyway,
@@ -448,12 +465,14 @@ void run_diversity( DiversityOptions const& options )
 
             // Write the per-pair diversity values in the correct order.
             for( auto const& sample_div : sample_divs ) {
+                auto const coverage_fraction = coverage_fraction_( window, sample_div );
+
                 // Meta info per sample
                 // (*table_ofs) << sep_char << sample_div.variant_count;
                 // (*table_ofs) << sep_char << sample_div.coverage_count;
                 (*table_ofs) << sep_char << sample_div.snp_count;
                 (*table_ofs) << sep_char << std::fixed << std::setprecision( 3 )
-                             << sample_div.coverage_fraction;
+                             << coverage_fraction;
 
                 // Values
                 if( compute_theta_pi ) {

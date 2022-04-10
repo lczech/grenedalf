@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_output.hpp"
-#include "options/frequency_input.hpp"
+#include "options/variant_input.hpp"
 #include "options/table_output.hpp"
 #include "tools/cli_option.hpp"
 
@@ -48,9 +48,9 @@ public:
     CliOption<bool> no_counts       = false;
     CliOption<bool> omit_invariants = false;
 
-    FrequencyInputOptions freq_input;
-    TableOutputOptions table_output;
-    FileOutputOptions  file_output;
+    VariantInputOptions variant_input;
+    TableOutputOptions  table_output;
+    FileOutputOptions   file_output;
 
 };
 

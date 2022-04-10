@@ -25,7 +25,7 @@
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 
-#include "genesis/population/functions/base_counts.hpp"
+#include "genesis/population/functions/functions.hpp"
 
 // =================================================================================================
 //      Setup
@@ -42,9 +42,9 @@ void setup_frequency( CLI::App& app )
     );
 
     // Required input of some frequency format (mpileup or vcf at the moment).
-    options->freq_input.add_frequency_input_opts_to_app( sub );
-    options->freq_input.add_sample_name_opts_to_app( sub );
-    options->freq_input.add_filter_opts_to_app( sub );
+    options->variant_input.add_frequency_input_opts_to_app( sub );
+    options->variant_input.add_sample_name_opts_to_app( sub );
+    options->variant_input.add_filter_opts_to_app( sub );
 
     // What type of columns to produce.
     options->type.option = sub->add_option(
@@ -146,7 +146,7 @@ void run_frequency( FrequencyOptions const& options )
     // Write the csv header line.
     (*freq_ofs) << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
     if( write_columns ) {
-        for( auto const& sample : options.freq_input.sample_names() ) {
+        for( auto const& sample : options.variant_input.sample_names() ) {
             for( auto const& field : fields ) {
                 (*freq_ofs) << sep_char << sample << "." << field;
             }
@@ -162,7 +162,7 @@ void run_frequency( FrequencyOptions const& options )
     // Process the input file line by line and write the table data
     size_t line_cnt = 0;
     size_t skip_cnt = 0;
-    for( auto const& freq_it : options.freq_input.get_iterator() ) {
+    for( auto const& freq_it : options.variant_input.get_iterator() ) {
         ++line_cnt;
 
         // If we want to omit invariant sites from the output, we need to do a prior check

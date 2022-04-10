@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 
-#include "genesis/population/functions/base_counts.hpp"
-#include "genesis/population/functions/variant.hpp"
+#include "genesis/population/functions/functions.hpp"
+#include "genesis/population/formats/sync_common.hpp"
 
 // =================================================================================================
 //      Setup
@@ -43,9 +43,9 @@ void setup_sync_file( CLI::App& app )
     );
 
     // Required input of some frequency format (mpileup or vcf at the moment).
-    options->freq_input.add_frequency_input_opts_to_app( sub );
-    options->freq_input.add_sample_name_opts_to_app( sub );
-    options->freq_input.add_filter_opts_to_app( sub );
+    options->variant_input.add_frequency_input_opts_to_app( sub );
+    options->variant_input.add_sample_name_opts_to_app( sub );
+    options->variant_input.add_filter_opts_to_app( sub );
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
@@ -77,7 +77,7 @@ void run_sync_file( SyncFileOptions const& options )
     auto sync_ofs = options.file_output.get_output_target( "counts", "sync" );
 
     // Write the sync data
-    for( auto const& freq_it : options.freq_input.get_iterator() ) {
+    for( auto const& freq_it : options.variant_input.get_iterator() ) {
         to_sync( freq_it, sync_ofs->ostream() );
         // (*sync_ofs) << "\n";
     }

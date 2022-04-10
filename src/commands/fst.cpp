@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/base_counts.hpp"
+#include "genesis/population/functions/functions.hpp"
 #include "genesis/population/functions/structure.hpp"
 #include "genesis/utils/containers/transform_iterator.hpp"
 #include "genesis/utils/core/fs.hpp"
@@ -61,10 +61,10 @@ void setup_fst( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Required input of some frequency format, and settings for the sliding window.
-    options->freq_input.add_frequency_input_opts_to_app( sub );
-    options->freq_input.add_sample_name_opts_to_app( sub );
-    options->freq_input.add_filter_opts_to_app( sub );
-    options->freq_input.add_sliding_window_opts_to_app( sub );
+    options->variant_input.add_frequency_input_opts_to_app( sub );
+    options->variant_input.add_sample_name_opts_to_app( sub );
+    options->variant_input.add_filter_opts_to_app( sub );
+    options->window.add_window_opts_to_app( sub );
 
     // -------------------------------------------------------------------------
     //     Settings
@@ -166,7 +166,7 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
     using namespace genesis::utils;
 
     // Get sample names and map to their index or throw if invalid name is given.
-    auto const& sample_names = options.freq_input.sample_names();
+    auto const& sample_names = options.variant_input.sample_names();
     auto sample_index = [&]( std::string const& name ) -> size_t {
         auto it = std::find( sample_names.begin(), sample_names.end(), name );
         if( it == sample_names.end() ) {
@@ -233,7 +233,7 @@ void run_fst( FstOptions const& options )
 {
     using namespace genesis::population;
     using namespace genesis::utils;
-    using BaseCountWindow = Window<std::vector<BaseCounts>>;
+    using VariantWindow = Window<genesis::population::Variant>;
 
     // Output preparation.
     options.file_output.check_output_files_nonexistence( "fst", "csv" );
@@ -260,7 +260,7 @@ void run_fst( FstOptions const& options )
 
     // Get all sample indices that we are actually interested in.
     // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
-    auto const& sample_names = options.freq_input.sample_names();
+    auto const& sample_names = options.variant_input.sample_names();
     auto used_samples = std::vector<bool>( sample_names.size(), false );
     for( auto const& sp : sample_pairs ) {
         used_samples[ sp.first ]  = true;
@@ -312,14 +312,16 @@ void run_fst( FstOptions const& options )
     size_t pos_cnt = 0;
     size_t nan_cnt = 0;
 
-    auto window_it = options.freq_input.get_base_count_sliding_window_iterator();
+    auto window_it = options.window.get_variant_window_iterator(
+        options.variant_input.get_iterator()
+    );
     auto window_fst = std::vector<double>( sample_pairs.size() );
-    for( ; window_it; ++window_it ) {
-        auto const& window = *window_it;
+    for( auto cur_it = window_it.begin(); cur_it != window_it.end(); ++cur_it ) {
+        auto const& window = *cur_it;
         pos_cnt += window.size();
 
         // Some user output to report progress.
-        if( window_it.is_first_window() ) {
+        if( cur_it.is_first_window() ) {
             LOG_MSG << "At chromosome " << window.chromosome();
             ++chr_cnt;
         }
@@ -347,35 +349,37 @@ void run_fst( FstOptions const& options )
             // We use a range transformer that selects the respective entry from the Variant,
             // and returns by reference, so that we avoid expensive copies here.
             auto range_a = make_transform_range(
-                [index_a]( BaseCountWindow::Entry const& entry ) -> BaseCounts const& {
+                [index_a]( VariantWindow::Entry const& entry ) -> BaseCounts const& {
                     internal_check(
-                        index_a < entry.data.size(),
+                        index_a < entry.data.samples.size(),
                         "Inconsistent number of samples in input file."
                     );
-                    return entry.data[index_a];
+                    return entry.data.samples[index_a];
                 },
                 window.begin(), window.end()
             );
             auto range_b = make_transform_range(
-                [index_b]( BaseCountWindow::Entry const& entry ) -> BaseCounts const& {
+                [index_b]( VariantWindow::Entry const& entry ) -> BaseCounts const& {
                     internal_check(
-                        index_b < entry.data.size(),
+                        index_b < entry.data.samples.size(),
                         "Inconsistent number of samples in input file."
                     );
-                    return entry.data[index_b];
+                    return entry.data.samples[index_b];
                 },
                 window.begin(), window.end()
             );
 
+            // TODO add "spence" method, rename "conventional" to "kofler"
+
             // Run the computation.
             if( method == Method::kConventional ) {
-                window_fst[i] = f_st_conventional_pool(
+                window_fst[i] = f_st_pool_kofler(
                     pool_sizes[index_a], pool_sizes[index_b],
                     range_a.begin(), range_a.end(),
                     range_b.begin(), range_b.end()
                 );
             } else if( method == Method::kKarlsson ) {
-                window_fst[i] = f_st_asymptotically_unbiased(
+                window_fst[i] = f_st_pool_karlsson(
                     range_a.begin(), range_a.end(),
                     range_b.begin(), range_b.end()
                 );

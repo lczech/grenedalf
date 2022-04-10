@@ -136,7 +136,9 @@ CLI::Option* FileOutputOptions::add_filefix_opt_(
     target_opt = sub->add_option(
         optname,
         target_var,
-        "File " + fixname + " for " + ( optionname_.empty() ? "output" : optionname_ ) + " files",
+        "File " + fixname + " for " + ( optionname_.empty() ? "output" : optionname_ ) + " files. "
+        "Most grenedalf commands use the command name as the base name for file output. "
+        "This option amends the base name, to distinguish runs with different data.",
         true
     );
     target_opt->check([fixname]( std::string const& fix ){

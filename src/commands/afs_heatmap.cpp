@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,11 +26,9 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/base_counts.hpp"
+#include "genesis/population/functions/functions.hpp"
 #include "genesis/population/functions/genome_heatmap.hpp"
 #include "genesis/population/functions/heatmap_colorization.hpp"
-#include "genesis/population/functions/variant.hpp"
-#include "genesis/population/functions/variant.hpp"
 #include "genesis/utils/math/statistics.hpp"
 #include "genesis/utils/tools/color/list_diverging.hpp"
 #include "genesis/utils/tools/color/list_sequential.hpp"
@@ -75,10 +73,10 @@ void setup_afs_heatmap( CLI::App& app )
     );
 
     // Required input of some frequency format, and settings for the sliding window.
-    options->freq_input.add_frequency_input_opts_to_app( sub );
-    options->freq_input.add_sample_name_opts_to_app( sub );
-    options->freq_input.add_filter_opts_to_app( sub );
-    options->freq_input.add_sliding_window_opts_to_app( sub );
+    options->variant_input.add_frequency_input_opts_to_app( sub );
+    options->variant_input.add_sample_name_opts_to_app( sub );
+    options->variant_input.add_filter_opts_to_app( sub );
+    options->window.add_window_opts_to_app( sub );
 
     // -------------------------------------------------------------------------
     //     Settings
@@ -268,13 +266,13 @@ Nucleotide get_main_allele_(
 
     // If the most common one has a count of 0, this is not really a variant, so return N.
     // If not, return the symbol of the most common one.
-    if( order[0].second == 0 ) {
-        assert( order[1].second == 0 );
-        assert( order[2].second == 0 );
-        assert( order[3].second == 0 );
+    if( order.data[0].count == 0 ) {
+        assert( order.data[1].count == 0 );
+        assert( order.data[2].count == 0 );
+        assert( order.data[3].count == 0 );
         return Nucleotide::kN;
     }
-    return get_nucleotide_( order[0].first );
+    return get_nucleotide_( order.data[0].base );
 }
 
 /**
@@ -346,7 +344,7 @@ double compute_frequency_(
         // instead also use transform iterators for this, but that somehow seems more convolulted,
         // so let's keep it simple.
         auto frequencies = std::vector<double>( variant.samples.size() );
-        assert( variant.samples.size() == options.freq_input.sample_names().size() );
+        assert( variant.samples.size() == options.variant_input.sample_names().size() );
 
         // Go through all samples and get their alternative/minor frequencies.
         // Not parallelizing here, as we already parallelized the outer loop over the whole window.
@@ -451,18 +449,20 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
     // which makes it a bit wasteful to copy everything into a window first, but makes handling
     // of the surrounding code (of keeping track of positions etc) so much easier.
     // Might optimize in the future.
-    auto window_it = options.freq_input.get_variant_sliding_window_iterator();
-    for( ; window_it; ++window_it ) {
-        auto const& window = *window_it;
+    auto window_it = options.window.get_variant_window_iterator(
+        options.variant_input.get_iterator()
+    );
+    for( auto cur_it = window_it.begin(); cur_it != window_it.end(); ++cur_it ) {
+        auto const& window = *cur_it;
 
         // Things to do when we start with a new chromosome.
-        if( window_it.is_first_window() ) {
+        if( cur_it.is_first_window() ) {
             // Some user output to report progress.
             LOG_MSG << "At chromosome " << window.chromosome();
 
             // Prepare a new spectrum for this chromosome.
             spectrum = HeatmapColorization::Spectrum();
-            spectrum.chromosome = window_it->chromosome();
+            spectrum.chromosome = window.chromosome();
         }
 
         // Beginning of a new window. Add a column to the spectrum.
@@ -502,7 +502,7 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
         }
 
         // Things to do when we finish with a chromosome.
-        if( window_it.is_last_window() ) {
+        if( cur_it.is_last_window() ) {
             // Add the spectrum to the genome heatmap.
             heatmap.add(
                 spectrum.chromosome, colorization.spectrum_to_image( spectrum ).first
