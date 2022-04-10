@@ -217,6 +217,7 @@ private:
 
     // Filters for rows and columns
     CliOption<std::string> filter_region_ = "";
+    CliOption<std::string> filter_region_bed_ = "";
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
 
