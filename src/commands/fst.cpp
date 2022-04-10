@@ -77,13 +77,14 @@ void setup_fst( CLI::App& app )
     options->method.option = sub->add_option(
         "--method",
         options->method.value,
-        "F_ST method to use for the computation, either the conventional F_ST statistic for "
-        "pool-sequenced data, following Kofler et al, or the asymptotically unbiased F_ST "
+        "F_ST method to use for the computation, either our new statistic by Spence et al "
+        "(in two variants, following the definition of Nei, and the definition of Hudson et al),"
+        "the statistic by Kofler et al of PoPoolation2, or the asymptotically unbiased "
         "estimator of Karlsson et al."
     );
     options->method.option->group( "Settings" );
     options->method.option->transform(
-        CLI::IsMember({ "conventional", "karlsson" }, CLI::ignore_case )
+        CLI::IsMember({ "spence-nei", "spence-hudson" "kofler", "karlsson" }, CLI::ignore_case )
     );
 
     // TODO need settings for min/max coverage etc. see prototype implementations!
@@ -247,13 +248,24 @@ void run_fst( FstOptions const& options )
     // any additional future F_ST methods.
     enum class Method
     {
-        kConventional,
+        kSpenceNei,
+        kSpenceHudson,
+        kKofler,
         kKarlsson
     };
-    Method method = ( options.method.value == "conventional"
-        ? Method::kConventional
-        : Method::kKarlsson
-    );
+    auto method = Method::kSpenceNei;
+    if( options.method.value == "spence-nei" ) {
+        method = Method::kSpenceNei;
+    } else if( options.method.value == "spence-hudson" ) {
+        method = Method::kSpenceHudson;
+    } else if( options.method.value == "kofler" ) {
+        method = Method::kKofler;
+    } else if( options.method.value == "karlsson" ) {
+        method = Method::kKarlsson;
+    } else {
+        // Can't really happen, as CLI11 checks already, but just in case.
+        throw std::invalid_argument( "Invalid F_ST method: " + options.method.value );
+    }
 
     // Get indices of all pairs of samples for which we want to compute F_ST.
     auto const sample_pairs = get_sample_pairs_( options );
@@ -269,7 +281,11 @@ void run_fst( FstOptions const& options )
     assert( used_samples.size() == sample_names.size() );
 
     // Get the pool sizes for all samples that we are interested in.
-    auto const pool_sizes = ( method == Method::kConventional
+    auto const needs_pool_sizes = (
+        method == Method::kSpenceNei || method == Method::kSpenceHudson || method == Method::kKofler
+    );
+    auto const pool_sizes = (
+        needs_pool_sizes
         ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
         : std::vector<size_t>{}
     );
@@ -295,10 +311,9 @@ void run_fst( FstOptions const& options )
     }
     (*fst_ofs) << "\n";
 
-    // For conventional F_ST, check that we got the right number of pool sizes.
+    // For Spence and Kofler, check that we got the right number of pool sizes.
     internal_check(
-        method != Method::kConventional ||
-        pool_sizes.size() == sample_names.size(),
+        ! needs_pool_sizes || pool_sizes.size() == sample_names.size(),
         "Inconsistent number of samples and number of pool sizes."
     );
 
@@ -335,7 +350,7 @@ void run_fst( FstOptions const& options )
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"
                  << window.first_position() << "-"
-                 <<  window.last_position();
+                 << window.last_position();
 
         // Compute F_ST in parallel over the different pairs of samples.
         #pragma omp parallel for
@@ -369,10 +384,20 @@ void run_fst( FstOptions const& options )
                 window.begin(), window.end()
             );
 
-            // TODO add "spence" method, rename "conventional" to "kofler"
-
             // Run the computation.
-            if( method == Method::kConventional ) {
+            if( method == Method::kSpenceNei ) {
+                window_fst[i] = f_st_pool_spence(
+                    pool_sizes[index_a], pool_sizes[index_b],
+                    range_a.begin(), range_a.end(),
+                    range_b.begin(), range_b.end()
+                ).first;
+            } else if( method == Method::kSpenceHudson ) {
+                window_fst[i] = f_st_pool_spence(
+                    pool_sizes[index_a], pool_sizes[index_b],
+                    range_a.begin(), range_a.end(),
+                    range_b.begin(), range_b.end()
+                ).second;
+            } else if( method == Method::kKofler ) {
                 window_fst[i] = f_st_pool_kofler(
                     pool_sizes[index_a], pool_sizes[index_b],
                     range_a.begin(), range_a.end(),
