@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -199,6 +199,11 @@ void make_options_table( CLI::App const& command, std::ostream& os )
 
         // Do not add help option.
         if( opt->get_name() == "-h,--help" || opt->get_name() == "--help" ) {
+            continue;
+        }
+
+        // Do not add hidden options.
+        if( opt->get_group() == "" ) {
             continue;
         }
 

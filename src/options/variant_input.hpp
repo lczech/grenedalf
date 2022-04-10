@@ -105,7 +105,7 @@ public:
 
     void add_sample_name_opts_to_app(
         CLI::App* sub,
-        std::string const& group = "General Input"
+        std::string const& group = "Sample Names"
     );
 
     void add_filter_opts_to_app(
