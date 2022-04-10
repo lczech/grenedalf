@@ -134,40 +134,40 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
     }
 
     // Min mapping quality
-    min_map_qual_.option = sub->add_option(
-        "--min-map-qual",
-        min_map_qual_.value,
+    sam_min_map_qual_.option = sub->add_option(
+        "--sam-min-map-qual",
+        sam_min_map_qual_.value,
         "Minimum phred-scaled mapping quality score [0-90] for a read in sam/bam/cram files to be "
         "considered. Any read that is below the given value of mapping quality will be completely "
         "discarded, and its bases not taken into account. "
         "Default is 0, meaning no filtering by base quality qual."
     );
-    min_map_qual_.option->group( group );
-    min_map_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    min_map_qual_.option->needs( sam_file_.option );
+    sam_min_map_qual_.option->group( group );
+    sam_min_map_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
+    sam_min_map_qual_.option->needs( sam_file_.option );
 
     // Min base qual
-    min_base_qual_.option = sub->add_option(
-        "--min-base-qual",
-        min_base_qual_.value,
+    sam_min_base_qual_.option = sub->add_option(
+        "--sam-min-base-qual",
+        sam_min_base_qual_.value,
         "Minimum phred-scaled quality score [0-90] for a base in sam/bam/cram files to be "
         "considered. Bases below this are ignored when computing allele frequencies. "
         "Default is 0, meaning no filtering by base quality qual."
     );
-    min_base_qual_.option->group( group );
-    min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    min_base_qual_.option->needs( sam_file_.option );
+    sam_min_base_qual_.option->group( group );
+    sam_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
+    sam_min_base_qual_.option->needs( sam_file_.option );
 
     // Split by RG read group tag.
-    split_by_rg_.option = sub->add_flag(
-        "--split-by-rg",
-        split_by_rg_.value,
+    sam_split_by_rg_.option = sub->add_flag(
+        "--sam-split-by-rg",
+        sam_split_by_rg_.value,
         "Instead of considering the whole sam/bam/cram file as one large colletion of reads, "
         "use the `@RG` read group tag to split reads. Each read group is then considered a sample. "
         "Reads with an invalid (not in the header) read group tag or without a tag are ignored."
     );
-    split_by_rg_.option->group( group );
-    split_by_rg_.option->needs( sam_file_.option );
+    sam_split_by_rg_.option->group( group );
+    sam_split_by_rg_.option->needs( sam_file_.option );
 
     return sam_file_.option;
 }
@@ -202,9 +202,9 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
     }
 
     // Quality encoding.
-    quality_encoding_.option = sub->add_option(
-        "--quality-encoding",
-        quality_encoding_.value,
+    pileup_quality_encoding_.option = sub->add_option(
+        "--pileup-quality-encoding",
+        pileup_quality_encoding_.value,
         "Encoding of the quality scores of the bases in (m)pileup files. "
         "Default is `\"sanger\"`, which seems to be the most common these days. "
         "Both `\"sanger\"` and `\"illumina-1.8\"` are identical and use an ASCII offset of 33, "
@@ -212,26 +212,26 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
         "(we provide different names for completeness). Lastly, `\"solexa\"` has an offset of 64, "
         "but uses a different equation (not phred score) for the encoding."
     );
-    quality_encoding_.option->group( group );
-    quality_encoding_.option->transform(
+    pileup_quality_encoding_.option->group( group );
+    pileup_quality_encoding_.option->transform(
         CLI::IsMember(
             { "sanger", "illumina-1.3", "illumina-1.5", "illumina-1.8", "solexa" },
             CLI::ignore_case
         )
     );
-    quality_encoding_.option->needs( pileup_file_.option );
+    pileup_quality_encoding_.option->needs( pileup_file_.option );
 
     // Min phred score
-    min_phred_score_.option = sub->add_option(
-        "--min-phred-score",
-        min_phred_score_.value,
+    pileup_min_base_qual_.option = sub->add_option(
+        "--pileup-min-base-qual",
+        pileup_min_base_qual_.value,
         "Minimum phred quality score [0-90] for a base in (m)pileup files to be considered. "
         "Bases below this are ignored when computing allele frequencies. "
         "Default is 0, meaning no filtering by phred quality score."
     );
-    min_phred_score_.option->group( group );
-    min_phred_score_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    min_phred_score_.option->needs( pileup_file_.option );
+    pileup_min_base_qual_.option->group( group );
+    pileup_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
+    pileup_min_base_qual_.option->needs( pileup_file_.option );
 
     return pileup_file_.option;
 }
@@ -479,7 +479,7 @@ void VariantInputOptions::prepare_data_() const
     if( is_sample_name_list || is_sample_name_pref ) {
         // Not both can be given, as the options are mutually exclusive.
         assert( is_sample_name_list ^ is_sample_name_pref );
-        if( !( is_sam && ! split_by_rg_.value ) && ! is_pileup && ! is_sync ) {
+        if( !( is_sam && ! sam_split_by_rg_.value ) && ! is_pileup && ! is_sync ) {
             throw CLI::ValidationError(
                 "Can only use " + sample_name_list_.option->get_name() + " or " +
                 sample_name_prefix_.option->get_name() + " for input file "
@@ -564,11 +564,11 @@ void VariantInputOptions::prepare_data_sam_() const
 
     // Prepare the reader with all its settings.
     SamVariantInputIterator reader;
-    reader.min_map_qual( min_map_qual_.value );
-    reader.min_base_qual( min_base_qual_.value );
-    reader.split_by_rg( split_by_rg_.value );
+    reader.min_map_qual( sam_min_map_qual_.value );
+    reader.min_base_qual( sam_min_base_qual_.value );
+    reader.split_by_rg( sam_split_by_rg_.value );
 
-    if( split_by_rg_.value ) {
+    if( sam_split_by_rg_.value ) {
 
         // If we split by RG tag, we can use filters. Check which ones are given by the user.
         if( ! filter_samples_include_.value.empty() ) {
@@ -588,7 +588,7 @@ void VariantInputOptions::prepare_data_sam_() const
         auto const sample_filter = find_sample_indices_from_sample_filters_();
         if( ! sample_filter.first.empty() ) {
             throw CLI::ValidationError(
-                split_by_rg_.option->get_name() + ", " +
+                sam_split_by_rg_.option->get_name() + ", " +
                 filter_samples_include_.option->get_name() +
                 "(" + filter_samples_include_.value + "), " +
                 filter_samples_exclude_.option->get_name() +
@@ -639,8 +639,8 @@ void VariantInputOptions::prepare_data_pileup_() const
 
     // Prepare the base Reader with settings as needed.
     auto reader = SimplePileupReader();
-    reader.quality_encoding( guess_quality_encoding_from_name( quality_encoding_.value ));
-    reader.min_base_quality( min_phred_score_.value );
+    reader.quality_encoding( guess_quality_encoding_from_name( pileup_quality_encoding_.value ));
+    reader.min_base_quality( pileup_min_base_qual_.value );
 
     // Make an iterator.
     iterator_ = make_variant_input_iterator_from_pileup_file(

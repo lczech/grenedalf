@@ -195,21 +195,21 @@ private:
     // Input file types
 
     // SAM/BAM/CRAM
-    CliOption<std::string> sam_file_    = "";
-    CliOption<size_t> min_map_qual_ = 0;
-    CliOption<size_t> min_base_qual_ = 0;
-    CliOption<bool> split_by_rg_ = false;
+    CliOption<std::string> sam_file_          = "";
+    CliOption<size_t>      sam_min_map_qual_  = 0;
+    CliOption<size_t>      sam_min_base_qual_ = 0;
+    CliOption<bool>        sam_split_by_rg_   = false;
 
     // Pileup
-    CliOption<std::string> pileup_file_ = "";
-    CliOption<std::string> quality_encoding_ = "sanger";
-    CliOption<size_t> min_phred_score_ = 0;
+    CliOption<std::string> pileup_file_             = "";
+    CliOption<std::string> pileup_quality_encoding_ = "sanger";
+    CliOption<size_t>      pileup_min_base_qual_    = 0;
     // CliOption<bool> with_quality_string_ = true;
     // CliOption<bool> with_ancestral_base_ = false;
 
     // Sync, VCF
-    CliOption<std::string> sync_file_   = "";
-    CliOption<std::string> vcf_file_    = "";
+    CliOption<std::string> sync_file_ = "";
+    CliOption<std::string> vcf_file_  = "";
 
     // Sample names
     CliOption<std::string> sample_name_list_ = "";
