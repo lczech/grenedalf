@@ -89,14 +89,29 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
     //     }
     // }
 
-    // Hidden option to set the LambdaIterator block size for speed.
-    block_size_.option = sub->add_option(
+    // Hidden options to set the LambdaIterator block sizes for speed.
+
+    // First for the main block size of the iterator that is collecing all Variants,
+    // which is either a single file, or the parallel input iterator over multiple files.
+    iterator_block_size_.option = sub->add_option(
         "--block-size",
-        block_size_.value,
+        iterator_block_size_.value,
         "Size of the buffer block that is used for the multithreaded file parsing in the background. "
         "This option is an optimization feature that can be experiment with for larger datasets."
     );
-    block_size_.option->group( "" );
+    iterator_block_size_.option->group( "" );
+
+    // Second for the inner iterators of _all_ input files when using the parallel input
+    // iterator over multiple files. This will spawn a thread for each input file if set to > 0.
+    parallel_block_size_.option = sub->add_option(
+        "--parallel-block-size",
+        parallel_block_size_.value,
+        "Size of the buffer blocks that is used for the multithreaded file parsing in the background, "
+        "which is used for each input file when iterating over multiple files in parallel. "
+        "This will spawn a separate reading thread for each input file when set to a value > 0."
+        "This option is an optimization feature that can be experiment with for larger datasets."
+    );
+    parallel_block_size_.option->group( "" );
 
     // // Additional options.
     // if( with_sample_name_opts ) {
@@ -496,8 +511,9 @@ void VariantInputOptions::prepare_data_() const
     }
     LOG_MSG1;
     if( contains_duplicates( sample_names_ )) {
-        LOG_WARN << "The input contains duplicate sample names. ""We can work with that internally, "
-                 << "but it will make working with the output more difficult.";
+        LOG_WARN << "The input contains duplicate sample names. We can work with that internally, "
+                 << "but it will make working with the output more difficult. Use verbose output "
+                 << "(--verbose) to show a list of all sample names.";
         LOG_MSG1;
     }
 }
@@ -569,7 +585,7 @@ void VariantInputOptions::prepare_data_single_file_() const
 
     // Set the buffer block size of the iterator, for multi-threaded processing speed.
     // Needs to be tested - might give more or less advantage depending on setting.
-    iterator_.block_size( block_size_.value );
+    iterator_.block_size( iterator_block_size_.value );
 
     // TODO also add filters depending on file type.. sam pileup and sync might need
     // biallelic snp filters (using the merged variants filter type setting), while vcf might not?!
@@ -639,6 +655,11 @@ void VariantInputOptions::prepare_data_multiple_files_() const
             sample_names_.push_back( input.data().source_name + ":" + sample_name );
         }
         add_region_filters_to_iterator_( input );
+
+        // Also set the buffer block size of the iterator, using the second buffer size option
+        // that is used for the inner iterators of parallel input.
+        // Needs to be tested - might give more or less advantage depending on setting.
+        input.block_size( parallel_block_size_.value );
     }
 
     // Finally, create the parallel iterator.
@@ -651,7 +672,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
     // Set the buffer block size of the iterator, for multi-threaded speed.
     // We only buffer the final parallel iterator, and not its individual sources,
     // in order to not keep too many threads from spawning... Might need testing and refinement.
-    iterator_.block_size( block_size_.value );
+    iterator_.block_size( iterator_block_size_.value );
 }
 
 // -------------------------------------------------------------------------

@@ -236,8 +236,9 @@ private:
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
 
-    // Hidden option to set the LambdaIterator block size for speed.
-    CliOption<size_t> block_size_ = 4096;
+    // Hidden options to set the LambdaIterator block size for speed.
+    CliOption<size_t> iterator_block_size_ = 4096;
+    CliOption<size_t> parallel_block_size_ = 0;
 
     // We have different input data formats, but want to convert all of them to Variant.
     // Working with a statically typed language, this is a bit tricky, so let's introduce a level of
