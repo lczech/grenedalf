@@ -51,6 +51,21 @@
 #include <stdexcept>
 
 // =================================================================================================
+//      Enum Mapping
+// =================================================================================================
+
+// Translate strings to enums for the VariantParallelInputIterator.
+// As described below, we simplify this from the more complex and more powerful approach that is
+// offered by VariantParallelInputIterator to just the choice of union or intersection of all
+// input loci when having multiple input files, in order to keep the command line interface simple.
+std::vector<
+    std::pair<std::string, genesis::population::VariantParallelInputIterator::ContributionType>
+> const multi_file_contribution_type_map_ = {
+    { "union",        genesis::population::VariantParallelInputIterator::ContributionType::kCarrying },
+    { "intersection", genesis::population::VariantParallelInputIterator::ContributionType::kFollowing }
+};
+
+// =================================================================================================
 //      Setup Functions
 // =================================================================================================
 
@@ -88,6 +103,22 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
     //         }
     //     }
     // }
+
+    // Multi file set operation. In the VariantParallelInputIterator, we have a different way
+    // of expressing which loci of which input source to visit, but that would be way too complex
+    // to specify via a command line interface. So, at least for now, we simply boil it down
+    // to either the union of all loci, or their intersection.
+    multi_file_set_.option = sub->add_option(
+        "--multi-file-set",
+        multi_file_set_.value,
+        "When multiple input files are provided, select whether the union of all their loci is "
+        "used, or their intersection. For their union, input files that do not have data at a "
+        "particular locus are considered to have zero counts at every base at that locus."
+    );
+    multi_file_set_.option->group( "Input Settings" );
+    multi_file_set_.option->transform(
+        CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
+    );
 
     // Hidden options to set the LambdaIterator block sizes for speed.
 
@@ -628,11 +659,15 @@ void VariantInputOptions::prepare_data_multiple_files_() const
         );
     }
 
-    // Make a parallel input iterator, and add all input from all file formats to it.
-    // We currently add all inputs as "carrying", meaning that _all_ their loci are considered,
-    // and not only those that also occurr in other input files.
+    // Get whether the user wants the union or intersection of all parallel input loci.
+    auto const contribution = get_enum_map_value(
+        multi_file_contribution_type_map_, multi_file_set_.value
+    );
+
+    // Make a parallel input iterator, and add all input from all file formats to it,
+    // using the same contribution type for all of them, which either results in the union
+    // or the intersection of all input loci. See VariantParallelInputIterator for details.
     VariantParallelInputIterator parallel_it;
-    auto const contribution = VariantParallelInputIterator::ContributionType::kCarrying;
     for( auto const& file : sam_file_.file_paths() ) {
         parallel_it.add_variant_input_iterator( prepare_sam_iterator_( file ), contribution );
     }
