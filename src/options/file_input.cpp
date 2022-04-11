@@ -64,7 +64,9 @@ CLI::Option* FileInputOptions::add_multi_file_input_opt_to_app(
         "--" + option_name_infix + "-path",
         raw_paths_,
         "List of " + option_name_nice + " files or directories to process. For directories, " +
-        "only files with the extension `." + extension_nice + "` are processed." +
+        "only files with the extension `." + extension_nice + "` are processed. " +
+        "To input more than one file or directory, either separate them with spaces, " +
+        "or provide this option multiple times." +
         ( extra_help.empty() ? "" : " " + extra_help )
     );
     if( required ) {
