@@ -27,6 +27,7 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/bed_reader.hpp"
+#include "genesis/population/formats/gff_reader.hpp"
 #include "genesis/population/formats/simple_pileup_input_iterator.hpp"
 #include "genesis/population/formats/simple_pileup_reader.hpp"
 #include "genesis/population/formats/sync_input_iterator.hpp"
@@ -383,9 +384,23 @@ void VariantInputOptions::add_filter_opts_to_app(
     filter_region_bed_.option->check( CLI::ExistingFile );
     filter_region_bed_.option->group( group );
 
+    // Add option for genomic region filter by BED file
+    filter_region_gff_.option = sub->add_option(
+        "--filter-region-gff",
+        filter_region_gff_.value,
+        "Genomic regions to filter for, as a GFF2/GFF3/GTF file. This only uses the chromosome, "
+        "as well as start and end information per line, and ignores everything else in the file."
+    );
+    filter_region_gff_.option->check( CLI::ExistingFile );
+    filter_region_gff_.option->group( group );
+
     // Region filter could be mutually exclusive... but why not allow all of them.
     // filter_region_.option->excludes( filter_region_bed_.option );
+    // filter_region_.option->excludes( filter_region_gff_.option );
     // filter_region_bed_.option->excludes( filter_region_.option );
+    // filter_region_bed_.option->excludes( filter_region_gff_.option );
+    // filter_region_gff_.option->excludes( filter_region_.option );
+    // filter_region_gff_.option->excludes( filter_region_bed_.option );
 
     // Add option for sample name filter.
     filter_samples_include_.option = sub->add_option(
@@ -529,21 +544,8 @@ void VariantInputOptions::prepare_data_() const
     // biallelic snp filters (using the merged variants filter type setting), while vcf might not?!
     // or has it already set below or in the variant input iterator - need to check.
 
-    // Add the region filter. This is the first one we do, so that all others do not need to be
-    // applied to positions that are going to be filtered out anyway.
-    if( ! filter_region_.value.empty() ) {
-        auto const region = parse_genome_region( filter_region_.value );
-        iterator_.add_filter( filter_by_region( region ));
-    }
-
-    // Apply the region filter by bed file.
-    // We use a shared ptr that stays alive in the lambda produced by filter_by_region().
-    if( ! filter_region_bed_.value.empty() ) {
-        auto const region_list = std::make_shared<GenomeRegionList>(
-            BedReader().read_as_genome_region_list( from_file( filter_region_bed_.value ))
-        );
-        iterator_.add_filter( filter_by_region( region_list ));
-    }
+    // Add the region filters.
+    add_region_filters_to_iterator_( iterator_ );
 }
 
 // -------------------------------------------------------------------------
@@ -727,6 +729,38 @@ void VariantInputOptions::prepare_data_vcf_() const
 
     // Get the sample names. This will only contain the filtered names.
     sample_names_ = iterator_.data().sample_names;
+}
+
+void VariantInputOptions::add_region_filters_to_iterator_(
+    genesis::population::VariantInputIterator& iterator
+) const {
+    using namespace genesis;
+    using namespace genesis::population;
+    using namespace genesis::utils;
+
+    // Add the region filter. This is the first one we do, so that all others do not need to be
+    // applied to positions that are going to be filtered out anyway.
+    if( ! filter_region_.value.empty() ) {
+        auto const region = parse_genome_region( filter_region_.value );
+        iterator.add_filter( filter_by_region( region ));
+    }
+
+    // Apply the region filter by bed file.
+    // We use a shared ptr that stays alive in the lambda produced by filter_by_region().
+    if( ! filter_region_bed_.value.empty() ) {
+        auto const region_list = std::make_shared<GenomeRegionList>(
+            BedReader().read_as_genome_region_list( from_file( filter_region_bed_.value ))
+        );
+        iterator.add_filter( filter_by_region( region_list ));
+    }
+
+    // Apply the region filter by gff file. Same as above, just different reader.
+    if( ! filter_region_gff_.value.empty() ) {
+        auto const region_list = std::make_shared<GenomeRegionList>(
+            GffReader().read_as_genome_region_list( from_file( filter_region_gff_.value ))
+        );
+        iterator.add_filter( filter_by_region( region_list ));
+    }
 }
 
 // =================================================================================================

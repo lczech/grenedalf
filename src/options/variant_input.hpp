@@ -151,6 +151,10 @@ private:
     void prepare_data_sync_() const;
     void prepare_data_vcf_() const;
 
+    void add_region_filters_to_iterator_(
+        genesis::population::VariantInputIterator& iterator
+    ) const;
+
     /**
      * @brief Get a list of sample names, for example for pileup or sync files that do not have
      * sample names in the file, or to filter by sample name. The given @p list is interpreted
@@ -218,6 +222,7 @@ private:
     // Filters for rows and columns
     CliOption<std::string> filter_region_ = "";
     CliOption<std::string> filter_region_bed_ = "";
+    CliOption<std::string> filter_region_gff_ = "";
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
 
