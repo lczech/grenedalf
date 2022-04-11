@@ -240,11 +240,24 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
         required, group
     );
 
+    // Min phred score
+    pileup_min_base_qual_.option = sub->add_option(
+        "--pileup-min-base-qual",
+        pileup_min_base_qual_.value,
+        "Minimum phred quality score [0-90] for a base in (m)pileup files to be considered. "
+        "Bases below this are ignored when computing allele frequencies. "
+        "Default is 0, meaning no filtering by phred quality score."
+    );
+    pileup_min_base_qual_.option->group( group );
+    pileup_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
+    pileup_min_base_qual_.option->needs( pileup_file_.option() );
+
     // Quality encoding.
     pileup_quality_encoding_.option = sub->add_option(
         "--pileup-quality-encoding",
         pileup_quality_encoding_.value,
-        "Encoding of the quality scores of the bases in (m)pileup files. "
+        "Encoding of the quality scores of the bases in (m)pileup files, when using "
+        "--pileup-min-base-qual. "
         "Default is `\"sanger\"`, which seems to be the most common these days. "
         "Both `\"sanger\"` and `\"illumina-1.8\"` are identical and use an ASCII offset of 33, "
         "while `\"illumina-1.3\"` and `\"illumina-1.5\"` are identical with an ASCII offset of 64 "
@@ -259,18 +272,6 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
         )
     );
     pileup_quality_encoding_.option->needs( pileup_file_.option() );
-
-    // Min phred score
-    pileup_min_base_qual_.option = sub->add_option(
-        "--pileup-min-base-qual",
-        pileup_min_base_qual_.value,
-        "Minimum phred quality score [0-90] for a base in (m)pileup files to be considered. "
-        "Bases below this are ignored when computing allele frequencies. "
-        "Default is 0, meaning no filtering by phred quality score."
-    );
-    pileup_min_base_qual_.option->group( group );
-    pileup_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    pileup_min_base_qual_.option->needs( pileup_file_.option() );
 
     return pileup_file_.option();
 }
@@ -322,8 +323,7 @@ CLI::Option* VariantInputOptions::add_vcf_input_opt_to_app(
         "given, containing the counts of the reference and alternative base. "
         "This assumes that the data that was used to create the VCF file was actually a pool of "
         "individuals (e.g., from pool sequencing) for each sample (column) of the VCF file. "
-        "In this context, the `AD` field can then be interpreted as describing the allele "
-        "frequencines of each pool of individuals."
+        "We then interpret the `AD` field as the allele counts of each pool of individuals."
     );
 
     return vcf_file_.option();
