@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 // =================================================================================================
 
 /**
- * @brif Options helper class to set up consistent file output.
+ * @brief Options helper class to set up consistent file output.
  *
  * One instance of this class is meant to be used for a file or set of files that shall go into
  * the same output directory. For complex commands that produce several sets of files, it is

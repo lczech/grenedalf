@@ -26,6 +26,7 @@
 
 #include "CLI/CLI.hpp"
 
+#include "options/file_input.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/variant.hpp"
@@ -49,6 +50,12 @@
 class VariantInputOptions
 {
 public:
+
+    // -------------------------------------------------------------------------
+    //     Typedefs and Enums
+    // -------------------------------------------------------------------------
+
+    using VariantInputIterator = genesis::population::VariantInputIterator;
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
@@ -146,10 +153,13 @@ public:
 private:
 
     void prepare_data_() const;
-    void prepare_data_sam_() const;
-    void prepare_data_pileup_() const;
-    void prepare_data_sync_() const;
-    void prepare_data_vcf_() const;
+    void prepare_data_single_file_() const;
+    void prepare_data_multiple_files_() const;
+
+    VariantInputIterator prepare_sam_iterator_( std::string const& filename ) const;
+    VariantInputIterator prepare_pileup_iterator_( std::string const& filename ) const;
+    VariantInputIterator prepare_sync_iterator_( std::string const& filename ) const;
+    VariantInputIterator prepare_vcf_iterator_( std::string const& filename ) const;
 
     void add_region_filters_to_iterator_(
         genesis::population::VariantInputIterator& iterator
@@ -166,10 +176,10 @@ private:
     ) const;
 
     /**
-     * @brief For file formats that do not have sample names, use this function to set
+     * @brief For file formats that do not have sample names, use this function to get
      * their sample names, taking the sample naming options into account.
      */
-    void set_anonymous_sample_names_( size_t sample_count ) const;
+    std::vector<std::string> make_anonymous_sample_names_( size_t sample_count ) const;
 
     /**
      * @brief Return a list of the sample indices, which is needed for some of the readers
@@ -199,21 +209,21 @@ private:
     // Input file types
 
     // SAM/BAM/CRAM
-    CliOption<std::string> sam_file_          = "";
+    FileInputOptions       sam_file_;
     CliOption<size_t>      sam_min_map_qual_  = 0;
     CliOption<size_t>      sam_min_base_qual_ = 0;
     CliOption<bool>        sam_split_by_rg_   = false;
 
     // Pileup
-    CliOption<std::string> pileup_file_             = "";
+    FileInputOptions       pileup_file_;
     CliOption<std::string> pileup_quality_encoding_ = "sanger";
     CliOption<size_t>      pileup_min_base_qual_    = 0;
     // CliOption<bool> with_quality_string_ = true;
     // CliOption<bool> with_ancestral_base_ = false;
 
     // Sync, VCF
-    CliOption<std::string> sync_file_ = "";
-    CliOption<std::string> vcf_file_  = "";
+    FileInputOptions       sync_file_;
+    FileInputOptions       vcf_file_;
 
     // Sample names
     CliOption<std::string> sample_name_list_ = "";
@@ -233,7 +243,7 @@ private:
     // Working with a statically typed language, this is a bit tricky, so let's introduce a level of
     // abstraction that gives us an iterator over Variants that type-erases the input data format
     // by using a std::function with a lambda that simply returns Variant objects.
-    mutable genesis::population::VariantInputIterator iterator_;
+    mutable VariantInputIterator iterator_;
 
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;

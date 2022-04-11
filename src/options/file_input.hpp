@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -65,18 +65,22 @@ public:
     /**
      * @brief Add the options to an App.
      *
-     * Takes a file type used for help messages, and an extension for valid files.
-     * The extenion needs to be provided twice, once as a regex, e.g., `(fas|fasta)(\\.gz)?`,
-     * that is used for the actual file matching, and one "nice" version for user output,
-     * for example `(fas|fasta)[.gz]`, both of them without the leading period `.`
+     * Takes a file type used for option name and help messages (e.g., `sam`), a diplayed name for
+     * the file type in the help messages (e.g., `sam/bam/cram`, to tell the user that the input
+     * is actually for multiple types of exentensions of related file types), and an extension for
+     * valid files. The extenion needs to be provided twice, once as a regex, e.g.,
+     * `(fas|fasta)(\\.gz)?`, that is used for the actual file matching, and one "nice" version for
+     * user output, for example `(fas|fasta)[.gz]`, both of them without the leading period `.`
      */
     CLI::Option* add_multi_file_input_opt_to_app(
         CLI::App* sub,
-        std::string const& type,
+        std::string const& option_name_infix,
+        std::string const& option_name_nice,
         std::string const& extension_regex,
         std::string const& extension_nice,
         bool               required = true,
-        std::string const& group = "Input"
+        std::string const& group = "Input",
+        std::string const& extra_help = ""
     );
 
     /**
@@ -100,6 +104,11 @@ public:
     // -------------------------------------------------------------------------
 
 public:
+
+    /**
+     * @brief Return whether this option was provided by the user.
+     */
+    bool provided() const;
 
     /**
      * @brief Get the number of files that were provided by the user.

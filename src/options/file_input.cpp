@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,11 +42,13 @@
 
 CLI::Option* FileInputOptions::add_multi_file_input_opt_to_app(
     CLI::App* sub,
-    std::string const& type,
+    std::string const& option_name_infix,
+    std::string const& option_name_nice,
     std::string const& extension_regex,
     std::string const& extension_nice,
     bool               required,
-    std::string const& group
+    std::string const& group,
+    std::string const& extra_help
 ){
     // Correct setup check.
     if( option_ != nullptr ) {
@@ -54,15 +56,16 @@ CLI::Option* FileInputOptions::add_multi_file_input_opt_to_app(
     }
 
     // Store file type info.
-    file_type_ = type;
+    file_type_ = option_name_infix;
     file_ext_  = extension_regex;
 
     // Input files.
     option_ = sub->add_option(
-        "--" + type + "-path",
+        "--" + option_name_infix + "-path",
         raw_paths_,
-        "List of " + type + " files or directories to process. For directories, " +
-        "only files with the extension `." + extension_nice + "` are processed."
+        "List of " + option_name_nice + " files or directories to process. For directories, " +
+        "only files with the extension `." + extension_nice + "` are processed." +
+        ( extra_help.empty() ? "" : " " + extra_help )
     );
     if( required ) {
         option_->required();
@@ -78,6 +81,11 @@ CLI::Option* FileInputOptions::add_multi_file_input_opt_to_app(
 // =================================================================================================
 //      Run Functions
 // =================================================================================================
+
+bool FileInputOptions::provided() const
+{
+    return option_ && *option_;
+}
 
 size_t FileInputOptions::file_count() const
 {

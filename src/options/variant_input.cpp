@@ -32,6 +32,7 @@
 #include "genesis/population/formats/simple_pileup_reader.hpp"
 #include "genesis/population/formats/sync_input_iterator.hpp"
 #include "genesis/population/formats/sync_reader.hpp"
+#include "genesis/population/formats/variant_parallel_input_iterator.hpp"
 #include "genesis/population/formats/vcf_input_iterator.hpp"
 #include "genesis/population/functions/filter_transform.hpp"
 #include "genesis/population/functions/functions.hpp"
@@ -39,6 +40,7 @@
 #include "genesis/population/genome_region.hpp"
 #include "genesis/sequence/functions/quality.hpp"
 #include "genesis/utils/containers/filter_iterator.hpp"
+#include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -72,19 +74,20 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
     add_sync_input_opt_to_app( sub );
     add_vcf_input_opt_to_app( sub );
 
+    // Ha! Deactivated the below, as now we are allowing multiple input files!
     // Only one input file format allowed at a time, at least for now.
     // We could just list all pairs and call these options on all of them.
     // Or we can be fancy and do that in a nested loop over all pairs.
-    std::vector<CliOption<std::string>*> file_opt_ptrs {
-        &sam_file_, &pileup_file_, &sync_file_, &vcf_file_
-    };
-    for( size_t i = 0; i < file_opt_ptrs.size(); ++i ) {
-        for( size_t j = 0; j < file_opt_ptrs.size(); ++j ) {
-            if( i != j ) {
-                file_opt_ptrs[i]->option->excludes( file_opt_ptrs[j]->option );
-            }
-        }
-    }
+    // std::vector<CliOption<std::string>*> file_opt_ptrs {
+    //     &sam_file_, &pileup_file_, &sync_file_, &vcf_file_
+    // };
+    // for( size_t i = 0; i < file_opt_ptrs.size(); ++i ) {
+    //     for( size_t j = 0; j < file_opt_ptrs.size(); ++j ) {
+    //         if( i != j ) {
+    //             file_opt_ptrs[i]->option->excludes( file_opt_ptrs[j]->option );
+    //         }
+    //     }
+    // }
 
     // Hidden option to set the LambdaIterator block size for speed.
     block_size_.option = sub->add_option(
@@ -115,7 +118,7 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
 ) {
     // Correct setup check.
     internal_check(
-        sam_file_.option == nullptr,
+        sam_file_.option() == nullptr,
         "Cannot use the same VariantInputOptions object multiple times."
     );
 
@@ -123,16 +126,9 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
     // but at least the first two should actually be general filter settings.
 
     // Add the option
-    sam_file_.option = sub->add_option(
-        "--sam-file",
-        sam_file_.value,
-        "Path to a sam/bam/cram file."
+    sam_file_.add_multi_file_input_opt_to_app(
+        sub, "sam", "sam/bam/cram", "(sam(\\.gz)?|bam|cram)", "sam[.gz]|bam|cram", required, group
     );
-    sam_file_.option->check( CLI::ExistingFile );
-    sam_file_.option->group( group );
-    if( required ) {
-        sam_file_.option->required();
-    }
 
     // Min mapping quality
     sam_min_map_qual_.option = sub->add_option(
@@ -145,7 +141,7 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
     );
     sam_min_map_qual_.option->group( group );
     sam_min_map_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    sam_min_map_qual_.option->needs( sam_file_.option );
+    sam_min_map_qual_.option->needs( sam_file_.option() );
 
     // Min base qual
     sam_min_base_qual_.option = sub->add_option(
@@ -157,7 +153,7 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
     );
     sam_min_base_qual_.option->group( group );
     sam_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    sam_min_base_qual_.option->needs( sam_file_.option );
+    sam_min_base_qual_.option->needs( sam_file_.option() );
 
     // Split by RG read group tag.
     sam_split_by_rg_.option = sub->add_flag(
@@ -168,9 +164,9 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
         "Reads with an invalid (not in the header) read group tag or without a tag are ignored."
     );
     sam_split_by_rg_.option->group( group );
-    sam_split_by_rg_.option->needs( sam_file_.option );
+    sam_split_by_rg_.option->needs( sam_file_.option() );
 
-    return sam_file_.option;
+    return sam_file_.option();
 }
 
 // -------------------------------------------------------------------------
@@ -184,23 +180,19 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
 ) {
     // Correct setup check.
     internal_check(
-        pileup_file_.option == nullptr,
+        pileup_file_.option() == nullptr,
         "Cannot use the same VariantInputOptions object multiple times."
     );
 
     // TODO add options for reading: with quality, with ancestral base
 
     // Add the option
-    pileup_file_.option = sub->add_option(
-        "--pileup-file",
-        pileup_file_.value,
-        "Path to an (m)pileup file."
+    pileup_file_.add_multi_file_input_opt_to_app(
+        sub, "pileup", "(m)pileup",
+        "(plp|mplp|pileup|mpileup)(\\.gz)?",
+        "(plp|mplp|pileup|mpileup)[.gz]",
+        required, group
     );
-    pileup_file_.option->check( CLI::ExistingFile );
-    pileup_file_.option->group( group );
-    if( required ) {
-        pileup_file_.option->required();
-    }
 
     // Quality encoding.
     pileup_quality_encoding_.option = sub->add_option(
@@ -220,7 +212,7 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
             CLI::ignore_case
         )
     );
-    pileup_quality_encoding_.option->needs( pileup_file_.option );
+    pileup_quality_encoding_.option->needs( pileup_file_.option() );
 
     // Min phred score
     pileup_min_base_qual_.option = sub->add_option(
@@ -232,9 +224,9 @@ CLI::Option* VariantInputOptions::add_pileup_input_opt_to_app(
     );
     pileup_min_base_qual_.option->group( group );
     pileup_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    pileup_min_base_qual_.option->needs( pileup_file_.option );
+    pileup_min_base_qual_.option->needs( pileup_file_.option() );
 
-    return pileup_file_.option;
+    return pileup_file_.option();
 }
 
 // -------------------------------------------------------------------------
@@ -248,23 +240,18 @@ CLI::Option* VariantInputOptions::add_sync_input_opt_to_app(
 ) {
     // Correct setup check.
     internal_check(
-        sync_file_.option == nullptr,
+        sync_file_.option() == nullptr,
         "Cannot use the same VariantInputOptions object multiple times."
     );
 
     // Add the option
-    sync_file_.option = sub->add_option(
-        "--sync-file",
-        sync_file_.value,
-        "Path to a sync file, as specified by PoPoolation2."
+    sync_file_.add_multi_file_input_opt_to_app(
+        sub, "sync", "sync (as specified by PoPoolation2)",
+        "sync(\\.gz)?", "sync[.gz]",
+        required, group
     );
-    sync_file_.option->check( CLI::ExistingFile );
-    sync_file_.option->group( group );
-    if( required ) {
-        sync_file_.option->required();
-    }
 
-    return sync_file_.option;
+    return sync_file_.option();
 }
 
 // -------------------------------------------------------------------------
@@ -278,28 +265,22 @@ CLI::Option* VariantInputOptions::add_vcf_input_opt_to_app(
 ) {
     // Correct setup check.
     internal_check(
-        vcf_file_.option == nullptr,
+        vcf_file_.option() == nullptr,
         "Cannot use the same VariantInputOptions object multiple times."
     );
 
     // Add the option
-    vcf_file_.option = sub->add_option(
-        "--vcf-file",
-        vcf_file_.value,
-        "Path to a VCF file with per-sample `AD` (alleleic depth) fields. "
+    vcf_file_.add_multi_file_input_opt_to_app(
+        sub, "vcf", "vcf/bcf", "(vcf(\\.gz)?|bcf)", "vcf[.gz]|bcf", required, group,
+        "This expects that the input file has the per-sample VCF FORMAT field `AD` (alleleic depth) "
+        "given, containing the counts of the reference and alternative base. "
         "This assumes that the data that was used to create the VCF file was actually a pool of "
         "individuals (e.g., from pool sequencing) for each sample (column) of the VCF file. "
-        "This expects that the VCF FORMAT field `AD` is given and contains the counts of the  "
-        "reference and alternative base, which in this context can be interpreted as "
-        "describing the allele frequencines of each pool of individuals."
+        "In this context, the `AD` field can then be interpreted as describing the allele "
+        "frequencines of each pool of individuals."
     );
-    vcf_file_.option->check( CLI::ExistingFile );
-    vcf_file_.option->group( group );
-    if( required ) {
-        vcf_file_.option->required();
-    }
 
-    return vcf_file_.option;
+    return vcf_file_.option();
 }
 
 // -------------------------------------------------------------------------
@@ -326,6 +307,7 @@ void VariantInputOptions::add_sample_name_opts_to_app(
         "the actual input file. We then use these names in the output and the "
         "`--filter-samples-include` and `--filter-samples-exclude` options. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
+        "Note that this option can only be used if a single file is given as input."
         "Alternatively, use `--sample-name-prefix` to provide a prefix for this sample numbering."
     );
     sample_name_list_.option->group( group );
@@ -340,6 +322,7 @@ void VariantInputOptions::add_sample_name_opts_to_app(
         "names per sample that we use in the output and the `--filter-samples-include` and "
         "`--filter-samples-exclude` options. For example, use \"Sample_\" as a prefix. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
+        "This prefix also works if multiple files are given as input."
         "Alternatively, use `--sample-name-list` to directly provide a list of sample names."
     );
     sample_name_prefix_.option->group( group );
@@ -379,7 +362,7 @@ void VariantInputOptions::add_filter_opts_to_app(
         filter_region_bed_.value,
         "Genomic regions to filter for, as a BED file. In its simplest form, this file may contain "
         "a list of regions, one per line, with tab-separated chromosome and start and end positions. "
-        "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position."
+        // "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position."
     );
     filter_region_bed_.option->check( CLI::ExistingFile );
     filter_region_bed_.option->group( group );
@@ -410,7 +393,7 @@ void VariantInputOptions::add_filter_opts_to_app(
         "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
         "is provided, all samples in the input file are used. The option considers "
         "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
-        "names."
+        "names. Note that this option can only be used if a single file is given as input."
     );
     filter_samples_include_.option->group( group );
 
@@ -422,7 +405,7 @@ void VariantInputOptions::add_filter_opts_to_app(
         "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
         "is provided, all samples in the input file are used. The option considers "
         "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
-        "names."
+        "names. Note that this option can only be used if a single file is given as input."
     );
     filter_samples_exclude_.option->group( group );
 
@@ -475,17 +458,69 @@ void VariantInputOptions::prepare_data_() const
         return;
     }
 
-    // Check that we have exactly one input file type.
-    // We use size_t even though it's a bool, to be able to quickly check that.
-    auto const is_sam    = static_cast<size_t>( sam_file_.option    && *sam_file_.option );
-    auto const is_pileup = static_cast<size_t>( pileup_file_.option && *pileup_file_.option );
-    auto const is_sync   = static_cast<size_t>( sync_file_.option   && *sync_file_.option );
-    auto const is_vcf    = static_cast<size_t>( vcf_file_.option    && *vcf_file_.option );
-    if( is_sam + is_pileup + is_sync + is_vcf != 1 ) {
-        throw CLI::ValidationError(
-            "Exactly one input file of one type has to be provided."
-        );
+    // Check how many files are given. If it is a single one, we just use that for the input
+    // iterator, which is faster than piping it through a parallel iterator. For multiple files,
+    // we create a parallel iterator.
+    size_t file_count = 0;
+    if( sam_file_.provided() ) {
+        file_count += sam_file_.file_count();
     }
+    if( pileup_file_.provided() ) {
+        file_count += pileup_file_.file_count();
+    }
+    if( sync_file_.provided() ) {
+        file_count += sync_file_.file_count();
+    }
+    if( vcf_file_.provided() ) {
+        file_count += vcf_file_.file_count();
+    }
+
+    // Set up iterator depending on how many files we found in total across all inputs.
+    if( file_count == 0 ) {
+        throw CLI::ValidationError(
+            "At least one input file has to be provided."
+        );
+    } else if( file_count == 1 ) {
+        prepare_data_single_file_();
+    } else {
+        prepare_data_multiple_files_();
+    }
+    assert( iterator_ );
+    assert( ! sample_names_.empty() );
+
+    // Some user output.
+    LOG_MSG1 << "Processing " << sample_names_.size()
+             << " sample" << ( sample_names_.size() == 1 ? "" : "s" );
+    for( auto const& sn : sample_names_ ) {
+        LOG_MSG2 << " - " << sn;
+    }
+    LOG_MSG1;
+    if( contains_duplicates( sample_names_ )) {
+        LOG_WARN << "The input contains duplicate sample names. ""We can work with that internally, "
+                 << "but it will make working with the output more difficult.";
+        LOG_MSG1;
+    }
+}
+
+// -------------------------------------------------------------------------
+//     prepare_data_single_file_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::prepare_data_single_file_() const
+{
+    // Check that we have exactly one input files.
+    auto const is_sam    = sam_file_.provided();
+    auto const is_pileup = pileup_file_.provided();
+    auto const is_sync   = sync_file_.provided();
+    auto const is_vcf    = vcf_file_.provided();
+    internal_check(
+        ( is_sam + is_pileup + is_sync + is_vcf == 1 ) &&
+        (
+            sam_file_.file_count()  + pileup_file_.file_count() +
+            sync_file_.file_count() + vcf_file_.file_count()    == 1
+        ),
+        "prepare_data_single_file_() called with more than one file provided"
+    );
 
     // If a sample name prefix or a list is given,
     // we check that this is only for the allowed file types.
@@ -506,54 +541,126 @@ void VariantInputOptions::prepare_data_() const
     }
 
     // Prepare the iterator depending on the input file format.
-    if( sam_file_.option && *sam_file_.option ) {
-        prepare_data_sam_();
+    if( sam_file_.provided() ) {
+        iterator_ = prepare_sam_iterator_( sam_file_.file_paths()[0] );
     }
-    if( pileup_file_.option && *pileup_file_.option ) {
-        prepare_data_pileup_();
+    if( pileup_file_.provided() ) {
+        iterator_ = prepare_pileup_iterator_( pileup_file_.file_paths()[0] );
     }
-    if( sync_file_.option && *sync_file_.option ) {
-        prepare_data_sync_();
+    if( sync_file_.provided() ) {
+        iterator_ = prepare_sync_iterator_( sync_file_.file_paths()[0] );
     }
-    if( vcf_file_.option && *vcf_file_.option ) {
-        prepare_data_vcf_();
+    if( vcf_file_.provided() ) {
+        iterator_ = prepare_vcf_iterator_( vcf_file_.file_paths()[0] );
     }
 
-    // Now we have set up the iterator. User output about the sample names.
+    // Copy over the sample names from the iterator, so that they are accessible.
+    sample_names_ = iterator_.data().sample_names;
+    if( sample_names_.empty() ) {
+        throw std::runtime_error( "Invalid input file that does not contain any samples." );
+    }
     internal_check(
         static_cast<bool>( iterator_ ) && ! sample_names_.empty(),
-        "prepare_data_() call to file prepare function did not succeed."
+        "prepare_data_single_file_() call to file prepare function did not succeed."
     );
-    LOG_MSG1 << "Processing " << sample_names_.size()
-             << " sample" << ( sample_names_.size() == 1 ? "" : "s" );
-    for( auto const& sn : sample_names_ ) {
-        LOG_MSG2 << " - " << sn;
-    }
-    LOG_MSG1;
 
-    // Set the buffer block size of the iterator, for parallel processing speed.
+    // Add the region filters.
+    add_region_filters_to_iterator_( iterator_ );
+
+    // Set the buffer block size of the iterator, for multi-threaded processing speed.
     // Needs to be tested - might give more or less advantage depending on setting.
     iterator_.block_size( block_size_.value );
-
-    // TODO
-    // Now the iterator is set up according to the input file type that we are processing.
-    // Time to add the filters.
-    // add filters, region
 
     // TODO also add filters depending on file type.. sam pileup and sync might need
     // biallelic snp filters (using the merged variants filter type setting), while vcf might not?!
     // or has it already set below or in the variant input iterator - need to check.
-
-    // Add the region filters.
-    add_region_filters_to_iterator_( iterator_ );
 }
 
 // -------------------------------------------------------------------------
-//     prepare_data_sam_
+//     prepare_data_multiple_files_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_sam_() const
+void VariantInputOptions::prepare_data_multiple_files_() const
 {
+    using namespace genesis;
+    using namespace genesis::population;
+    using namespace genesis::utils;
+
+    // Check that we have multiple input files.
+    internal_check(
+        sam_file_.file_count()  + pileup_file_.file_count() +
+        sync_file_.file_count() + vcf_file_.file_count()   > 1,
+        "prepare_data_multiple_files_() called with just one file provided"
+    );
+
+    // Sample name list cannot be used with multiple files.
+    if( sample_name_list_.option && *sample_name_list_.option ) {
+        throw CLI::ValidationError(
+            "Can only use " + sample_name_list_.option->get_name() + " for single input files, "
+            "but not when multiple input files are given."
+        );
+    }
+
+    // No sample name filters can be given, as that would just be too tedious to specify via a CLI.
+    if( ! filter_samples_include_.value.empty() || ! filter_samples_exclude_.value.empty() ) {
+        throw CLI::ValidationError(
+            filter_samples_include_.option->get_name() + "(" + filter_samples_include_.value + "), " +
+            filter_samples_exclude_.option->get_name() + "(" + filter_samples_exclude_.value + ")",
+            "Can only use sample name filters for single input files, "
+            "but not when multiple input files are given, "
+            "as specifying filters per file via a command line interface is just too tedious."
+        );
+    }
+
+    // Make a parallel input iterator, and add all input from all file formats to it.
+    // We currently add all inputs as "carrying", meaning that _all_ their loci are considered,
+    // and not only those that also occurr in other input files.
+    VariantParallelInputIterator parallel_it;
+    auto const contribution = VariantParallelInputIterator::ContributionType::kCarrying;
+    for( auto const& file : sam_file_.file_paths() ) {
+        parallel_it.add_variant_input_iterator( prepare_sam_iterator_( file ), contribution );
+    }
+    for( auto const& file : pileup_file_.file_paths() ) {
+        parallel_it.add_variant_input_iterator( prepare_pileup_iterator_( file ), contribution );
+    }
+    for( auto const& file : sync_file_.file_paths() ) {
+        parallel_it.add_variant_input_iterator( prepare_sync_iterator_( file ), contribution );
+    }
+    for( auto const& file : vcf_file_.file_paths() ) {
+        parallel_it.add_variant_input_iterator( prepare_vcf_iterator_( file ), contribution );
+    }
+
+    // Go through all sources again, build the sample names list from them,
+    // and add the region filters to all of them, so that regions are filtered before
+    // the data even reaches the parallel iterator. Faster!
+    assert( sample_names_.empty() );
+    for( auto& input : parallel_it.inputs() ) {
+        for( auto const& sample_name : input.data().sample_names ) {
+            sample_names_.push_back( input.data().source_name + ":" + sample_name );
+        }
+        add_region_filters_to_iterator_( input );
+    }
+
+    // Finally, create the parallel iterator.
+    iterator_ = make_variant_input_iterator_from_variant_parallel_input_iterator( parallel_it );
+    internal_check(
+        iterator_.data().sample_names.size() == sample_names_.size(),
+        "prepare_data_multiple_files_() with different number of samples in iterator and list"
+    );
+
+    // Set the buffer block size of the iterator, for multi-threaded speed.
+    // We only buffer the final parallel iterator, and not its individual sources,
+    // in order to not keep too many threads from spawning... Might need testing and refinement.
+    iterator_.block_size( block_size_.value );
+}
+
+// -------------------------------------------------------------------------
+//     prepare_sam_iterator_
+// -------------------------------------------------------------------------
+
+VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sam_iterator_(
+    std::string const& filename
+) const {
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::utils;
@@ -561,7 +668,7 @@ void VariantInputOptions::prepare_data_sam_() const
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
-        "prepare_data_sam_() called in an invalid context."
+        "prepare_sam_iterator_() called in an invalid context."
     );
 
     // Prepare the reader with all its settings.
@@ -603,23 +710,28 @@ void VariantInputOptions::prepare_data_sam_() const
     }
 
     // Make an iterator.
-    iterator_ = make_variant_input_iterator_from_sam_file( sam_file_.value, reader );
+    auto iterator = make_variant_input_iterator_from_sam_file( filename, reader );
 
-    // If we do not split by RG tag, there is only a single sample. But still let's name it,
-    // and check that the number of samples is the same as our list here.
-    set_anonymous_sample_names_( iterator_.data().sample_names.size() );
-    internal_check(
-        sample_names_.size() == iterator_.data().sample_names.size(),
-        "pileup file with different number of samples than the given sample list"
-    );
+    // If we do not split by RG tag, there is only a single sample. But still let's name it.
+    // make_variant_input_iterator_from_sam_file() with rg splitting returns a list with as many
+    // empty strings as the file has samples (exactly one in that case).
+    if( ! sam_split_by_rg_.value ) {
+        assert( iterator.data().sample_names.size() == 1 );
+        iterator.data().sample_names = make_anonymous_sample_names_(
+            iterator.data().sample_names.size()
+        );
+    }
+
+    return iterator;
 }
 
 // -------------------------------------------------------------------------
-//     prepare_data_pileup_
+//     prepare_pileup_iterator_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_pileup_() const
-{
+VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_pileup_iterator_(
+    std::string const& filename
+) const {
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::sequence;
@@ -628,7 +740,7 @@ void VariantInputOptions::prepare_data_pileup_() const
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
-        "prepare_data_pileup_() called in an invalid context."
+        "prepare_pileup_iterator_() called in an invalid context."
     );
 
     // TODO min_phred_score is the old name. we currently use it here to distinguish it from
@@ -645,25 +757,27 @@ void VariantInputOptions::prepare_data_pileup_() const
     reader.min_base_quality( pileup_min_base_qual_.value );
 
     // Make an iterator.
-    iterator_ = make_variant_input_iterator_from_pileup_file(
-        pileup_file_.value, sample_filter.first, sample_filter.second, reader
+    auto iterator = make_variant_input_iterator_from_pileup_file(
+        filename, sample_filter.first, sample_filter.second, reader
     );
 
-    // Pileup does not have sample names, so set them based on user input or simple enumeration,
-    // and check that the number of samples is the same as our list here.
-    set_anonymous_sample_names_( iterator_.data().sample_names.size() );
-    internal_check(
-        sample_names_.size() == iterator_.data().sample_names.size(),
-        "pileup file with different number of samples than the given sample list"
+    // Pileup does not have sample names, so set them based on user input or simple enumeration.
+    // make_variant_input_iterator_from_pileup_file() returns a list with as many
+    // empty strings as the file has samples (exactly one in that case).
+    iterator.data().sample_names = make_anonymous_sample_names_(
+        iterator.data().sample_names.size()
     );
+
+    return iterator;
 }
 
 // -------------------------------------------------------------------------
-//     prepare_data_sync_
+//     prepare_sync_iterator_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_sync_() const
-{
+VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sync_iterator_(
+    std::string const& filename
+) const {
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::utils;
@@ -671,32 +785,34 @@ void VariantInputOptions::prepare_data_sync_() const
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
-        "prepare_data_sync_() called in an invalid context."
+        "prepare_sync_iterator_() called in an invalid context."
     );
 
-    // We can use the sample filter settings, see prepare_data_pileup_() for details.
+    // We can use the sample filter settings, see prepare_pileup_iterator_() for details.
     auto const sample_filter = find_sample_indices_from_sample_filters_();
 
     // Make an iterator.
-    iterator_ = make_variant_input_iterator_from_sync_file(
-        sync_file_.value, sample_filter.first, sample_filter.second
+    auto iterator = make_variant_input_iterator_from_sync_file(
+        filename, sample_filter.first, sample_filter.second
     );
 
-    // Sync does not have sample names, so set them based on user input or simple enumeration,
-    // and check that the number of samples is the same as our list here.
-    set_anonymous_sample_names_( iterator_.data().sample_names.size() );
-    internal_check(
-        sample_names_.size() == iterator_.data().sample_names.size(),
-        "sync file with different number of samples than the given sample list"
+    // Sync does not have sample names, so set them based on user input or simple enumeration.
+    // make_variant_input_iterator_from_sync_file() returns a list with as many
+    // empty strings as the file has samples (exactly one in that case).
+    iterator.data().sample_names = make_anonymous_sample_names_(
+        iterator.data().sample_names.size()
     );
+
+    return iterator;
 }
 
 // -------------------------------------------------------------------------
-//     prepare_data_vcf_
+//     prepare_vcf_iterator_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_vcf_() const
-{
+VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_vcf_iterator_(
+    std::string const& filename
+) const {
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::utils;
@@ -704,32 +820,42 @@ void VariantInputOptions::prepare_data_vcf_() const
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
-        "prepare_data_vcf_() called in an invalid context."
+        "prepare_vcf_iterator_() called in an invalid context."
     );
 
     // Prepare the iterator.
     // See if we want to filter by sample name, and if so, resolve the name list.
     // By default, this also already filters for biallelic SNPs.
+    VariantInputIterator iterator;
     bool const only_biallelic = true;
     if( ! filter_samples_include_.value.empty() ) {
         auto const list = process_sample_name_list_option_( filter_samples_include_.value );
-        iterator_ = make_variant_input_iterator_from_pool_vcf_file(
-            vcf_file_.value, list, false, only_biallelic
+        iterator = make_variant_input_iterator_from_pool_vcf_file(
+            filename, list, false, only_biallelic
         );
     } else if( ! filter_samples_exclude_.value.empty() ) {
         auto const list = process_sample_name_list_option_( filter_samples_exclude_.value );
-        iterator_ = make_variant_input_iterator_from_pool_vcf_file(
-            vcf_file_.value, list, true, only_biallelic
+        iterator = make_variant_input_iterator_from_pool_vcf_file(
+            filename, list, true, only_biallelic
         );
     } else {
-        iterator_ = make_variant_input_iterator_from_pool_vcf_file(
-            vcf_file_.value, only_biallelic
+        iterator = make_variant_input_iterator_from_pool_vcf_file(
+            filename, only_biallelic
         );
     }
 
-    // Get the sample names. This will only contain the filtered names.
-    sample_names_ = iterator_.data().sample_names;
+    // As opposed to the above file formats, VCF contains sample names (only the filtered ones).
+    // So here we do not need to set them, and can directly return.
+    return iterator;
 }
+
+// =================================================================================================
+//     Region Filters
+// =================================================================================================
+
+// -------------------------------------------------------------------------
+//     add_region_filters_to_iterator_
+// -------------------------------------------------------------------------
 
 void VariantInputOptions::add_region_filters_to_iterator_(
     genesis::population::VariantInputIterator& iterator
@@ -764,7 +890,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
 }
 
 // =================================================================================================
-//     Sample Name Filtering
+//     Sample Name Processing
 // =================================================================================================
 
 // -------------------------------------------------------------------------
@@ -792,29 +918,33 @@ std::vector<std::string> VariantInputOptions::process_sample_name_list_option_(
 }
 
 // -------------------------------------------------------------------------
-//     set_anonymous_sample_names_
+//     make_anonymous_sample_names_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::set_anonymous_sample_names_( size_t sample_count ) const
-{
+std::vector<std::string> VariantInputOptions::make_anonymous_sample_names_(
+    size_t sample_count
+) const {
     // Edge case, just to make sure.
     if( sample_count == 0 ) {
         throw std::runtime_error( "Input file does not contain any samples." );
     }
 
+    // Prepare
+    std::vector<std::string> result;
+
     // In case we have a proper list of sample names, use that.
     if( sample_name_list_.option && *sample_name_list_.option ) {
-        sample_names_ = process_sample_name_list_option_( sample_name_list_.value );
-        if( sample_names_.size() != sample_count ) {
+        result = process_sample_name_list_option_( sample_name_list_.value );
+        if( result.size() != sample_count ) {
             throw CLI::ValidationError(
                 sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
-                "Invalid sample names list that contains " + std::to_string( sample_names_.size() ) +
+                "Invalid sample names list that contains " + std::to_string( result.size() ) +
                 " name entries. This is incongruent with the input file, which contains " +
                 std::to_string( sample_count ) + " samples."
             );
         }
-        assert( sample_names_.size() > 0 );
-        return;
+        assert( result.size() > 0 );
+        return result;
     }
 
     // In case we have a prefix for sample names instead, or nothing, just enumerate.
@@ -822,11 +952,12 @@ void VariantInputOptions::set_anonymous_sample_names_( size_t sample_count ) con
     if( sample_name_prefix_.option && *sample_name_prefix_.option ) {
         prefix = sample_name_prefix_.value;
     }
-    sample_names_.reserve( sample_count );
+    result.reserve( sample_count );
     for( size_t i = 0; i < sample_count; ++i ) {
-        sample_names_.emplace_back( prefix + std::to_string( i + 1 ));
+        result.emplace_back( prefix + std::to_string( i + 1 ));
     }
-    assert( sample_names_.size() > 0 );
+    assert( result.size() > 0 );
+    return result;
 }
 
 // -------------------------------------------------------------------------
@@ -847,6 +978,8 @@ VariantInputOptions::find_sample_indices_from_sample_filters_() const
     internal_check( !( is_include && is_exclude ), "include and exclude filters are both given" );
 
     // If no filters are given, just return empty, indicating to the caller that we do not filter.
+    // This is also the return of this function when multiple files are given, in which case
+    // we cannot apply sample filtering... that would just be too tedious to provide via a CLI.
     if( ! is_include && ! is_exclude ) {
         assert( indices.empty() );
         return { indices, false };
