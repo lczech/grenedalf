@@ -216,8 +216,8 @@ private:
 
     // Pileup
     FileInputOptions       pileup_file_;
-    CliOption<std::string> pileup_quality_encoding_ = "sanger";
     CliOption<size_t>      pileup_min_base_qual_    = 0;
+    CliOption<std::string> pileup_quality_encoding_ = "sanger";
     // CliOption<bool> with_quality_string_ = true;
     // CliOption<bool> with_ancestral_base_ = false;
 

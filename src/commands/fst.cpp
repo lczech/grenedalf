@@ -84,7 +84,7 @@ void setup_fst( CLI::App& app )
     );
     options->method.option->group( "Settings" );
     options->method.option->transform(
-        CLI::IsMember({ "spence-nei", "spence-hudson" "kofler", "karlsson" }, CLI::ignore_case )
+        CLI::IsMember({ "spence-nei", "spence-hudson", "kofler", "karlsson" }, CLI::ignore_case )
     );
 
     // TODO need settings for min/max coverage etc. see prototype implementations!
