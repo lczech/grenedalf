@@ -108,15 +108,15 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
     // of expressing which loci of which input source to visit, but that would be way too complex
     // to specify via a command line interface. So, at least for now, we simply boil it down
     // to either the union of all loci, or their intersection.
-    multi_file_set_.option = sub->add_option(
-        "--multi-file-set",
-        multi_file_set_.value,
+    multi_file_loci_.option = sub->add_option(
+        "--multi-file-loci",
+        multi_file_loci_.value,
         "When multiple input files are provided, select whether the union of all their loci is "
         "used, or their intersection. For their union, input files that do not have data at a "
         "particular locus are considered to have zero counts at every base at that locus."
     );
-    multi_file_set_.option->group( "Input Settings" );
-    multi_file_set_.option->transform(
+    multi_file_loci_.option->group( "Input Settings" );
+    multi_file_loci_.option->transform(
         CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
     );
 
@@ -661,7 +661,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
 
     // Get whether the user wants the union or intersection of all parallel input loci.
     auto const contribution = get_enum_map_value(
-        multi_file_contribution_type_map_, multi_file_set_.value
+        multi_file_contribution_type_map_, multi_file_loci_.value
     );
 
     // Make a parallel input iterator, and add all input from all file formats to it,

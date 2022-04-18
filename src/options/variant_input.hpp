@@ -226,7 +226,7 @@ private:
     FileInputOptions       vcf_file_;
 
     // General input settings
-    CliOption<std::string> multi_file_set_ = "union";
+    CliOption<std::string> multi_file_loci_ = "union";
 
     // Sample names
     CliOption<std::string> sample_name_list_ = "";
