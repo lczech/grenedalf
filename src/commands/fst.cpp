@@ -44,6 +44,25 @@
 #endif
 
 // =================================================================================================
+//      Enum Mapping
+// =================================================================================================
+
+enum class FstMethod
+{
+    kSpenceNei,
+    kSpenceHudson,
+    kKofler,
+    kKarlsson
+};
+
+std::vector<std::pair<std::string, FstMethod>> const fst_method_map = {
+    { "spence-nei",    FstMethod::kSpenceNei },
+    { "spence-hudson", FstMethod::kSpenceHudson },
+    { "kofler",        FstMethod::kKofler },
+    { "karlsson",      FstMethod::kKarlsson }
+};
+
+// =================================================================================================
 //      Setup
 // =================================================================================================
 
@@ -84,7 +103,7 @@ void setup_fst( CLI::App& app )
     );
     options->method.option->group( "Settings" );
     options->method.option->transform(
-        CLI::IsMember({ "spence-nei", "spence-hudson", "kofler", "karlsson" }, CLI::ignore_case )
+        CLI::IsMember( enum_map_keys( fst_method_map ), CLI::ignore_case )
     );
 
     // TODO need settings for min/max coverage etc. see prototype implementations!
@@ -246,26 +265,9 @@ void run_fst( FstOptions const& options )
     // Use an enum for the method, which is faster to check in the main loop than doing
     // string comparisons all the time. We could use a bool here, but let's be prepared for
     // any additional future F_ST methods.
-    enum class Method
-    {
-        kSpenceNei,
-        kSpenceHudson,
-        kKofler,
-        kKarlsson
-    };
-    auto method = Method::kSpenceNei;
-    if( options.method.value == "spence-nei" ) {
-        method = Method::kSpenceNei;
-    } else if( options.method.value == "spence-hudson" ) {
-        method = Method::kSpenceHudson;
-    } else if( options.method.value == "kofler" ) {
-        method = Method::kKofler;
-    } else if( options.method.value == "karlsson" ) {
-        method = Method::kKarlsson;
-    } else {
-        // Can't really happen, as CLI11 checks already, but just in case.
-        throw std::invalid_argument( "Invalid F_ST method: " + options.method.value );
-    }
+    auto const method = get_enum_map_value(
+        fst_method_map, options.method.value
+    );
 
     // Get indices of all pairs of samples for which we want to compute F_ST.
     auto const sample_pairs = get_sample_pairs_( options );
@@ -282,7 +284,9 @@ void run_fst( FstOptions const& options )
 
     // Get the pool sizes for all samples that we are interested in.
     auto const needs_pool_sizes = (
-        method == Method::kSpenceNei || method == Method::kSpenceHudson || method == Method::kKofler
+        method == FstMethod::kSpenceNei ||
+        method == FstMethod::kSpenceHudson ||
+        method == FstMethod::kKofler
     );
     auto const pool_sizes = (
         needs_pool_sizes
@@ -385,31 +389,41 @@ void run_fst( FstOptions const& options )
             );
 
             // Run the computation.
-            if( method == Method::kSpenceNei ) {
-                window_fst[i] = f_st_pool_spence(
-                    pool_sizes[index_a], pool_sizes[index_b],
-                    range_a.begin(), range_a.end(),
-                    range_b.begin(), range_b.end()
-                ).first;
-            } else if( method == Method::kSpenceHudson ) {
-                window_fst[i] = f_st_pool_spence(
-                    pool_sizes[index_a], pool_sizes[index_b],
-                    range_a.begin(), range_a.end(),
-                    range_b.begin(), range_b.end()
-                ).second;
-            } else if( method == Method::kKofler ) {
-                window_fst[i] = f_st_pool_kofler(
-                    pool_sizes[index_a], pool_sizes[index_b],
-                    range_a.begin(), range_a.end(),
-                    range_b.begin(), range_b.end()
-                );
-            } else if( method == Method::kKarlsson ) {
-                window_fst[i] = f_st_pool_karlsson(
-                    range_a.begin(), range_a.end(),
-                    range_b.begin(), range_b.end()
-                );
-            } else {
-                throw std::domain_error( "Internal error: Invalid F_ST method." );
+            switch( method ) {
+                case FstMethod::kSpenceNei: {
+                    window_fst[i] = f_st_pool_spence(
+                        pool_sizes[index_a], pool_sizes[index_b],
+                        range_a.begin(), range_a.end(),
+                        range_b.begin(), range_b.end()
+                    ).first;
+                    break;
+                }
+                case FstMethod::kSpenceHudson: {
+                    window_fst[i] = f_st_pool_spence(
+                        pool_sizes[index_a], pool_sizes[index_b],
+                        range_a.begin(), range_a.end(),
+                        range_b.begin(), range_b.end()
+                    ).second;
+                    break;
+                }
+                case FstMethod::kKofler: {
+                    window_fst[i] = f_st_pool_kofler(
+                        pool_sizes[index_a], pool_sizes[index_b],
+                        range_a.begin(), range_a.end(),
+                        range_b.begin(), range_b.end()
+                    );
+                    break;
+                }
+                case FstMethod::kKarlsson: {
+                    window_fst[i] = f_st_pool_karlsson(
+                        range_a.begin(), range_a.end(),
+                        range_b.begin(), range_b.end()
+                    );
+                    break;
+                }
+                default: {
+                    throw std::domain_error( "Internal error: Invalid F_ST method." );
+                }
             }
         }
 
