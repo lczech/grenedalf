@@ -29,6 +29,7 @@
 #include "genesis/utils/text/string.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <stdexcept>
 
@@ -59,12 +60,19 @@ CLI::Option* FileInputOptions::add_multi_file_input_opt_to_app(
     file_type_ = option_name_infix;
     file_ext_  = extension_regex;
 
+    // Refine nice extensions for help menu.
+    auto ext_nice = extension_nice;
+    assert( ! ext_nice.empty() );
+    if( ext_nice[0] != '.' ) {
+        ext_nice = "." + ext_nice;
+    }
+
     // Input files.
     option_ = sub->add_option(
         "--" + option_name_infix + "-path",
         raw_paths_,
         "List of " + option_name_nice + " files or directories to process. For directories, " +
-        "only files with the extension `." + extension_nice + "` are processed. " +
+        "only files with the extension `" + ext_nice + "` are processed. " +
         "To input more than one file or directory, either separate them with spaces, " +
         "or provide this option multiple times." +
         ( extra_help.empty() ? "" : " " + extra_help )

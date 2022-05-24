@@ -113,7 +113,8 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
         multi_file_loci_.value,
         "When multiple input files are provided, select whether the union of all their loci is "
         "used, or their intersection. For their union, input files that do not have data at a "
-        "particular locus are considered to have zero counts at every base at that locus."
+        "particular locus are considered to have zero counts at every base at that locus. "
+        "Note that we allow to use multiple input files even with different file types."
     );
     multi_file_loci_.option->group( "Input Settings" );
     multi_file_loci_.option->transform(
@@ -173,7 +174,7 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
 
     // Add the option
     sam_file_.add_multi_file_input_opt_to_app(
-        sub, "sam", "sam/bam/cram", "(sam(\\.gz)?|bam|cram)", "sam[.gz]|bam|cram", required, group
+        sub, "sam", "sam/bam/cram", "(sam(\\.gz)?|bam|cram)", ".sam[.gz]|.bam|.cram", required, group
     );
 
     // Min mapping quality
@@ -183,7 +184,7 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
         "Minimum phred-scaled mapping quality score [0-90] for a read in sam/bam/cram files to be "
         "considered. Any read that is below the given value of mapping quality will be completely "
         "discarded, and its bases not taken into account. "
-        "Default is 0, meaning no filtering by base quality qual."
+        "Default is 0, meaning no filtering by base quality."
     );
     sam_min_map_qual_.option->group( group );
     sam_min_map_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
@@ -195,7 +196,7 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
         sam_min_base_qual_.value,
         "Minimum phred-scaled quality score [0-90] for a base in sam/bam/cram files to be "
         "considered. Bases below this are ignored when computing allele frequencies. "
-        "Default is 0, meaning no filtering by base quality qual."
+        "Default is 0, meaning no filtering by base quality."
     );
     sam_min_base_qual_.option->group( group );
     sam_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
@@ -318,7 +319,7 @@ CLI::Option* VariantInputOptions::add_vcf_input_opt_to_app(
 
     // Add the option
     vcf_file_.add_multi_file_input_opt_to_app(
-        sub, "vcf", "vcf/bcf", "(vcf(\\.gz)?|bcf)", "vcf[.gz]|bcf", required, group,
+        sub, "vcf", "vcf/bcf", "(vcf(\\.gz)?|bcf)", ".vcf[.gz]|.bcf", required, group,
         "This expects that the input file has the per-sample VCF FORMAT field `AD` (alleleic depth) "
         "given, containing the counts of the reference and alternative base. "
         "This assumes that the data that was used to create the VCF file was actually a pool of "
@@ -353,7 +354,7 @@ void VariantInputOptions::add_sample_name_opts_to_app(
         "the actual input file. We then use these names in the output and the "
         "`--filter-samples-include` and `--filter-samples-exclude` options. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
-        "Note that this option can only be used if a single file is given as input."
+        "Note that this option can only be used if a single file is given as input. "
         "Alternatively, use `--sample-name-prefix` to provide a prefix for this sample numbering."
     );
     sample_name_list_.option->group( group );
@@ -368,7 +369,7 @@ void VariantInputOptions::add_sample_name_opts_to_app(
         "names per sample that we use in the output and the `--filter-samples-include` and "
         "`--filter-samples-exclude` options. For example, use \"Sample_\" as a prefix. "
         "If not provided, we simply use numbers 1..n as sample names for these files types. "
-        "This prefix also works if multiple files are given as input."
+        "This prefix also works if multiple files are given as input. "
         "Alternatively, use `--sample-name-list` to directly provide a list of sample names."
     );
     sample_name_prefix_.option->group( group );
@@ -799,9 +800,6 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_pileup_it
         "prepare_pileup_iterator_() called in an invalid context."
     );
 
-    // TODO min_phred_score is the old name. we currently use it here to distinguish it from
-    // the setting of sam, but a better way should be found in the future.
-
     // We can use the sample filter settings to obtain a list of indices of samples
     // that we want to restrict the reading to. If no filter is given, that list is empty.
     // The second value of the returned pair indicates whether the list in inversed.
@@ -996,7 +994,8 @@ std::vector<std::string> VariantInputOptions::make_anonymous_sample_names_(
                 sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
                 "Invalid sample names list that contains " + std::to_string( result.size() ) +
                 " name entries. This is incongruent with the input file, which contains " +
-                std::to_string( sample_count ) + " samples."
+                std::to_string( sample_count ) +
+                " samples (after filtering, if a sample name filter was given)."
             );
         }
         assert( result.size() > 0 );
