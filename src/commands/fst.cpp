@@ -89,9 +89,6 @@ void setup_fst( CLI::App& app )
     //     Settings
     // -------------------------------------------------------------------------
 
-    // Settings: Pool sizes
-    options->poolsizes.add_poolsizes_opt_to_app( sub );
-
     // Settings: F_ST Method
     options->method.option = sub->add_option(
         "--method",
@@ -99,12 +96,16 @@ void setup_fst( CLI::App& app )
         "F_ST method to use for the computation, either our new statistic by Spence et al "
         "(in two variants, following the definition of Nei, and the definition of Hudson et al),"
         "the statistic by Kofler et al of PoPoolation2, or the asymptotically unbiased "
-        "estimator of Karlsson et al."
+        "estimator of Karlsson et al (which is also implemented in PoPoolation2)."
     );
     options->method.option->group( "Settings" );
+    options->method.option->required();
     options->method.option->transform(
         CLI::IsMember( enum_map_keys( fst_method_map ), CLI::ignore_case )
     );
+
+    // Settings: Pool sizes
+    options->poolsizes.add_poolsizes_opt_to_app( sub, false );
 
     // TODO need settings for min/max coverage etc. see prototype implementations!
 
@@ -143,8 +144,8 @@ void setup_fst( CLI::App& app )
         "--comparand-list",
         options->comparand_list.value,
         "By default, F_ST between all pairs of samples is computed. If this option is given a file "
-        "containing tab-separated pairs of sample names (one pair per line) however, only these "
-        "pairwise F_ST values are computed."
+        "containing comma- or tab-separated pairs of sample names (one pair per line) however, "
+        "only these pairwise F_ST values are computed."
     );
     options->comparand_list.option->group( "Settings" );
     options->comparand_list.option->check( CLI::ExistingFile );
@@ -221,7 +222,7 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
         auto const lines = file_read_lines( options.comparand_list.value );
         for( size_t i = 0; i < lines.size(); ++i ) {
             auto const& line = lines[i];
-            auto const pair = split( line, "\t", false );
+            auto const pair = split( line, ",\t", false );
             if( pair.size() != 2 ) {
                 throw CLI::ValidationError(
                     options.comparand_list.option->get_name() + "(" +

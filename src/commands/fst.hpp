@@ -48,7 +48,7 @@ public:
     WindowOptions       window;
     PoolsizesOptions    poolsizes;
 
-    CliOption<std::string> method = "spence-nei";
+    CliOption<std::string> method = "";
     CliOption<bool>        omit_na_windows = false;
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";
