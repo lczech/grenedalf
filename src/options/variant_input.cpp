@@ -108,16 +108,16 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
     // of expressing which loci of which input source to visit, but that would be way too complex
     // to specify via a command line interface. So, at least for now, we simply boil it down
     // to either the union of all loci, or their intersection.
-    multi_file_loci_.option = sub->add_option(
-        "--multi-file-loci",
-        multi_file_loci_.value,
+    multi_file_loci_set_.option = sub->add_option(
+        "--multi-file-locus-set",
+        multi_file_loci_set_.value,
         "When multiple input files are provided, select whether the union of all their loci is "
         "used, or their intersection. For their union, input files that do not have data at a "
         "particular locus are considered to have zero counts at every base at that locus. "
         "Note that we allow to use multiple input files even with different file types."
     );
-    multi_file_loci_.option->group( "Input Settings" );
-    multi_file_loci_.option->transform(
+    multi_file_loci_set_.option->group( "Input Settings" );
+    multi_file_loci_set_.option->transform(
         CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
     );
 
@@ -398,31 +398,76 @@ void VariantInputOptions::add_filter_opts_to_app(
     filter_region_.option = sub->add_option(
         "--filter-region",
         filter_region_.value,
-        "Genomic region to filter for, in the format \"chr\", \"chr:position\", \"chr:start-end\", "
-        "or \"chr:start..end\"."
+        "Genomic region to filter for, in the format \"chr\" (for whole chromosomes), "
+        "\"chr:position\", \"chr:start-end\", or \"chr:start..end\". "
+        "Positions are 1-based and inclusive (closed intervals). "
+        "The option can be provided multiple times, see also `--filter-region-set`."
     );
     filter_region_.option->group( group );
 
-    // Add option for genomic region filter by BED file
+    // Add option for genomic region filter.
+    filter_region_list_.option = sub->add_option(
+        "--filter-region-list",
+        filter_region_list_.value,
+        "Genomic regions to filter for, as a file with one region per line, "
+        "either in the format \"chr\" (for whole chromosomes), \"chr:position\", \"chr:start-end\", "
+        "\"chr:start..end\", or tab- or space-delimited \"chr position\" or \"chr start end\". "
+        "Positions are 1-based and inclusive (closed intervals). "
+        "The option can be provided multiple times, see also `--filter-region-set`."
+    );
+    filter_region_list_.option->check( CLI::ExistingFile );
+    filter_region_list_.option->group( group );
+
+    // Add option for genomic region filter by BED file.
     filter_region_bed_.option = sub->add_option(
         "--filter-region-bed",
         filter_region_bed_.value,
-        "Genomic regions to filter for, as a BED file. In its simplest form, this file may contain "
-        "a list of regions, one per line, with tab-separated chromosome and start and end positions. "
-        // "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position."
+        "Genomic regions to filter for, as a BED file. This only uses the chromosome, "
+        "as well as start and end information per line, and ignores everything else in the file. "
+        "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position; "
+        "simply using columns extracted from other file formats (such as vcf or gff) will not work. "
+        "The option can be provided multiple times, see also `--filter-region-set`."
     );
     filter_region_bed_.option->check( CLI::ExistingFile );
     filter_region_bed_.option->group( group );
 
-    // Add option for genomic region filter by BED file
+    // Add option for genomic region filter by GFF/GTF file.
     filter_region_gff_.option = sub->add_option(
         "--filter-region-gff",
         filter_region_gff_.value,
         "Genomic regions to filter for, as a GFF2/GFF3/GTF file. This only uses the chromosome, "
-        "as well as start and end information per line, and ignores everything else in the file."
+        "as well as start and end information per line, and ignores everything else in the file. "
+        "The option can be provided multiple times, see also `--filter-region-set`."
     );
     filter_region_gff_.option->check( CLI::ExistingFile );
     filter_region_gff_.option->group( group );
+
+    // Add option for genomic region filter by VCF file.
+    filter_region_vcf_.option = sub->add_option(
+        "--filter-region-vcf",
+        filter_region_vcf_.value,
+        "Genomic regions to filter for, as a VCF file (such as a known-variants file). This only "
+        "uses the chromosome and position per line, and ignores everything else in the file. "
+        "The option can be provided multiple times, see also `--filter-region-set`."
+    );
+    filter_region_vcf_.option->check( CLI::ExistingFile );
+    filter_region_vcf_.option->group( group );
+
+    // Add the set combination of the genom regions.
+    filter_region_set_.option = sub->add_option(
+        // If flag name is changed in the future, change it in the above options as well.
+        "--filter-region-set",
+        filter_region_set_.value,
+        "If multiple genomic region filters are set, "
+        "decide on how to combine the loci of these filters."
+    );
+    filter_region_set_.option->transform(
+        CLI::IsMember(
+            { "union", "intersection" },
+            CLI::ignore_case
+        )
+    );
+    filter_region_set_.option->group( group );
 
     // Region filter could be mutually exclusive... but why not allow all of them.
     // filter_region_.option->excludes( filter_region_bed_.option );
@@ -662,7 +707,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
 
     // Get whether the user wants the union or intersection of all parallel input loci.
     auto const contribution = get_enum_map_value(
-        multi_file_contribution_type_map_, multi_file_loci_.value
+        multi_file_contribution_type_map_, multi_file_loci_set_.value
     );
 
     // Make a parallel input iterator, and add all input from all file formats to it,
@@ -918,28 +963,92 @@ void VariantInputOptions::add_region_filters_to_iterator_(
     using namespace genesis::population;
     using namespace genesis::utils;
 
-    // Add the region filter. This is the first one we do, so that all others do not need to be
-    // applied to positions that are going to be filtered out anyway.
-    if( ! filter_region_.value.empty() ) {
-        auto const region = parse_genome_region( filter_region_.value );
-        iterator.add_filter( filter_by_region( region ));
-    }
+    // Add region filters, either as their union, or their intersection.
+    if( to_lower( filter_region_set_.value ) == "union" ) {
+        // For the union, we add all of them to one genome region list first.
+        // We use the overlap function of the genome region list to flatten as much as possible,
+        // as we are not interested in individual regions, but just whether positions are covered.
+        auto region_list = std::make_shared<GenomeRegionList>();
 
-    // Apply the region filter by bed file.
-    // We use a shared ptr that stays alive in the lambda produced by filter_by_region().
-    if( ! filter_region_bed_.value.empty() ) {
-        auto const region_list = std::make_shared<GenomeRegionList>(
-            BedReader().read_as_genome_region_list( from_file( filter_region_bed_.value ))
-        );
-        iterator.add_filter( filter_by_region( region_list ));
-    }
+        // Add the region string filters.
+        for( auto const& value : filter_region_.value ) {
+            auto const region = parse_genome_region( value );
+            region_list->add( region, true );
+        }
 
-    // Apply the region filter by gff file. Same as above, just different reader.
-    if( ! filter_region_gff_.value.empty() ) {
-        auto const region_list = std::make_shared<GenomeRegionList>(
-            GffReader().read_as_genome_region_list( from_file( filter_region_gff_.value ))
-        );
+        // Add the region list files.
+        for( auto const& list_file : filter_region_list_.value ) {
+            parse_genome_region_file( list_file, *region_list, true );
+        }
+
+        // Add the regions from bed files.
+        for( auto const& file : filter_region_bed_.value ) {
+            BedReader().read_as_genome_region_list( from_file( file ), *region_list, true );
+        }
+
+        // Add the regions from gff files.
+        for( auto const& file : filter_region_gff_.value ) {
+            GffReader().read_as_genome_region_list( from_file( file ), *region_list, true );
+        }
+
+        // Add the regions from vcf files.
+        for( auto const& file : filter_region_vcf_.value ) {
+            genome_region_list_from_vcf_file( file, *region_list );
+        }
+
+        // Now add the list as a filter.
         iterator.add_filter( filter_by_region( region_list ));
+
+    } else if( to_lower( filter_region_set_.value ) == "intersection" ) {
+        // For the intersection, we just add all filters to the iterator,
+        // so that all of them have to pass one after another.
+        // This is slighly inefficient, but we do not expect users to add too many different
+        // region input sources at the same time, so we can live with this for now.
+        // Better would be to restrict the intervals more and more with every filter that is addded.
+
+        // Add the region filter. This is the first one we do, so that all others do not need to be
+        // applied to positions that are going to be filtered out anyway.
+        for( auto const& value : filter_region_.value ) {
+            auto const region = parse_genome_region( value );
+            iterator.add_filter( filter_by_region( region ));
+        }
+
+        // Add the region list files.
+        // We use shared pointers that stay alive in the lambda produced by filter_by_region().
+        for( auto const& list_file : filter_region_list_.value ) {
+            auto region_list = std::make_shared<GenomeRegionList>();
+            parse_genome_region_file( list_file, *region_list );
+            iterator.add_filter( filter_by_region( region_list ));
+        }
+
+        // Apply the region filter by bed file.  Same as above, just different reading.
+        for( auto const& file : filter_region_bed_.value ) {
+            auto const region_list = std::make_shared<GenomeRegionList>(
+                BedReader().read_as_genome_region_list( from_file( file ))
+            );
+            iterator.add_filter( filter_by_region( region_list ));
+        }
+
+        // Apply the region filter by gff file. Same as above, just different reader.
+        for( auto const& file : filter_region_gff_.value ) {
+            auto const region_list = std::make_shared<GenomeRegionList>(
+                GffReader().read_as_genome_region_list( from_file( file ))
+            );
+            iterator.add_filter( filter_by_region( region_list ));
+        }
+
+        // Apply the region filter by vcf file. Same as above, just different reader.
+        for( auto const& file : filter_region_vcf_.value ) {
+            auto region_list = std::make_shared<GenomeRegionList>();
+            genome_region_list_from_vcf_file( file, *region_list );
+            iterator.add_filter( filter_by_region( region_list ));
+        }
+
+    } else {
+        throw CLI::ValidationError(
+            filter_region_set_.option->get_name() + "(" + filter_region_set_.value + ")",
+            "Invalid value."
+        );
     }
 }
 

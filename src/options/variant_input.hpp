@@ -226,16 +226,19 @@ private:
     FileInputOptions       vcf_file_;
 
     // General input settings
-    CliOption<std::string> multi_file_loci_ = "union";
+    CliOption<std::string> multi_file_loci_set_ = "union";
 
     // Sample names
     CliOption<std::string> sample_name_list_ = "";
     CliOption<std::string> sample_name_prefix_ = ""; // "Sample_"
 
     // Filters for rows and columns
-    CliOption<std::string> filter_region_ = "";
-    CliOption<std::string> filter_region_bed_ = "";
-    CliOption<std::string> filter_region_gff_ = "";
+    CliOption<std::vector<std::string>> filter_region_ ;
+    CliOption<std::vector<std::string>> filter_region_list_ ;
+    CliOption<std::vector<std::string>> filter_region_bed_ ;
+    CliOption<std::vector<std::string>> filter_region_gff_ ;
+    CliOption<std::vector<std::string>> filter_region_vcf_ ;
+    CliOption<std::string> filter_region_set_ = "union";
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
 
