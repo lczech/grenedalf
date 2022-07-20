@@ -49,15 +49,15 @@
 
 enum class FstMethod
 {
-    kSpenceNei,
-    kSpenceHudson,
+    kUnbiasedNei,
+    kUnbiasedHudson,
     kKofler,
     kKarlsson
 };
 
 std::vector<std::pair<std::string, FstMethod>> const fst_method_map = {
-    { "spence-nei",    FstMethod::kSpenceNei },
-    { "spence-hudson", FstMethod::kSpenceHudson },
+    { "unbiased-nei",    FstMethod::kUnbiasedNei },
+    { "unbiased-hudson", FstMethod::kUnbiasedHudson },
     { "kofler",        FstMethod::kKofler },
     { "karlsson",      FstMethod::kKarlsson }
 };
@@ -93,7 +93,7 @@ void setup_fst( CLI::App& app )
     options->method.option = sub->add_option(
         "--method",
         options->method.value,
-        "F_ST method to use for the computation, either our new statistic by Spence et al "
+        "F_ST method to use for the computation, either our novel unbiased statistic "
         "(in two variants, following the definition of Nei, and the definition of Hudson et al),"
         "the statistic by Kofler et al of PoPoolation2, or the asymptotically unbiased "
         "estimator of Karlsson et al (which is also implemented in PoPoolation2)."
@@ -285,8 +285,8 @@ void run_fst( FstOptions const& options )
 
     // Get the pool sizes for all samples that we are interested in.
     auto const needs_pool_sizes = (
-        method == FstMethod::kSpenceNei ||
-        method == FstMethod::kSpenceHudson ||
+        method == FstMethod::kUnbiasedNei ||
+        method == FstMethod::kUnbiasedHudson ||
         method == FstMethod::kKofler
     );
     auto const pool_sizes = (
@@ -316,7 +316,7 @@ void run_fst( FstOptions const& options )
     }
     (*fst_ofs) << "\n";
 
-    // For Spence and Kofler, check that we got the right number of pool sizes.
+    // For our unbiased and for Kofler, check that we got the right number of pool sizes.
     internal_check(
         ! needs_pool_sizes || pool_sizes.size() == sample_names.size(),
         "Inconsistent number of samples and number of pool sizes."
@@ -391,16 +391,16 @@ void run_fst( FstOptions const& options )
 
             // Run the computation.
             switch( method ) {
-                case FstMethod::kSpenceNei: {
-                    window_fst[i] = f_st_pool_spence(
+                case FstMethod::kUnbiasedNei: {
+                    window_fst[i] = f_st_pool_unbiased(
                         pool_sizes[index_a], pool_sizes[index_b],
                         range_a.begin(), range_a.end(),
                         range_b.begin(), range_b.end()
                     ).first;
                     break;
                 }
-                case FstMethod::kSpenceHudson: {
-                    window_fst[i] = f_st_pool_spence(
+                case FstMethod::kUnbiasedHudson: {
+                    window_fst[i] = f_st_pool_unbiased(
                         pool_sizes[index_a], pool_sizes[index_b],
                         range_a.begin(), range_a.end(),
                         range_b.begin(), range_b.end()
