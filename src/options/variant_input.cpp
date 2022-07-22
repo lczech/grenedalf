@@ -443,27 +443,27 @@ void VariantInputOptions::add_filter_opts_to_app(
     filter_region_gff_.option->check( CLI::ExistingFile );
     filter_region_gff_.option->group( group );
 
-    // Add option for genomic region filter by VCF file.
-    filter_region_vcf_.option = sub->add_option(
-        "--filter-region-vcf",
-        filter_region_vcf_.value,
-        "Genomic regions to filter for, as a VCF file (such as a known-variants file). This only "
-        "uses the chromosome and position per line, and ignores everything else in the file. "
-        "The option can be provided multiple times, see also `--filter-region-set`."
-    );
-    filter_region_vcf_.option->check( CLI::ExistingFile );
-    filter_region_vcf_.option->group( group );
-
     // Add option for genomic region filter by PLINK MAP/BIM file.
-    filter_region_map_bim_.option = sub->add_option(
+    filter_region_bim_.option = sub->add_option(
         "--filter-region-map-bim",
-        filter_region_map_bim_.value,
+        filter_region_bim_.value,
         "Genomic regions to filter for, as a MAP or BIM file as used in PLINK. This only "
         "uses the chromosome and coordinate per line, and ignores everything else in the file. "
         "The option can be provided multiple times, see also `--filter-region-set`."
     );
-    filter_region_map_bim_.option->check( CLI::ExistingFile );
-    filter_region_map_bim_.option->group( group );
+    filter_region_bim_.option->check( CLI::ExistingFile );
+    filter_region_bim_.option->group( group );
+
+    // Add option for genomic region filter by VCF file.
+    filter_region_vcf_.option = sub->add_option(
+        "--filter-region-vcf",
+        filter_region_vcf_.value,
+        "Genomic regions to filter for, as a VCF/BCF file (such as a known-variants file). This "
+        "only uses the chromosome and position per line, and ignores everything else in the file. "
+        "The option can be provided multiple times, see also `--filter-region-set`."
+    );
+    filter_region_vcf_.option->check( CLI::ExistingFile );
+    filter_region_vcf_.option->group( group );
 
     // Add the set combination of the genom regions.
     filter_region_set_.option = sub->add_option(
@@ -982,27 +982,32 @@ void VariantInputOptions::add_region_filters_to_iterator_(
 
         // Add the region list files.
         for( auto const& list_file : filter_region_list_.value ) {
+            LOG_MSG2 << "Reading regions list file " << list_file;
             parse_genome_region_file( list_file, *region_list, true );
         }
 
         // Add the regions from bed files.
         for( auto const& file : filter_region_bed_.value ) {
+            LOG_MSG2 << "Reading regions BED file " << file;
             BedReader().read_as_genome_region_list( from_file( file ), *region_list, true );
         }
 
         // Add the regions from gff files.
         for( auto const& file : filter_region_gff_.value ) {
+            LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
             GffReader().read_as_genome_region_list( from_file( file ), *region_list, true );
+        }
+
+        // Add the regions from map/bim files.
+        for( auto const& file : filter_region_bim_.value ) {
+            LOG_MSG2 << "Reading regions MAP/BIM file " << file;
+            MapBimReader().read_as_genome_region_list( from_file( file ), *region_list, true );
         }
 
         // Add the regions from vcf files.
         for( auto const& file : filter_region_vcf_.value ) {
+            LOG_MSG2 << "Reading regions VCF/BCF file " << file;
             genome_region_list_from_vcf_file( file, *region_list );
-        }
-
-        // Add the regions from map/bim files.
-        for( auto const& file : filter_region_vcf_.value ) {
-            MapBimReader().read_as_genome_region_list( from_file( file ), *region_list, true );
         }
 
         // Now add the list as a filter.
@@ -1025,6 +1030,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
         // Add the region list files.
         // We use shared pointers that stay alive in the lambda produced by filter_by_region().
         for( auto const& list_file : filter_region_list_.value ) {
+            LOG_MSG2 << "Reading regions list file " << list_file;
             auto region_list = std::make_shared<GenomeRegionList>();
             parse_genome_region_file( list_file, *region_list );
             iterator.add_filter( filter_by_region( region_list ));
@@ -1032,6 +1038,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
 
         // Apply the region filter by bed file.  Same as above, just different reading.
         for( auto const& file : filter_region_bed_.value ) {
+            LOG_MSG2 << "Reading regions BED file " << file;
             auto const region_list = std::make_shared<GenomeRegionList>(
                 BedReader().read_as_genome_region_list( from_file( file ))
             );
@@ -1040,24 +1047,27 @@ void VariantInputOptions::add_region_filters_to_iterator_(
 
         // Apply the region filter by gff file. Same as above, just different reader.
         for( auto const& file : filter_region_gff_.value ) {
+            LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
             auto const region_list = std::make_shared<GenomeRegionList>(
                 GffReader().read_as_genome_region_list( from_file( file ))
             );
             iterator.add_filter( filter_by_region( region_list ));
         }
 
-        // Apply the region filter by vcf file. Same as above, just different way of reading.
-        for( auto const& file : filter_region_vcf_.value ) {
-            auto region_list = std::make_shared<GenomeRegionList>();
-            genome_region_list_from_vcf_file( file, *region_list );
-            iterator.add_filter( filter_by_region( region_list ));
-        }
-
         // Apply the region filter by map/bim file. Same as above, just different reader.
-        for( auto const& file : filter_region_vcf_.value ) {
+        for( auto const& file : filter_region_bim_.value ) {
+            LOG_MSG2 << "Reading regions MAP/BIM file " << file;
             auto const region_list = std::make_shared<GenomeRegionList>(
                 MapBimReader().read_as_genome_region_list( from_file( file ))
             );
+            iterator.add_filter( filter_by_region( region_list ));
+        }
+
+        // Apply the region filter by vcf file. Same as above, just different way of reading.
+        for( auto const& file : filter_region_vcf_.value ) {
+            LOG_MSG2 << "Reading regions VCF/BCF file " << file;
+            auto region_list = std::make_shared<GenomeRegionList>();
+            genome_region_list_from_vcf_file( file, *region_list );
             iterator.add_filter( filter_by_region( region_list ));
         }
 
