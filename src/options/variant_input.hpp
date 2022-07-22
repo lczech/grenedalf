@@ -237,6 +237,7 @@ private:
     CliOption<std::vector<std::string>> filter_region_list_ ;
     CliOption<std::vector<std::string>> filter_region_bed_ ;
     CliOption<std::vector<std::string>> filter_region_gff_ ;
+    CliOption<std::vector<std::string>> filter_region_map_bim_ ;
     CliOption<std::vector<std::string>> filter_region_vcf_ ;
     CliOption<std::string> filter_region_set_ = "union";
     CliOption<std::string> filter_samples_include_ = "";

@@ -28,6 +28,7 @@
 
 #include "genesis/population/formats/bed_reader.hpp"
 #include "genesis/population/formats/gff_reader.hpp"
+#include "genesis/population/formats/map_bim_reader.hpp"
 #include "genesis/population/formats/simple_pileup_input_iterator.hpp"
 #include "genesis/population/formats/simple_pileup_reader.hpp"
 #include "genesis/population/formats/sync_input_iterator.hpp"
@@ -453,6 +454,17 @@ void VariantInputOptions::add_filter_opts_to_app(
     filter_region_vcf_.option->check( CLI::ExistingFile );
     filter_region_vcf_.option->group( group );
 
+    // Add option for genomic region filter by PLINK MAP/BIM file.
+    filter_region_map_bim_.option = sub->add_option(
+        "--filter-region-map-bim",
+        filter_region_map_bim_.value,
+        "Genomic regions to filter for, as a MAP or BIM file as used in PLINK. This only "
+        "uses the chromosome and coordinate per line, and ignores everything else in the file. "
+        "The option can be provided multiple times, see also `--filter-region-set`."
+    );
+    filter_region_map_bim_.option->check( CLI::ExistingFile );
+    filter_region_map_bim_.option->group( group );
+
     // Add the set combination of the genom regions.
     filter_region_set_.option = sub->add_option(
         // If flag name is changed in the future, change it in the above options as well.
@@ -468,14 +480,6 @@ void VariantInputOptions::add_filter_opts_to_app(
         )
     );
     filter_region_set_.option->group( group );
-
-    // Region filter could be mutually exclusive... but why not allow all of them.
-    // filter_region_.option->excludes( filter_region_bed_.option );
-    // filter_region_.option->excludes( filter_region_gff_.option );
-    // filter_region_bed_.option->excludes( filter_region_.option );
-    // filter_region_bed_.option->excludes( filter_region_gff_.option );
-    // filter_region_gff_.option->excludes( filter_region_.option );
-    // filter_region_gff_.option->excludes( filter_region_bed_.option );
 
     // Add option for sample name filter.
     filter_samples_include_.option = sub->add_option(
@@ -996,6 +1000,11 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             genome_region_list_from_vcf_file( file, *region_list );
         }
 
+        // Add the regions from map/bim files.
+        for( auto const& file : filter_region_vcf_.value ) {
+            MapBimReader().read_as_genome_region_list( from_file( file ), *region_list, true );
+        }
+
         // Now add the list as a filter.
         iterator.add_filter( filter_by_region( region_list ));
 
@@ -1037,10 +1046,18 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             iterator.add_filter( filter_by_region( region_list ));
         }
 
-        // Apply the region filter by vcf file. Same as above, just different reader.
+        // Apply the region filter by vcf file. Same as above, just different way of reading.
         for( auto const& file : filter_region_vcf_.value ) {
             auto region_list = std::make_shared<GenomeRegionList>();
             genome_region_list_from_vcf_file( file, *region_list );
+            iterator.add_filter( filter_by_region( region_list ));
+        }
+
+        // Apply the region filter by map/bim file. Same as above, just different reader.
+        for( auto const& file : filter_region_vcf_.value ) {
+            auto const region_list = std::make_shared<GenomeRegionList>(
+                MapBimReader().read_as_genome_region_list( from_file( file ))
+            );
             iterator.add_filter( filter_by_region( region_list ));
         }
 
