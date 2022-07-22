@@ -829,6 +829,7 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sam_itera
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_sam_iterator_() called in an invalid context."
     );
+    LOG_MSG2 << "Preparing input sam/bam/cram file " << filename;
 
     // Prepare the reader with all its settings.
     SamVariantInputIterator reader;
@@ -905,6 +906,7 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_pileup_it
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_pileup_iterator_() called in an invalid context."
     );
+    LOG_MSG2 << "Preparing input (m)pileup file " << filename;
 
     // We can use the sample filter settings to obtain a list of indices of samples
     // that we want to restrict the reading to. If no filter is given, that list is empty.
@@ -947,6 +949,7 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sync_iter
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_sync_iterator_() called in an invalid context."
     );
+    LOG_MSG2 << "Preparing input sync file " << filename;
 
     // We can use the sample filter settings, see prepare_pileup_iterator_() for details.
     auto const sample_filter = find_sample_indices_from_sample_filters_();
@@ -982,6 +985,7 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_vcf_itera
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_vcf_iterator_() called in an invalid context."
     );
+    LOG_MSG2 << "Preparing input vcf/bcf file " << filename;
 
     // Prepare the iterator.
     // See if we want to filter by sample name, and if so, resolve the name list.
