@@ -29,6 +29,8 @@
 #include "genesis/population/formats/bed_reader.hpp"
 #include "genesis/population/formats/gff_reader.hpp"
 #include "genesis/population/formats/map_bim_reader.hpp"
+#include "genesis/population/formats/sam_flags.hpp"
+#include "genesis/population/formats/sam_variant_input_iterator.hpp"
 #include "genesis/population/formats/simple_pileup_input_iterator.hpp"
 #include "genesis/population/formats/simple_pileup_reader.hpp"
 #include "genesis/population/formats/sync_input_iterator.hpp"
@@ -213,6 +215,54 @@ CLI::Option* VariantInputOptions::add_sam_input_opt_to_app(
     );
     sam_split_by_rg_.option->group( group );
     sam_split_by_rg_.option->needs( sam_file_.option() );
+
+    // Flags include all
+    sam_flags_include_all_.option = sub->add_flag(
+        "--sam-flags-include-all",
+        sam_flags_include_all_.value,
+        "Only use reads with all bits in the given value present in the FLAG field of the read. "
+        "This is equivalent to the `-f` / `--require-flags` setting in `samtools view`. "
+        "The value can be specified in hex by beginning with `0x` (i.e., `/^0x[0-9A-F]+/`), "
+        "in octal by beginning with `0` (i.e., `/^0[0-7]+/`), as a decimal number not beginning "
+        "with '0', or as a comma-, plus-, space-, or vertiacal-bar-separated list of flag names. "
+        "We are more lenient in parsing flag names then `samtools`, and allow different "
+        "capitalization and delimiteres such as dashes and underscores in the flag names as well."
+    );
+    sam_flags_include_all_.option->group( group );
+    sam_flags_include_all_.option->needs( sam_file_.option() );
+
+    // Flags include any
+    sam_flags_include_any_.option = sub->add_flag(
+        "--sam-flags-include-any",
+        sam_flags_include_any_.value,
+        "Only use reads with any bits set in the given value present in the FLAG field of the read. "
+        "This is equivalent to the `--rf` / `--incl-flags` / `--include-flags` setting in "
+        "`samtools view`. See `--sam-flags-include-all` above for how to specify the value."
+    );
+    sam_flags_include_any_.option->group( group );
+    sam_flags_include_any_.option->needs( sam_file_.option() );
+
+    // Flags exclude all
+    sam_flags_exclude_all_.option = sub->add_flag(
+        "--sam-flags-exclude-all",
+        sam_flags_exclude_all_.value,
+        "Do not use reads with all bits set in the given value present in the FLAG field of the read. "
+        "This is equivalent to the `-G` setting in `samtools view`. "
+        "See `--sam-flags-include-all` above for how to specify the value."
+    );
+    sam_flags_exclude_all_.option->group( group );
+    sam_flags_exclude_all_.option->needs( sam_file_.option() );
+
+    // Flags exclude any
+    sam_flags_exclude_any_.option = sub->add_flag(
+        "--sam-flags-exclude-any",
+        sam_flags_exclude_any_.value,
+        "Do not use reads with any bits set in the given value present in the FLAG field of the read. "
+        "This is equivalent to the `-F` / `--excl-flags` / `--exclude-flags` setting in "
+        "`samtools view`. See `--sam-flags-include-all` above for how to specify the value."
+    );
+    sam_flags_exclude_any_.option->group( group );
+    sam_flags_exclude_any_.option->needs( sam_file_.option() );
 
     return sam_file_.option();
 }
@@ -782,6 +832,10 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sam_itera
     reader.min_map_qual( sam_min_map_qual_.value );
     reader.min_base_qual( sam_min_base_qual_.value );
     reader.split_by_rg( sam_split_by_rg_.value );
+    reader.flags_include_all( string_to_sam_flag( sam_flags_include_all_.value ));
+    reader.flags_include_any( string_to_sam_flag( sam_flags_include_any_.value ));
+    reader.flags_exclude_all( string_to_sam_flag( sam_flags_exclude_all_.value ));
+    reader.flags_exclude_any( string_to_sam_flag( sam_flags_exclude_any_.value ));
 
     if( sam_split_by_rg_.value ) {
 

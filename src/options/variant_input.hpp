@@ -210,9 +210,13 @@ private:
 
     // SAM/BAM/CRAM
     FileInputOptions       sam_file_;
-    CliOption<size_t>      sam_min_map_qual_  = 0;
-    CliOption<size_t>      sam_min_base_qual_ = 0;
-    CliOption<bool>        sam_split_by_rg_   = false;
+    CliOption<size_t>      sam_min_map_qual_      = 0;
+    CliOption<size_t>      sam_min_base_qual_     = 0;
+    CliOption<bool>        sam_split_by_rg_       = false;
+    CliOption<std::string> sam_flags_include_all_;
+    CliOption<std::string> sam_flags_include_any_;
+    CliOption<std::string> sam_flags_exclude_all_;
+    CliOption<std::string> sam_flags_exclude_any_;
 
     // Pileup
     FileInputOptions       pileup_file_;
