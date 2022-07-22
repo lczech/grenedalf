@@ -23,7 +23,7 @@
 #   CMake Init
 # --------------------------------------------------------------------------------------------------
 
-cmake_minimum_required (VERSION 2.8.7 FATAL_ERROR)
+cmake_minimum_required (VERSION 2.8.12 FATAL_ERROR)
 
 # Fun with colors!
 if (NOT WIN32)
