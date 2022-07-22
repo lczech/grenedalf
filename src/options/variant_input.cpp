@@ -604,6 +604,9 @@ void VariantInputOptions::prepare_data_() const
         return;
     }
 
+    // We first read all region filters, so that they can be re-used for all inputs.
+    prepare_region_filters_();
+
     // Check how many files are given. If it is a single one, we just use that for the input
     // iterator, which is faster than piping it through a parallel iterator. For multiple files,
     // we create a parallel iterator.
@@ -1011,15 +1014,22 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_vcf_itera
 // =================================================================================================
 
 // -------------------------------------------------------------------------
-//     add_region_filters_to_iterator_
+//     prepare_region_filters_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::add_region_filters_to_iterator_(
-    genesis::population::VariantInputIterator& iterator
-) const {
+void VariantInputOptions::prepare_region_filters_() const
+{
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::utils;
+
+    // Not running again if we already have a list.
+    // In cases where no filters are specified, this might run through the code below again,
+    // but it won't read anything anyway, so it will be quick. This check here is mostly to avoid
+    // reading large files again.
+    if( ! region_filters_.empty() ) {
+        return;
+    }
 
     // Add region filters, either as their union, or their intersection.
     if( to_lower( filter_region_set_.value ) == "union" ) {
@@ -1064,8 +1074,11 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             genome_region_list_from_vcf_file( file, *region_list );
         }
 
-        // Now add the list as a filter.
-        iterator.add_filter( filter_by_region( region_list ));
+        // If we have actually added filters above, store the resulting genome region list.
+        if( ! region_list->empty() ) {
+            assert( region_filters_.empty() );
+            region_filters_.push_back( region_list );
+        }
 
     } else if( to_lower( filter_region_set_.value ) == "intersection" ) {
         // For the intersection, we just add all filters to the iterator,
@@ -1077,8 +1090,9 @@ void VariantInputOptions::add_region_filters_to_iterator_(
         // Add the region filter. This is the first one we do, so that all others do not need to be
         // applied to positions that are going to be filtered out anyway.
         for( auto const& value : filter_region_.value ) {
-            auto const region = parse_genome_region( value );
-            iterator.add_filter( filter_by_region( region ));
+            auto region_list = std::make_shared<GenomeRegionList>();
+            region_list->add( parse_genome_region( value ) );
+            region_filters_.push_back( region_list );
         }
 
         // Add the region list files.
@@ -1087,7 +1101,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             LOG_MSG2 << "Reading regions list file " << list_file;
             auto region_list = std::make_shared<GenomeRegionList>();
             parse_genome_region_file( list_file, *region_list );
-            iterator.add_filter( filter_by_region( region_list ));
+            region_filters_.push_back( region_list );
         }
 
         // Apply the region filter by bed file.  Same as above, just different reading.
@@ -1096,7 +1110,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             auto const region_list = std::make_shared<GenomeRegionList>(
                 BedReader().read_as_genome_region_list( from_file( file ))
             );
-            iterator.add_filter( filter_by_region( region_list ));
+            region_filters_.push_back( region_list );
         }
 
         // Apply the region filter by gff file. Same as above, just different reader.
@@ -1105,7 +1119,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             auto const region_list = std::make_shared<GenomeRegionList>(
                 GffReader().read_as_genome_region_list( from_file( file ))
             );
-            iterator.add_filter( filter_by_region( region_list ));
+            region_filters_.push_back( region_list );
         }
 
         // Apply the region filter by map/bim file. Same as above, just different reader.
@@ -1114,7 +1128,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             auto const region_list = std::make_shared<GenomeRegionList>(
                 MapBimReader().read_as_genome_region_list( from_file( file ))
             );
-            iterator.add_filter( filter_by_region( region_list ));
+            region_filters_.push_back( region_list );
         }
 
         // Apply the region filter by vcf file. Same as above, just different way of reading.
@@ -1122,7 +1136,7 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             LOG_MSG2 << "Reading regions VCF/BCF file " << file;
             auto region_list = std::make_shared<GenomeRegionList>();
             genome_region_list_from_vcf_file( file, *region_list );
-            iterator.add_filter( filter_by_region( region_list ));
+            region_filters_.push_back( region_list );
         }
 
     } else {
@@ -1130,6 +1144,19 @@ void VariantInputOptions::add_region_filters_to_iterator_(
             filter_region_set_.option->get_name() + "(" + filter_region_set_.value + ")",
             "Invalid value."
         );
+    }
+}
+
+// -------------------------------------------------------------------------
+//     add_region_filters_to_iterator_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::add_region_filters_to_iterator_(
+    genesis::population::VariantInputIterator& iterator
+) const {
+    // Add all genome region lists as filters.
+    for( auto const& region_list : region_filters_ ) {
+        iterator.add_filter( filter_by_region( region_list ));
     }
 }
 

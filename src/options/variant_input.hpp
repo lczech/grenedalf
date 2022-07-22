@@ -35,6 +35,7 @@
 #include "genesis/utils/containers/range.hpp"
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <unordered_set>
@@ -161,6 +162,8 @@ private:
     VariantInputIterator prepare_sync_iterator_( std::string const& filename ) const;
     VariantInputIterator prepare_vcf_iterator_( std::string const& filename ) const;
 
+    void prepare_region_filters_() const;
+
     void add_region_filters_to_iterator_(
         genesis::population::VariantInputIterator& iterator
     ) const;
@@ -259,6 +262,9 @@ private:
 
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
+
+    // We want to keep all region filters in one place, so that they can be re-used for all inputs.
+    mutable std::vector<std::shared_ptr<genesis::population::GenomeRegionList>> region_filters_;
 
 };
 
