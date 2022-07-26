@@ -162,9 +162,22 @@ private:
     VariantInputIterator prepare_sync_iterator_( std::string const& filename ) const;
     VariantInputIterator prepare_vcf_iterator_( std::string const& filename ) const;
 
+    /**
+     * @brief Parse the region filter files, e.g., BED or GFF, and make a filter from them.
+     */
     void prepare_region_filters_() const;
 
-    void add_region_filters_to_iterator_(
+    /**
+     * @brief Add filters and transformations that are to be applied to each input individually.
+     */
+    void add_individual_filters_and_transforms_to_iterator_(
+        genesis::population::VariantInputIterator& iterator
+    ) const;
+
+    /**
+     * @brief Add filters and transformations that are to be applied to the combined sample.
+     */
+    void add_combined_filters_and_transforms_to_iterator_(
         genesis::population::VariantInputIterator& iterator
     ) const;
 

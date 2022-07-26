@@ -716,7 +716,8 @@ void VariantInputOptions::prepare_data_single_file_() const
     );
 
     // Add the region filters.
-    add_region_filters_to_iterator_( iterator_ );
+    add_individual_filters_and_transforms_to_iterator_( iterator_ );
+    add_combined_filters_and_transforms_to_iterator_( iterator_ );
 
     // Set the buffer block size of the iterator, for multi-threaded processing speed.
     // Needs to be tested - might give more or less advantage depending on setting.
@@ -786,14 +787,14 @@ void VariantInputOptions::prepare_data_multiple_files_() const
     }
 
     // Go through all sources again, build the sample names list from them,
-    // and add the region filters to all of them, so that regions are filtered before
-    // the data even reaches the parallel iterator. Faster!
+    // and add the individual samples filters to all of them, e.g., so that regions are filtered
+    // before the data even reaches the parallel iterator. Faster!
     assert( sample_names_.empty() );
     for( auto& input : parallel_it.inputs() ) {
         for( auto const& sample_name : input.data().sample_names ) {
             sample_names_.push_back( input.data().source_name + ":" + sample_name );
         }
-        add_region_filters_to_iterator_( input );
+        add_individual_filters_and_transforms_to_iterator_( input );
 
         // Also set the buffer block size of the iterator, using the second buffer size option
         // that is used for the inner iterators of parallel input.
@@ -807,6 +808,9 @@ void VariantInputOptions::prepare_data_multiple_files_() const
         iterator_.data().sample_names.size() == sample_names_.size(),
         "prepare_data_multiple_files_() with different number of samples in iterator and list"
     );
+
+    // Add the filters and transformations that are to be applied to all samples combined.
+    add_combined_filters_and_transforms_to_iterator_( iterator_ );
 
     // Set the buffer block size of the iterator, for multi-threaded speed.
     // We only buffer the final parallel iterator, and not its individual sources,
@@ -1011,7 +1015,7 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_vcf_itera
 }
 
 // =================================================================================================
-//     Region Filters
+//     Filters and Transformations
 // =================================================================================================
 
 // -------------------------------------------------------------------------
@@ -1138,14 +1142,45 @@ void VariantInputOptions::prepare_region_filters_() const
 }
 
 // -------------------------------------------------------------------------
-//     add_region_filters_to_iterator_
+//     add_individual_filters_and_transforms_to_iterator_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::add_region_filters_to_iterator_(
+void VariantInputOptions::add_individual_filters_and_transforms_to_iterator_(
     genesis::population::VariantInputIterator& iterator
 ) const {
+    using namespace genesis::population;
+
+    // These filters and transformations are applied to each input source individually.
+    // For example, filtering out regions there means that everything downstream does not have
+    // to deal with positions that we are about to discard anyway.
+
     // Add the genome region list as a filter.
-    iterator.add_filter( filter_by_region( region_filter_ ));
+    if( region_filter_ ) {
+        iterator.add_filter( filter_by_region( region_filter_ ));
+    }
+}
+
+// -------------------------------------------------------------------------
+//     add_combined_filters_and_transforms_to_iterator_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
+    genesis::population::VariantInputIterator& iterator
+) const {
+    using namespace genesis::population;
+
+    // Filters and transformations here are applied to the combiend Variant sample,
+    // which is important in the case of parallel input sources: For example, we need to take
+    // all of them into account at the same time to get a proper ref and alt base guess,
+    // otherwise we might end up with contradicting bases.
+
+    // Most of our input sources do not provide ref, and almost non provide alt bases.
+    // So we use our guess function to augment the data. The function is idempotent
+    // (unless we set the `force` parameter, which we do not do here), so for sources that do
+    // contain ref and/or alt bases, nothing changes.
+    iterator.add_transform( []( Variant& var ){
+        guess_and_set_ref_and_alt_bases( var );
+    });
 }
 
 // =================================================================================================
