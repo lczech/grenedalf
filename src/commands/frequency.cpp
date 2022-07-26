@@ -27,6 +27,8 @@
 
 #include "genesis/population/functions/functions.hpp"
 
+#include <unordered_set>
+
 // =================================================================================================
 //      Setup
 // =================================================================================================
@@ -159,11 +161,22 @@ void run_frequency( FrequencyOptions const& options )
     }
     (*freq_ofs) << "\n";
 
+    // We keep a list of chromosome names, for user output.
+    std::unordered_set<std::string> chr_names;
+
     // Process the input file line by line and write the table data
     size_t line_cnt = 0;
     size_t skip_cnt = 0;
     for( auto const& freq_it : options.variant_input.get_iterator() ) {
         ++line_cnt;
+
+        // User output, so that we can see that something is happing.
+        // It only outputs each chromosome once, even if they are not sorted.
+        // That's probably okay for now. Might add code to issue a warning later.
+        if( chr_names.count( freq_it.chromosome ) == 0 ) {
+            chr_names.insert( freq_it.chromosome );
+            LOG_MSG << "At chromosome " << freq_it.chromosome;
+        }
 
         // If we want to omit invariant sites from the output, we need to do a prior check
         // whether the position is invariant or not. We only do this if needed, in order to
@@ -251,8 +264,10 @@ void run_frequency( FrequencyOptions const& options )
     // Output, depending on the setting, to keep it clean.
     if( options.omit_invariants.value ) {
         LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
+                << "from " << chr_names.size() << " chromosomes, "
                 << "and thereof skipped " << skip_cnt << " due to being invariant sites.";
     } else {
-        LOG_MSG << "Processed " << line_cnt << " genome positions of the input file.";
+        LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
+                << "from " << chr_names.size() << " chromosomes.";
     }
 }
