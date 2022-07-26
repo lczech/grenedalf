@@ -263,8 +263,9 @@ private:
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
 
-    // We want to keep all region filters in one place, so that they can be re-used for all inputs.
-    mutable std::vector<std::shared_ptr<genesis::population::GenomeRegionList>> region_filters_;
+    // We keep the region filter here, so that they can be re-used for all inputs.
+    // This filter is created by combining (union or intersection) all input filter files.
+    mutable std::shared_ptr<genesis::population::GenomeLocusSet> region_filter_;
 
 };
 

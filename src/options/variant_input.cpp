@@ -27,6 +27,7 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/bed_reader.hpp"
+#include "genesis/population/formats/genome_region_reader.hpp"
 #include "genesis/population/formats/gff_reader.hpp"
 #include "genesis/population/formats/map_bim_reader.hpp"
 #include "genesis/population/formats/sam_flags.hpp"
@@ -829,7 +830,6 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sam_itera
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_sam_iterator_() called in an invalid context."
     );
-    LOG_MSG2 << "Preparing input sam/bam/cram file " << filename;
 
     // Prepare the reader with all its settings.
     SamVariantInputIterator reader;
@@ -906,7 +906,6 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_pileup_it
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_pileup_iterator_() called in an invalid context."
     );
-    LOG_MSG2 << "Preparing input (m)pileup file " << filename;
 
     // We can use the sample filter settings to obtain a list of indices of samples
     // that we want to restrict the reading to. If no filter is given, that list is empty.
@@ -949,7 +948,6 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_sync_iter
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_sync_iterator_() called in an invalid context."
     );
-    LOG_MSG2 << "Preparing input sync file " << filename;
 
     // We can use the sample filter settings, see prepare_pileup_iterator_() for details.
     auto const sample_filter = find_sample_indices_from_sample_filters_();
@@ -985,7 +983,6 @@ VariantInputOptions::VariantInputIterator VariantInputOptions::prepare_vcf_itera
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
         "prepare_vcf_iterator_() called in an invalid context."
     );
-    LOG_MSG2 << "Preparing input vcf/bcf file " << filename;
 
     // Prepare the iterator.
     // See if we want to filter by sample name, and if so, resolve the name list.
@@ -1027,127 +1024,116 @@ void VariantInputOptions::prepare_region_filters_() const
     using namespace genesis::population;
     using namespace genesis::utils;
 
-    // Not running again if we already have a list.
-    // In cases where no filters are specified, this might run through the code below again,
-    // but it won't read anything anyway, so it will be quick. This check here is mostly to avoid
-    // reading large files again.
-    if( ! region_filters_.empty() ) {
+    // Not running again if we already have set up a filter (i.e., if the shared pointer has data).
+    if( region_filter_ ) {
         return;
     }
 
-    // Add region filters, either as their union, or their intersection.
-    if( to_lower( filter_region_set_.value ) == "union" ) {
-        // For the union, we add all of them to one genome region list first.
-        // We use the overlap function of the genome region list to flatten as much as possible,
-        // as we are not interested in individual regions, but just whether positions are covered.
-        auto region_list = std::make_shared<GenomeRegionList>();
+    // Keep track of how many filters we have added, for user output.
+    size_t filter_cnt = 0;
 
-        // Add the region string filters.
-        for( auto const& value : filter_region_.value ) {
-            auto const region = parse_genome_region( value );
-            region_list->add( region, true );
+    // Helper function to add filters according to the set union/intersection setting.
+    auto add_filter_ = [&]( GenomeLocusSet&& filter )
+    {
+        ++filter_cnt;
+
+        // If this is the first filter that we add, just copy it over to the shared pointer.
+        if( ! region_filter_ ) {
+            region_filter_ = std::make_shared<GenomeLocusSet>( std::move( filter ));
+            return;
         }
 
-        // Add the region list files.
-        for( auto const& list_file : filter_region_list_.value ) {
-            LOG_MSG2 << "Reading regions list file " << list_file;
-            parse_genome_region_file( list_file, *region_list, true );
-        }
-
-        // Add the regions from bed files.
-        for( auto const& file : filter_region_bed_.value ) {
-            LOG_MSG2 << "Reading regions BED file " << file;
-            BedReader().read_as_genome_region_list( from_file( file ), *region_list, true );
-        }
-
-        // Add the regions from gff files.
-        for( auto const& file : filter_region_gff_.value ) {
-            LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
-            GffReader().read_as_genome_region_list( from_file( file ), *region_list, true );
-        }
-
-        // Add the regions from map/bim files.
-        for( auto const& file : filter_region_bim_.value ) {
-            LOG_MSG2 << "Reading regions MAP/BIM file " << file;
-            MapBimReader().read_as_genome_region_list( from_file( file ), *region_list, true );
-        }
-
-        // Add the regions from vcf files.
-        for( auto const& file : filter_region_vcf_.value ) {
-            LOG_MSG2 << "Reading regions VCF/BCF file " << file;
-            genome_region_list_from_vcf_file( file, *region_list );
-        }
-
-        // If we have actually added filters above, store the resulting genome region list.
-        if( ! region_list->empty() ) {
-            assert( region_filters_.empty() );
-            region_filters_.push_back( region_list );
-        }
-
-    } else if( to_lower( filter_region_set_.value ) == "intersection" ) {
-        // For the intersection, we just add all filters to the iterator,
-        // so that all of them have to pass one after another.
-        // This is slighly inefficient, but we do not expect users to add too many different
-        // region input sources at the same time, so we can live with this for now.
-        // Better would be to restrict the intervals more and more with every filter that is addded.
-
-        // Add the region filter. This is the first one we do, so that all others do not need to be
-        // applied to positions that are going to be filtered out anyway.
-        for( auto const& value : filter_region_.value ) {
-            auto region_list = std::make_shared<GenomeRegionList>();
-            region_list->add( parse_genome_region( value ) );
-            region_filters_.push_back( region_list );
-        }
-
-        // Add the region list files.
-        // We use shared pointers that stay alive in the lambda produced by filter_by_region().
-        for( auto const& list_file : filter_region_list_.value ) {
-            LOG_MSG2 << "Reading regions list file " << list_file;
-            auto region_list = std::make_shared<GenomeRegionList>();
-            parse_genome_region_file( list_file, *region_list );
-            region_filters_.push_back( region_list );
-        }
-
-        // Apply the region filter by bed file.  Same as above, just different reading.
-        for( auto const& file : filter_region_bed_.value ) {
-            LOG_MSG2 << "Reading regions BED file " << file;
-            auto const region_list = std::make_shared<GenomeRegionList>(
-                BedReader().read_as_genome_region_list( from_file( file ))
+        // If this is not the first filter, combine the new one with the existing one.
+        if( to_lower( filter_region_set_.value ) == "union" ) {
+            region_filter_->set_union( filter );
+        } else if( to_lower( filter_region_set_.value ) == "intersection" ) {
+            region_filter_->set_intersect( filter );
+        } else {
+            throw CLI::ValidationError(
+                filter_region_set_.option->get_name() + "(" + filter_region_set_.value + ")",
+                "Invalid value."
             );
-            region_filters_.push_back( region_list );
         }
+    };
 
-        // Apply the region filter by gff file. Same as above, just different reader.
-        for( auto const& file : filter_region_gff_.value ) {
-            LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
-            auto const region_list = std::make_shared<GenomeRegionList>(
-                GffReader().read_as_genome_region_list( from_file( file ))
-            );
-            region_filters_.push_back( region_list );
+    // Add the region string filters.
+    for( auto const& value : filter_region_.value ) {
+        GenomeLocusSet loci;
+        loci.add( parse_genome_region( value ));
+        add_filter_( std::move( loci ));
+    }
+
+    // Add the region list files.
+    for( auto const& list_file : filter_region_list_.value ) {
+        LOG_MSG2 << "Reading regions list file " << list_file;
+        add_filter_( GenomeRegionReader().read_as_genome_locus_set( from_file( list_file )));
+    }
+
+    // Add the regions from bed files.
+    for( auto const& file : filter_region_bed_.value ) {
+        LOG_MSG2 << "Reading regions BED file " << file;
+        add_filter_( BedReader().read_as_genome_locus_set( from_file( file )));
+    }
+
+    // Add the regions from gff files.
+    for( auto const& file : filter_region_gff_.value ) {
+        LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
+        add_filter_( GffReader().read_as_genome_locus_set( from_file( file )));
+    }
+
+    // Add the regions from map/bim files.
+    for( auto const& file : filter_region_bim_.value ) {
+        LOG_MSG2 << "Reading regions MAP/BIM file " << file;
+        add_filter_( MapBimReader().read_as_genome_locus_set( from_file( file )));
+    }
+
+    // Add the regions from vcf files.
+    for( auto const& file : filter_region_vcf_.value ) {
+        LOG_MSG2 << "Reading regions VCF/BCF file " << file;
+        add_filter_( genome_locus_set_from_vcf_file( file ));
+    }
+
+    // User output.
+    if( filter_cnt > 0 ) {
+        assert( region_filter_ );
+
+        // Get counts of positions per chromosome.
+        size_t full_chr = 0;
+        size_t spec_chr = 0;
+        size_t spec_pos = 0;
+        for( auto const& chr_name : region_filter_->chromosome_names() ) {
+            auto const& bv = region_filter_->chromosome_positions( chr_name );
+            if( !bv.empty() && bv.get(0) ) {
+                ++full_chr;
+            } else {
+                ++spec_chr;
+                spec_pos += bv.count();
+            }
         }
+        auto const chr_cnt = region_filter_->chromosome_count();
+        assert( chr_cnt = full_chr + spec_chr );
 
-        // Apply the region filter by map/bim file. Same as above, just different reader.
-        for( auto const& file : filter_region_bim_.value ) {
-            LOG_MSG2 << "Reading regions MAP/BIM file " << file;
-            auto const region_list = std::make_shared<GenomeRegionList>(
-                MapBimReader().read_as_genome_region_list( from_file( file ))
-            );
-            region_filters_.push_back( region_list );
+        // Nice log message telling us what the filters will do.
+        LOG_MSG << "Applying " << to_lower( filter_region_set_.value ) << " of " << filter_cnt
+                << " region filters, which in total leads to filtering for " << chr_cnt
+                << " chromosome" << ( chr_cnt != 1 ? "s" : "" ) << ", with "
+                << (( full_chr > 0 ) ? std::to_string( full_chr ) + " full chromosome(s)" : "" )
+                << (( full_chr > 0 && spec_pos > 0 ) ? " and " : "" )
+                << (
+                    ( spec_pos > 0 ) ? std::to_string( spec_chr ) +
+                    " chromosome(s) containing a total of " +
+                    std::to_string( spec_pos ) + " individually specified positions" : ""
+                );
+
+        for( auto const& chr_name : region_filter_->chromosome_names() ) {
+            auto const& bv = region_filter_->chromosome_positions( chr_name );
+            if( !bv.empty() && bv.get(0) ) {
+                LOG_MSG2 << " - Chromosome \"" << chr_name << "\" fully included";
+            } else {
+                LOG_MSG2 << " - Chromosome \"" << chr_name << "\" with "
+                         << bv.count() << " specified positions";
+            }
         }
-
-        // Apply the region filter by vcf file. Same as above, just different way of reading.
-        for( auto const& file : filter_region_vcf_.value ) {
-            LOG_MSG2 << "Reading regions VCF/BCF file " << file;
-            auto region_list = std::make_shared<GenomeRegionList>();
-            genome_region_list_from_vcf_file( file, *region_list );
-            region_filters_.push_back( region_list );
-        }
-
-    } else {
-        throw CLI::ValidationError(
-            filter_region_set_.option->get_name() + "(" + filter_region_set_.value + ")",
-            "Invalid value."
-        );
     }
 }
 
@@ -1158,10 +1144,8 @@ void VariantInputOptions::prepare_region_filters_() const
 void VariantInputOptions::add_region_filters_to_iterator_(
     genesis::population::VariantInputIterator& iterator
 ) const {
-    // Add all genome region lists as filters.
-    for( auto const& region_list : region_filters_ ) {
-        iterator.add_filter( filter_by_region( region_list ));
-    }
+    // Add the genome region list as a filter.
+    iterator.add_filter( filter_by_region( region_filter_ ));
 }
 
 // =================================================================================================
