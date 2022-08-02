@@ -172,7 +172,7 @@ void add_markdown_content( WikiOptions const& options, std::string const& md_fil
 
     // Add markdown file content.
     std::string const fn = dir_normalize_path( options.md_dir ) + md_file + ".md";
-    if( file_exists( fn ) ) {
+    if( file_is_readable( fn ) ) {
         std::ifstream mds( fn );
         os << mds.rdbuf();
     } else {
@@ -351,7 +351,7 @@ void make_wiki_command_page( WikiOptions const& options, CLI::App const& command
         = dir_normalize_path( options.out_dir )
         + "Subcommand:-" + command.get_name() + ".md"
     ;
-    if( ! file_exists( out_file )) {
+    if( ! file_is_readable( out_file )) {
         LOG_MSG << " - No existing wiki file!";
     }
     std::ofstream os( out_file );
@@ -427,7 +427,7 @@ void make_wiki_home_page( WikiOptions const& options )
 
     // Open stream
     std::string const out_file = dir_normalize_path( options.out_dir ) + "Home.md";
-    if( ! file_exists( out_file )) {
+    if( ! file_is_readable( out_file )) {
         LOG_MSG << " - No existing wiki file!";
     }
     std::ofstream os( out_file );
@@ -497,7 +497,7 @@ void make_wiki_sidebar( WikiOptions const& options )
 
     // Open stream
     std::string const out_file = dir_normalize_path( options.out_dir ) + "_Sidebar.md";
-    if( ! file_exists( out_file )) {
+    if( ! file_is_readable( out_file )) {
         LOG_MSG << " - No existing wiki file!";
     }
     std::ofstream os( out_file );
