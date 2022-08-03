@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -205,14 +205,20 @@ std::function<void()> grenedalf_cli_callback(
         print_option_values( subcommand );
         print_citations( citations );
 
-        LOG_MSG << "Started " << genesis::utils::current_date() << " " << genesis::utils::current_time();
+        LOG_MSG << "Started "
+                << genesis::utils::current_date() << " "
+                << genesis::utils::current_time()
+        ;
         LOG_BOLD;
 
         // Run the actual command callback function.
         run_function();
 
         LOG_BOLD;
-        LOG_MSG << "Finished " << genesis::utils::current_date() << " " << genesis::utils::current_time();
+        LOG_MSG << "Finished "
+                << genesis::utils::current_date() << " "
+                << genesis::utils::current_time()
+        ;
     };
 }
 

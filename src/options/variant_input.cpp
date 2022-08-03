@@ -46,6 +46,7 @@
 #include "genesis/utils/containers/filter_iterator.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/core/options.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
 
@@ -719,6 +720,13 @@ void VariantInputOptions::prepare_data_single_file_() const
     add_individual_filters_and_transforms_to_iterator_( iterator_ );
     add_combined_filters_and_transforms_to_iterator_( iterator_ );
 
+    // Set the thread pool of the LambdaIterator to be used. We want to use the global thread pool
+    // here, as otherwise, each input file would spawn it's own thread, which could easily go into
+    // the hundreds or more, and hence lead to slowdown due to blocking issues, or even problems
+    // on clusters that monitor CPU usage. Well, not for a single file, but still, better to
+    // use the global pool. This is more relevant for multiple files, see below.
+    iterator_.thread_pool( genesis::utils::Options::get().global_thread_pool() );
+
     // Set the buffer block size of the iterator, for multi-threaded processing speed.
     // Needs to be tested - might give more or less advantage depending on setting.
     iterator_.block_size( iterator_block_size_.value );
@@ -796,6 +804,10 @@ void VariantInputOptions::prepare_data_multiple_files_() const
         }
         add_individual_filters_and_transforms_to_iterator_( input );
 
+        // Following the reasoning from above: we need to use the global thread pool,
+        // as otherwise reading hundreds of files will spawn too many threads, which is not good.
+        input.thread_pool( genesis::utils::Options::get().global_thread_pool() );
+
         // Also set the buffer block size of the iterator, using the second buffer size option
         // that is used for the inner iterators of parallel input.
         // Needs to be tested - might give more or less advantage depending on setting.
@@ -811,6 +823,10 @@ void VariantInputOptions::prepare_data_multiple_files_() const
 
     // Add the filters and transformations that are to be applied to all samples combined.
     add_combined_filters_and_transforms_to_iterator_( iterator_ );
+
+    // We also need to set the thread pool of the parallel input iterator itself,
+    // for the same reasons as described above.
+    iterator_.thread_pool( genesis::utils::Options::get().global_thread_pool() );
 
     // Set the buffer block size of the iterator, for multi-threaded speed.
     // We only buffer the final parallel iterator, and not its individual sources,

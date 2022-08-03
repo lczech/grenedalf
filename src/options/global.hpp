@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,6 +69,13 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
+    /**
+     * @brief Function to set up the global environment.
+     *
+     * This has to be called before running any of the commands. We automatically take care of this
+     * via the wrapper grenedalf_cli_callback() that is used as the callback for every run command
+     * provided to CLI11, so that we make sure to always call it.
+     */
     void run_global();
 
     // -------------------------------------------------------------------------

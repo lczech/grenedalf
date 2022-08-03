@@ -25,6 +25,7 @@
 
 #include "tools/version.hpp"
 
+#include "genesis/utils/core/info.hpp"
 #include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/options.hpp"
 
@@ -37,7 +38,7 @@
 void GlobalOptions::initialize( int const argc, char const* const* argv )
 {
     // By default, use the hardware threads, taking hypterthreding into account
-    opt_threads.value = genesis::utils::Options::get().guess_number_of_threads(false);
+    opt_threads.value = genesis::utils::guess_number_of_threads(false);
 
     // If hardware value is not available, just use 1 thread.
     // This is executed if the call to the above function fails.
@@ -109,19 +110,32 @@ void GlobalOptions::add_to_subcommand( CLI::App& subcommand )
 
 void GlobalOptions::run_global()
 {
-    // If user did not provide number, use hardware value.
+    // If user did not provide number, use hardware value (taking care of hyperthreads as well).
     if( opt_threads.value == 0 ) {
-        opt_threads.value = std::thread::hardware_concurrency();
+        opt_threads.value = genesis::utils::guess_number_of_threads(false);
     }
 
     // If hardware value is not available, just use 1 thread.
-    // This is executed if the call to hardware_concurrency fails.
+    // This is executed if the call above fails.
     if( opt_threads.value == 0 ) {
         opt_threads.value = 1;
     }
 
-    // Set number of threads for genesis.
+    // Set number of threads for genesis. At the moment, this only sets the number of threads
+    // to use for OpenMP. We might refactor this in the future, to not use OpenMP any more,
+    // because users had trouble getting it to compile, and instead use our own multi-threading
+    // solution using a global thread pool for all CPU-heavy computation. See below for that pool;
+    // once we have refactored everything to use that pool, this comment here will be outdated...
     genesis::utils::Options::get().number_of_threads( opt_threads.value );
+
+    // At the moment, we use a thread pool for the LambdaIterator of the VariantInputOptions
+    // reading (but only for that, see comment above as well), because otherwise each input file
+    // spawns a separate thread, which could be hundreds  or a thousand threads all trying to
+    // get CPU time to parse their file at the same time... which would invalidate all thread
+    // settings, and might cause trouble on clusters.
+    // Note that this technique is independent of OpenMP, and so we will end of having two times
+    // the number of threads spawned as the moment... Hence the need for the refactor later.
+    genesis::utils::Options::get().init_global_thread_pool( opt_threads.value );
 
     // Allow to overwrite files. Has to be done before adding the log file (coming below),
     // as this might already fail if the log file exists.

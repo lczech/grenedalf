@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2022 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include "tools/misc.hpp"
 
+#include "genesis/utils/core/info.hpp"
 #include "genesis/utils/core/options.hpp"
 #include "genesis/utils/text/string.hpp"
 
@@ -61,9 +62,9 @@ std::string format_columns(
 ) {
     // If std out is a terminal, we use its width for the maximal line length.
     unsigned long twidth = 0;
-    if( genesis::utils::Options::get().stdout_is_terminal() ) {
+    if( genesis::utils::info_stdout_is_terminal() ) {
         twidth = static_cast<unsigned long>(
-            genesis::utils::Options::get().terminal_size().first
+            genesis::utils::info_terminal_size().first
         );
     }
 

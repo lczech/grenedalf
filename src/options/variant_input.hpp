@@ -127,18 +127,10 @@ public:
 
 public:
 
-    // -------------------------------------
-    //     Getters
-    // -------------------------------------
-
     /**
      * @brief Get all sample names given in the input file that are not filtered out.
      */
     std::vector<std::string> const& sample_names() const;
-
-    // -------------------------------------
-    //     Iteration
-    // -------------------------------------
 
     /**
      * @brief Get an iterator over the positions in the input file.
@@ -222,6 +214,10 @@ private:
 
 private:
 
+    // -------------------------------------
+    //     CLI Options
+    // -------------------------------------
+
     // Input file types
 
     // SAM/BAM/CRAM
@@ -267,16 +263,22 @@ private:
     CliOption<size_t> iterator_block_size_ = 4096;
     CliOption<size_t> parallel_block_size_ = 0;
 
-    // We have different input data formats, but want to convert all of them to Variant.
+    // -------------------------------------
+    //     Run Data
+    // -------------------------------------
+
+    // We have different input data formats, but want to convert all of them to our `Variant` type.
     // Working with a statically typed language, this is a bit tricky, so let's introduce a level of
     // abstraction that gives us an iterator over Variants that type-erases the input data format
     // by using a std::function with a lambda that simply returns Variant objects.
+    // The `VariantInputIterator` takes care of all of this, and just gives us an iterable,
+    // yielding a Variant for each position.
     mutable VariantInputIterator iterator_;
 
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
 
-    // We keep the region filter here, so that they can be re-used for all inputs.
+    // We keep the region filter here, so that it can be re-used for all inputs.
     // This filter is created by combining (union or intersection) all input filter files.
     mutable std::shared_ptr<genesis::population::GenomeLocusSet> region_filter_;
 
