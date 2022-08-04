@@ -39,8 +39,8 @@ void setup_frequency( CLI::App& app )
     auto options = std::make_shared<FrequencyOptions>();
     auto sub = app.add_subcommand(
         "frequency",
-        "Create a table with per-sample and/or total base counts and frequencies "
-        "at each position in the genome."
+        "Create a table with per-sample and/or total base counts and/or frequencies "
+        "at positions in the genome."
     );
 
     // Required input of some frequency format (mpileup or vcf at the moment).
@@ -48,45 +48,54 @@ void setup_frequency( CLI::App& app )
     options->variant_input.add_sample_name_opts_to_app( sub );
     options->variant_input.add_region_filter_opts_to_app( sub );
 
-    // What type of columns to produce.
-    options->type.option = sub->add_option(
-        "--type",
-        options->type.value,
-        "Select which type of columns to output: Either per-sample counts and frequencies, "
-        "or the total counts and frequencies across all samples, "
-        "using the sum of the per-sample REF and ALT counts, or both (default)."
-    );
-    options->type.option->group( "Settings" );
-    options->type.option->transform(
-        CLI::IsMember({ "samples", "total", "both" }, CLI::ignore_case )
-    );
+    // Add per-sample output selection.
+    options->write_sample_counts.option = sub->add_flag(
+        "--write-sample-counts",
+        options->write_sample_counts.value,
+        "If set, write the 'REF_CNT' and 'ALT_CNT' columns per sample, "
+        "which contain the REF and ALT base counts at the position for each sample."
+    )->group( "Settings" );
+    options->write_sample_coverage.option = sub->add_flag(
+        "--write-sample-coverage",
+        options->write_sample_coverage.value,
+        "If set, write the 'COV' column per sample, "
+        "which contains the coverage (sum of REF and ALT) counts of each sample."
+    )->group( "Settings" );
+    options->write_sample_frequency.option = sub->add_flag(
+        "--write-sample-frequency",
+        options->write_sample_frequency.value,
+        "If set, write the 'FREQ' column per sample, "
+        "which contains the frequency, computed as REF/(REF+ALT) of the counts of each sample."
+    )->group( "Settings" );
 
-    // Which columns to write and not to write
-    options->no_coverage.option = sub->add_flag(
-        "--no-coverage",
-        options->no_coverage.value,
-        "If set, do not write the 'COV' columns (per sample and/or total), "
-        "which contain the coverage (sum of REF and ALT) counts."
+    // Add total output selection.
+    options->write_total_counts.option = sub->add_flag(
+        "--write-total-counts",
+        options->write_total_counts.value,
+        "If set, write the 'REF_CNT' and 'ALT_CNT' columns for the total, "
+        "which contain the REF and ALT base counts at the position across all samples."
     )->group( "Settings" );
-    options->no_frequency.option = sub->add_flag(
-        "--no-frequency",
-        options->no_frequency.value,
-        "If set, do not write write the 'FREQ' columns (per sample and/or total), "
-        "which contain the frequency, computed as REF/(REF+ALT) counts."
+    options->write_total_coverage.option = sub->add_flag(
+        "--write-total-coverage",
+        options->write_total_coverage.value,
+        "If set, write the 'COV' column for the total, "
+        "which contains the coverage (sum of REF and ALT) counts across all samples."
     )->group( "Settings" );
-    options->no_counts.option = sub->add_flag(
-        "--no-counts",
-        options->no_counts.value,
-        "If set, do not write the 'REF_CNT' and 'ALT_CNT' columns (per sample and/or total), "
-        "which contain the REF and ALT counts."
+    options->write_total_frequency.option = sub->add_flag(
+        "--write-total-frequency",
+        options->write_total_frequency.value,
+        "If set, write the 'FREQ' column for the total, "
+        "which contains the frequency, computed as REF/(REF+ALT) of the counts across all samples."
     )->group( "Settings" );
 
     // Invariant site handling
-    options->omit_invariants.option = sub->add_flag(
-        "--omit-invariants",
-        options->omit_invariants.value,
-        "If set, do not write rows that have no alternative counts. This is particularly useful "
-        "for (m)pileup input, which otherwise produces an output row for each position."
+    options->write_invariants.option = sub->add_flag(
+        "--write-invariants",
+        options->write_invariants.value,
+        "If set, write rows that have no alternative (ALT) counts. "
+        "By default, we omit these positions, which is useful to keep the output small. "
+        "For example sam/bam/cream or (m)pileup files otherwise produce an output row "
+        "for each position in the input."
     )->group( "Settings" );
 
     // Add table output options.
@@ -124,23 +133,6 @@ void run_frequency( FrequencyOptions const& options )
     auto freq_oft = options.file_output.get_output_target( "frequency", "csv" );
     auto& freq_ofs = freq_oft->ostream();
 
-    // Make the header fields.
-    std::vector<std::string> fields;
-    if( ! options.no_coverage.value ) {
-        fields.emplace_back( "COV" );
-    }
-    if( ! options.no_frequency.value ) {
-        fields.emplace_back( "FREQ" );
-    }
-    if( ! options.no_counts.value ) {
-        fields.emplace_back( "REF_CNT" );
-        fields.emplace_back( "ALT_CNT" );
-    }
-    if( fields.empty() ) {
-        LOG_WARN << "Warning: All count and frequency output columns are deselected; "
-                 << "the output will hence only contain the columns CHROM, POS, REF, ALT.";
-    }
-
     // Most of our input sources do not provide ref, and almost non provide alt bases.
     // So we use our guess function to augment the data. The function is idempotent
     // (unless we set the `force` parameter, which we do not do here), so for sources that do
@@ -152,28 +144,63 @@ void run_frequency( FrequencyOptions const& options )
         }
     );
 
+    // -------------------------------------------------------------------------
+    //     Output preparation
+    // -------------------------------------------------------------------------
+
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
 
-    // Which types of columns to output: per sample and/or totals
-    bool const write_columns = options.type.value == "samples" || options.type.value == "both";
-    bool const write_total   = options.type.value == "total"   || options.type.value == "both";
-
-    // Write the csv header line.
+    // Write the fixed part of the csv header line.
     freq_ofs << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
-    if( write_columns ) {
-        for( auto const& sample : options.variant_input.sample_names() ) {
-            for( auto const& field : fields ) {
-                freq_ofs << sep_char << sample << "." << field;
-            }
+    bool write_anything = false;
+
+    // Make the header fields for the samples.
+    std::vector<std::string> fields;
+    if( options.write_sample_counts.value ) {
+        fields.emplace_back( "REF_CNT" );
+        fields.emplace_back( "ALT_CNT" );
+        write_anything = true;
+    }
+    if( options.write_sample_coverage.value ) {
+        fields.emplace_back( "COV" );
+        write_anything = true;
+    }
+    if( options.write_sample_frequency.value ) {
+        fields.emplace_back( "FREQ" );
+        write_anything = true;
+    }
+    for( auto const& sample : options.variant_input.sample_names() ) {
+        for( auto const& field : fields ) {
+            freq_ofs << sep_char << sample << "." << field;
         }
     }
-    if( write_total ) {
-        for( auto const& field : fields ) {
-            freq_ofs << sep_char << "TOTAL." << field;
-        }
+
+    // Write the header fields for the total.
+    if( options.write_total_counts.value ) {
+        freq_ofs << sep_char << "TOTAL.REF_CNT";
+        freq_ofs << sep_char << "TOTAL.ALT_CNT";
+        write_anything = true;
+    }
+    if( options.write_total_coverage.value ) {
+        freq_ofs << sep_char << "TOTAL.COV";
+        write_anything = true;
+    }
+    if( options.write_total_frequency.value ) {
+        freq_ofs << sep_char << "TOTAL.FREQ";
+        write_anything = true;
     }
     freq_ofs << "\n";
+
+    // Let's help the user a bit.
+    if( ! write_anything ) {
+        LOG_WARN << "Warning: All count and frequency output columns are deselected; "
+                 << "the output will hence only contain the columns CHROM, POS, REF, ALT.";
+    }
+
+    // -------------------------------------------------------------------------
+    //     Loop over input data
+    // -------------------------------------------------------------------------
 
     // We keep a list of chromosome names, for user output.
     std::unordered_set<std::string> chr_names;
@@ -186,7 +213,7 @@ void run_frequency( FrequencyOptions const& options )
 
         // User output, so that we can see that something is happing.
         // It only outputs each chromosome once, even if they are not sorted.
-        // That's probably okay for now. Might add code to issue a warning later.
+        // That's probably okay for now. Might add code to issue a warning later when not sorted.
         if( chr_names.count( freq_it.chromosome ) == 0 ) {
             chr_names.insert( freq_it.chromosome );
             LOG_MSG << "At chromosome " << freq_it.chromosome;
@@ -195,7 +222,7 @@ void run_frequency( FrequencyOptions const& options )
         // If we want to omit invariant sites from the output, we need to do a prior check
         // whether the position is invariant or not. We only do this if needed, in order to
         // not slow down the case when we do not want to omit.
-        if( options.omit_invariants.value ) {
+        if( ! options.write_invariants.value ) {
             size_t ref_cnt = 0;
             size_t alt_cnt = 0;
             for( auto const& sample : freq_it.samples ) {
@@ -219,7 +246,7 @@ void run_frequency( FrequencyOptions const& options )
         size_t total_alt_cnt = 0;
         size_t total_cnt_sum = 0;
 
-        // Per sample processing
+        // Per sample columns processing
         for( auto const& sample : freq_it.samples ) {
 
             // Get raw counts
@@ -231,57 +258,57 @@ void run_frequency( FrequencyOptions const& options )
             total_cnt_sum += cnt_sum;
 
             // Write per sample columns
-            if( write_columns ) {
-                if( ! options.no_coverage.value ) {
-                    freq_ofs << sep_char << cnt_sum;
-                }
-                if( ! options.no_frequency.value ) {
-                    if( cnt_sum > 0 ) {
-                        auto const freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
-                        freq_ofs << sep_char << freq;
-                    } else {
-                        freq_ofs << sep_char << options.table_output.get_na_entry();
-                    }
-                }
-                if( ! options.no_counts.value ) {
-                    freq_ofs << sep_char << ( ref_cnt );
-                    freq_ofs << sep_char << ( alt_cnt );
-                }
+            if( options.write_sample_counts.value ) {
+                freq_ofs << sep_char << ref_cnt;
+                freq_ofs << sep_char << alt_cnt;
             }
-        }
-
-        // Total columns
-        if( write_total ) {
-            if( ! options.no_coverage.value ) {
-                freq_ofs << sep_char << total_cnt_sum;
+            if( options.write_sample_coverage.value ) {
+                freq_ofs << sep_char << cnt_sum;
             }
-            if( ! options.no_frequency.value ) {
-                if( total_cnt_sum > 0 ) {
-                    auto const freq
-                        = static_cast<double>( total_ref_cnt )
-                        / static_cast<double>( total_cnt_sum )
-                    ;
+            if( options.write_sample_frequency.value ) {
+                if( cnt_sum > 0 ) {
+                    auto const freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
                     freq_ofs << sep_char << freq;
                 } else {
                     freq_ofs << sep_char << options.table_output.get_na_entry();
                 }
             }
-            if( ! options.no_counts.value ) {
-                freq_ofs << sep_char << ( total_ref_cnt );
-                freq_ofs << sep_char << ( total_alt_cnt );
+        }
+
+        // Total columns
+        if( options.write_total_counts.value ) {
+            freq_ofs << sep_char << total_ref_cnt;
+            freq_ofs << sep_char << total_alt_cnt;
+        }
+        if( options.write_total_coverage.value ) {
+            freq_ofs << sep_char << total_cnt_sum;
+        }
+        if( options.write_total_frequency.value ) {
+            if( total_cnt_sum > 0 ) {
+                auto const freq
+                    = static_cast<double>( total_ref_cnt )
+                    / static_cast<double>( total_cnt_sum )
+                ;
+                freq_ofs << sep_char << freq;
+            } else {
+                freq_ofs << sep_char << options.table_output.get_na_entry();
             }
         }
 
         freq_ofs << "\n";
     }
 
+    // -------------------------------------------------------------------------
+    //     Final user output
+    // -------------------------------------------------------------------------
+
     // Output, depending on the setting, to keep it clean.
-    if( options.omit_invariants.value ) {
+    if( options.write_invariants.value ) {
+        LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
+                << "from " << chr_names.size() << " chromosomes.";
+    } else {
         LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
                 << "from " << chr_names.size() << " chromosomes, "
                 << "and thereof skipped " << skip_cnt << " due to being invariant sites.";
-    } else {
-        LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
-                << "from " << chr_names.size() << " chromosomes.";
     }
 }
