@@ -71,7 +71,7 @@ std::vector<
 };
 
 // =================================================================================================
-//      Setup Functions
+//      CLI Setup Functions
 // =================================================================================================
 
 // -------------------------------------------------------------------------
@@ -560,6 +560,36 @@ void VariantInputOptions::add_region_filter_opts_to_app(
         )
     );
     filter_region_set_.option->group( group );
+}
+
+// =================================================================================================
+//      Command Setup Functions
+// =================================================================================================
+
+void VariantInputOptions::add_individual_filter_and_transforms(
+    std::function<bool(genesis::population::Variant&)> const& func
+) const {
+    // Checks for internal correct setup
+    if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
+        throw std::domain_error(
+            "Internal error: Calling add_individual_filter_and_transforms() "
+            "after input source iteration has already been started."
+        );
+    }
+    individual_filters_and_transforms_.push_back( func );
+}
+
+void VariantInputOptions::add_combined_filter_and_transforms(
+    std::function<bool(genesis::population::Variant&)> const& func
+) const {
+    // Checks for internal correct setup
+    if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
+        throw std::domain_error(
+            "Internal error: Calling add_individual_filter_and_transforms() "
+            "after input source iteration has already been started."
+        );
+    }
+    combined_filters_and_transforms_.push_back( func );
 }
 
 // =================================================================================================
@@ -1174,6 +1204,11 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_iterator_(
     if( region_filter_ ) {
         iterator.add_filter( filter_by_region( region_filter_ ));
     }
+
+    // Add the addtional filters and transformations that might have been set by the commands.
+    for( auto const& func : individual_filters_and_transforms_ ) {
+        iterator.add_transform_filter( func );
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -1190,13 +1225,10 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     // all of them into account at the same time to get a proper ref and alt base guess,
     // otherwise we might end up with contradicting bases.
 
-    // Most of our input sources do not provide ref, and almost non provide alt bases.
-    // So we use our guess function to augment the data. The function is idempotent
-    // (unless we set the `force` parameter, which we do not do here), so for sources that do
-    // contain ref and/or alt bases, nothing changes.
-    iterator.add_transform( []( Variant& var ){
-        guess_and_set_ref_and_alt_bases( var );
-    });
+    // Add the addtional filters and transformations that might have been set by the commands.
+    for( auto const& func : combined_filters_and_transforms_ ) {
+        iterator.add_transform_filter( func );
+    }
 }
 
 // =================================================================================================

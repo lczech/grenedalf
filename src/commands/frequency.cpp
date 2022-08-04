@@ -118,8 +118,11 @@ void run_frequency( FrequencyOptions const& options )
 {
     using namespace genesis::population;
 
+    // Check the output file, and get write access to it.
+    // We directly obtain the ostream here, to avoid having to dereference the target all the time.
     options.file_output.check_output_files_nonexistence( "frequency", "csv" );
-    auto freq_ofs = options.file_output.get_output_target( "frequency", "csv" );
+    auto freq_oft = options.file_output.get_output_target( "frequency", "csv" );
+    auto& freq_ofs = freq_oft->ostream();
 
     // Make the header fields.
     std::vector<std::string> fields;
@@ -138,6 +141,17 @@ void run_frequency( FrequencyOptions const& options )
                  << "the output will hence only contain the columns CHROM, POS, REF, ALT.";
     }
 
+    // Most of our input sources do not provide ref, and almost non provide alt bases.
+    // So we use our guess function to augment the data. The function is idempotent
+    // (unless we set the `force` parameter, which we do not do here), so for sources that do
+    // contain ref and/or alt bases, nothing changes.
+    options.variant_input.add_combined_filter_and_transforms(
+        []( genesis::population::Variant& var ){
+            guess_and_set_ref_and_alt_bases( var );
+            return true;
+        }
+    );
+
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
 
@@ -146,20 +160,20 @@ void run_frequency( FrequencyOptions const& options )
     bool const write_total   = options.type.value == "total"   || options.type.value == "both";
 
     // Write the csv header line.
-    (*freq_ofs) << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
+    freq_ofs << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
     if( write_columns ) {
         for( auto const& sample : options.variant_input.sample_names() ) {
             for( auto const& field : fields ) {
-                (*freq_ofs) << sep_char << sample << "." << field;
+                freq_ofs << sep_char << sample << "." << field;
             }
         }
     }
     if( write_total ) {
         for( auto const& field : fields ) {
-            (*freq_ofs) << sep_char << "TOTAL." << field;
+            freq_ofs << sep_char << "TOTAL." << field;
         }
     }
-    (*freq_ofs) << "\n";
+    freq_ofs << "\n";
 
     // We keep a list of chromosome names, for user output.
     std::unordered_set<std::string> chr_names;
@@ -195,10 +209,10 @@ void run_frequency( FrequencyOptions const& options )
         }
 
         // Write fixed columns
-        (*freq_ofs) << freq_it.chromosome;
-        (*freq_ofs) << sep_char << freq_it.position;
-        (*freq_ofs) << sep_char << freq_it.reference_base;
-        (*freq_ofs) << sep_char << freq_it.alternative_base;
+        freq_ofs << freq_it.chromosome;
+        freq_ofs << sep_char << freq_it.position;
+        freq_ofs << sep_char << freq_it.reference_base;
+        freq_ofs << sep_char << freq_it.alternative_base;
 
         // Keep track of totals
         size_t total_ref_cnt = 0;
@@ -219,19 +233,19 @@ void run_frequency( FrequencyOptions const& options )
             // Write per sample columns
             if( write_columns ) {
                 if( ! options.no_coverage.value ) {
-                    (*freq_ofs) << sep_char << cnt_sum;
+                    freq_ofs << sep_char << cnt_sum;
                 }
                 if( ! options.no_frequency.value ) {
                     if( cnt_sum > 0 ) {
                         auto const freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
-                        (*freq_ofs) << sep_char << freq;
+                        freq_ofs << sep_char << freq;
                     } else {
-                        (*freq_ofs) << sep_char << options.table_output.get_na_entry();
+                        freq_ofs << sep_char << options.table_output.get_na_entry();
                     }
                 }
                 if( ! options.no_counts.value ) {
-                    (*freq_ofs) << sep_char << ( ref_cnt );
-                    (*freq_ofs) << sep_char << ( alt_cnt );
+                    freq_ofs << sep_char << ( ref_cnt );
+                    freq_ofs << sep_char << ( alt_cnt );
                 }
             }
         }
@@ -239,7 +253,7 @@ void run_frequency( FrequencyOptions const& options )
         // Total columns
         if( write_total ) {
             if( ! options.no_coverage.value ) {
-                (*freq_ofs) << sep_char << total_cnt_sum;
+                freq_ofs << sep_char << total_cnt_sum;
             }
             if( ! options.no_frequency.value ) {
                 if( total_cnt_sum > 0 ) {
@@ -247,18 +261,18 @@ void run_frequency( FrequencyOptions const& options )
                         = static_cast<double>( total_ref_cnt )
                         / static_cast<double>( total_cnt_sum )
                     ;
-                    (*freq_ofs) << sep_char << freq;
+                    freq_ofs << sep_char << freq;
                 } else {
-                    (*freq_ofs) << sep_char << options.table_output.get_na_entry();
+                    freq_ofs << sep_char << options.table_output.get_na_entry();
                 }
             }
             if( ! options.no_counts.value ) {
-                (*freq_ofs) << sep_char << ( total_ref_cnt );
-                (*freq_ofs) << sep_char << ( total_alt_cnt );
+                freq_ofs << sep_char << ( total_ref_cnt );
+                freq_ofs << sep_char << ( total_alt_cnt );
             }
         }
 
-        (*freq_ofs) << "\n";
+        freq_ofs << "\n";
     }
 
     // Output, depending on the setting, to keep it clean.

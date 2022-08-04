@@ -56,6 +56,8 @@ public:
     //     Typedefs and Enums
     // -------------------------------------------------------------------------
 
+    using Variant = genesis::population::Variant;
+    using GenomeLocusSet = genesis::population::GenomeLocusSet;
     using VariantInputIterator = genesis::population::VariantInputIterator;
 
     // -------------------------------------------------------------------------
@@ -72,7 +74,7 @@ public:
     VariantInputOptions& operator= ( VariantInputOptions&& )            = default;
 
     // -------------------------------------------------------------------------
-    //     Setup Functions
+    //     CLI Setup Functions
     // -------------------------------------------------------------------------
 
     void add_frequency_input_opts_to_app(
@@ -113,13 +115,41 @@ public:
 
     void add_sample_name_opts_to_app(
         CLI::App* sub,
-        std::string const& group = "Sample Names"
+        std::string const& group = "Sample Names and Filters"
     );
 
     void add_region_filter_opts_to_app(
         CLI::App* sub,
         std::string const& group = "Region Filters"
     );
+
+    // -------------------------------------------------------------------------
+    //     Command Setup Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief Transformations and filters for individual input sources.
+     *
+     * These can be added by the commands as needed for their processing, and are executed
+     * on each input source. The function has to be called before calling any of the run functions,
+     * i.e., sample_names() or get_iterator().
+     *
+     * We always add the regions filter interally here alreay as the first filter per source,
+     * as this is one that is provided in this class here already, and hence offered to all
+     * commands that make use of this VariantInputOptions class.
+     */
+    void add_individual_filter_and_transforms( std::function<bool(Variant&)> const& func ) const;
+
+    /**
+     * @brief Transformations and filters for the compbined input VariantInputIterator.
+     *
+     * These can be added by the commands as needed for their processing, and are executed
+     * on the combined input; if only a single file is provided as input by the user,
+     * both the individual and these combined functions are applied to that.
+     * The function has to be called before calling any of the run functions,
+     * i.e., sample_names() or get_iterator().
+     */
+    void add_combined_filter_and_transforms( std::function<bool(Variant&)> const& func ) const;
 
     // -------------------------------------------------------------------------
     //     Run Functions
@@ -137,7 +167,7 @@ public:
      *
      * This takes care of any filtering of samples, chromosomes, and positions.
      */
-    genesis::population::VariantInputIterator& get_iterator() const;
+    VariantInputIterator& get_iterator() const;
 
     // -------------------------------------------------------------------------
     //     Internal Helpers
@@ -163,14 +193,14 @@ private:
      * @brief Add filters and transformations that are to be applied to each input individually.
      */
     void add_individual_filters_and_transforms_to_iterator_(
-        genesis::population::VariantInputIterator& iterator
+        VariantInputIterator& iterator
     ) const;
 
     /**
      * @brief Add filters and transformations that are to be applied to the combined sample.
      */
     void add_combined_filters_and_transforms_to_iterator_(
-        genesis::population::VariantInputIterator& iterator
+        VariantInputIterator& iterator
     ) const;
 
     /**
@@ -259,9 +289,19 @@ private:
     CliOption<std::vector<std::string>> filter_region_vcf_ ;
     CliOption<std::string> filter_region_set_ = "union";
 
+    // Transformations and filters, can be added by the commands as needed for their processing.
+    // The individual is applied per input source, and the compbined is applied on the whole
+    // VariantInputIterator at the end; if only a single file is provided as input by the user,
+    // both are applied to that.
+    // We make them mutable, so that these filters/transformations can be added at runtime
+    // of the command. Doesn't really matter - we could add them in the setup of the command
+    // as well, but somehow, that part of the command seems that it should be more about the CLI.
+    mutable std::vector<std::function<bool(Variant&)>> individual_filters_and_transforms_;
+    mutable std::vector<std::function<bool(Variant&)>> combined_filters_and_transforms_;
+
     // Hidden options to set the LambdaIterator block size for speed.
-    CliOption<size_t> iterator_block_size_ = 4096;
-    CliOption<size_t> parallel_block_size_ = 0;
+    CliOption<size_t> iterator_block_size_ = 8192;
+    CliOption<size_t> parallel_block_size_ = 4096;
 
     // -------------------------------------
     //     Run Data
@@ -280,7 +320,7 @@ private:
 
     // We keep the region filter here, so that it can be re-used for all inputs.
     // This filter is created by combining (union or intersection) all input filter files.
-    mutable std::shared_ptr<genesis::population::GenomeLocusSet> region_filter_;
+    mutable std::shared_ptr<GenomeLocusSet> region_filter_;
 
 };
 
