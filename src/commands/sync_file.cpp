@@ -45,7 +45,7 @@ void setup_sync_file( CLI::App& app )
     // Required input of some frequency format (mpileup or vcf at the moment).
     options->variant_input.add_frequency_input_opts_to_app( sub );
     options->variant_input.add_sample_name_opts_to_app( sub );
-    options->variant_input.add_filter_opts_to_app( sub );
+    options->variant_input.add_region_filter_opts_to_app( sub );
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );

@@ -155,7 +155,7 @@ void VariantInputOptions::add_frequency_input_opts_to_app(
     //     add_sample_name_opts_to_app( sub, group );
     // }
     // if( with_filter_opts ) {
-    //     add_filter_opts_to_app( sub, group );
+    //     add_region_filter_opts_to_app( sub, group );
     // }
 }
 
@@ -384,7 +384,7 @@ CLI::Option* VariantInputOptions::add_vcf_input_opt_to_app(
 }
 
 // -------------------------------------------------------------------------
-//     Sample Naming
+//     Sample Naming and Filtering
 // -------------------------------------------------------------------------
 
 void VariantInputOptions::add_sample_name_opts_to_app(
@@ -431,13 +431,41 @@ void VariantInputOptions::add_sample_name_opts_to_app(
     // The two ways of specifying sample names are mutually exclusive.
     sample_name_list_.option->excludes( sample_name_prefix_.option );
     sample_name_prefix_.option->excludes( sample_name_list_.option );
+
+    // Add option for sample name filter.
+    filter_samples_include_.option = sub->add_option(
+        "--filter-samples-include",
+        filter_samples_include_.value,
+        "Sample names to include (all other samples are excluded); either (1) a comma- or "
+        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
+        "is provided, all samples in the input file are used. The option considers "
+        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
+        "names. Note that this option can only be used if a single file is given as input."
+    );
+    filter_samples_include_.option->group( group );
+
+    // And the other way round.
+    filter_samples_exclude_.option = sub->add_option(
+        "--filter-samples-exclude",
+        filter_samples_exclude_.value,
+        "Sample names to exclude (all other samples are included); either (1) a comma- or "
+        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
+        "is provided, all samples in the input file are used. The option considers "
+        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
+        "names. Note that this option can only be used if a single file is given as input."
+    );
+    filter_samples_exclude_.option->group( group );
+
+    // Include and exclude are mutually exclusive.
+    filter_samples_exclude_.option->excludes( filter_samples_include_.option );
+    filter_samples_include_.option->excludes( filter_samples_exclude_.option );
 }
 
 // -------------------------------------------------------------------------
 //     Filtering
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::add_filter_opts_to_app(
+void VariantInputOptions::add_region_filter_opts_to_app(
     CLI::App* sub,
     std::string const& group
 ) {
@@ -532,34 +560,6 @@ void VariantInputOptions::add_filter_opts_to_app(
         )
     );
     filter_region_set_.option->group( group );
-
-    // Add option for sample name filter.
-    filter_samples_include_.option = sub->add_option(
-        "--filter-samples-include",
-        filter_samples_include_.value,
-        "Sample names to include (all other samples are excluded); either (1) a comma- or "
-        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
-        "is provided, all samples in the input file are used. The option considers "
-        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
-        "names. Note that this option can only be used if a single file is given as input."
-    );
-    filter_samples_include_.option->group( group );
-
-    // And the other way round.
-    filter_samples_exclude_.option = sub->add_option(
-        "--filter-samples-exclude",
-        filter_samples_exclude_.value,
-        "Sample names to exclude (all other samples are included); either (1) a comma- or "
-        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
-        "is provided, all samples in the input file are used. The option considers "
-        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
-        "names. Note that this option can only be used if a single file is given as input."
-    );
-    filter_samples_exclude_.option->group( group );
-
-    // Include and exclude are mutually exclusive.
-    filter_samples_exclude_.option->excludes( filter_samples_include_.option );
-    filter_samples_include_.option->excludes( filter_samples_exclude_.option );
 }
 
 // =================================================================================================

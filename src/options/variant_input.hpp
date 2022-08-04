@@ -116,9 +116,9 @@ public:
         std::string const& group = "Sample Names"
     );
 
-    void add_filter_opts_to_app(
+    void add_region_filter_opts_to_app(
         CLI::App* sub,
-        std::string const& group = "Filtering"
+        std::string const& group = "Region Filters"
     );
 
     // -------------------------------------------------------------------------
@@ -244,9 +244,11 @@ private:
     // General input settings
     CliOption<std::string> multi_file_loci_set_ = "union";
 
-    // Sample names
+    // Sample names and filters
     CliOption<std::string> sample_name_list_ = "";
     CliOption<std::string> sample_name_prefix_ = ""; // "Sample_"
+    CliOption<std::string> filter_samples_include_ = "";
+    CliOption<std::string> filter_samples_exclude_ = "";
 
     // Filters for rows and columns
     CliOption<std::vector<std::string>> filter_region_ ;
@@ -256,8 +258,6 @@ private:
     CliOption<std::vector<std::string>> filter_region_bim_ ;
     CliOption<std::vector<std::string>> filter_region_vcf_ ;
     CliOption<std::string> filter_region_set_ = "union";
-    CliOption<std::string> filter_samples_include_ = "";
-    CliOption<std::string> filter_samples_exclude_ = "";
 
     // Hidden options to set the LambdaIterator block size for speed.
     CliOption<size_t> iterator_block_size_ = 4096;
