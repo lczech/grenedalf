@@ -88,7 +88,13 @@ std::vector<size_t> PoolsizesOptions::get_pool_sizes(
     // Convert a pool size to a number, or throw.
     auto convert_poolsize_ = [&]( std::string const& str ){
         try {
-            return convert_from_string<size_t>( trim( str ));
+            auto lower = to_lower( trim( str ));
+            if( lower == "na" || lower == "nan" ) {
+                // Poolsize is mostly used for Bessel's correction, so 0 just gives 0 or invalid
+                // values in the computation, which is what we want.
+                return static_cast<size_t>( 0 );
+            }
+            return convert_from_string<size_t>( lower );
         } catch(...) {
             throw CLI::ValidationError(
                 poolsizes.option->get_name(),
