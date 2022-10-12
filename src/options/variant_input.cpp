@@ -24,6 +24,11 @@
 #include "options/variant_input.hpp"
 
 #include "options/global.hpp"
+#include "options/variant_input_frequency_table.hpp"
+#include "options/variant_input_pileup.hpp"
+#include "options/variant_input_sam.hpp"
+#include "options/variant_input_sync.hpp"
+#include "options/variant_input_vcf.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/variant_parallel_input_iterator.hpp"
@@ -78,6 +83,7 @@ void VariantInputOptions::add_variant_input_opts_to_app(
     input_files_.emplace_back( genesis::utils::make_unique<VariantInputPileupOptions>() );
     input_files_.emplace_back( genesis::utils::make_unique<VariantInputSyncOptions>() );
     input_files_.emplace_back( genesis::utils::make_unique<VariantInputVcfOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantInputFrequencyTableOptions>() );
 
     // Now add all command line arguments of these file types to the CLI app,
     // in the order in which we added them above.
@@ -128,10 +134,12 @@ void VariantInputOptions::add_variant_input_opts_to_app(
 
     // Additional options.
     if( with_sample_name_opts ) {
-        input_sample_names_.add_sample_name_opts_to_app( sub, group );
+        // input_sample_names_.add_sample_name_opts_to_app( sub, group );
+        input_sample_names_.add_sample_name_opts_to_app( sub );
     }
     if( with_region_filter_opts ) {
-        region_filter_.add_region_filter_opts_to_app( sub, group );
+        // region_filter_.add_region_filter_opts_to_app( sub, group );
+        region_filter_.add_region_filter_opts_to_app( sub );
     }
 }
 

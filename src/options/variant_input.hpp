@@ -29,11 +29,7 @@
 #include "options/file_input.hpp"
 #include "options/variant_filter_region.hpp"
 #include "options/variant_input_file.hpp"
-#include "options/variant_input_pileup.hpp"
-#include "options/variant_input_sam.hpp"
 #include "options/variant_input_sample_names.hpp"
-#include "options/variant_input_sync.hpp"
-#include "options/variant_input_vcf.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/formats/variant_input_iterator.hpp"

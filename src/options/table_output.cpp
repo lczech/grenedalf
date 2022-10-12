@@ -46,7 +46,7 @@ CLI::Option* TableOutputOptions::add_separator_char_opt_to_app(
         separator_char_.value,
         "Separator char between fields of output tabular data."
     )->transform(
-        CLI::IsMember({ "comma", "tab", "space", "semicolon" }, CLI::ignore_case )
+        CLI::IsMember({ "tab", "comma", "space", "semicolon" }, CLI::ignore_case )
     );
     separator_char_.option->group( group );
     return separator_char_.option;
@@ -76,16 +76,16 @@ char TableOutputOptions::get_separator_char() const
 {
     // Get sep char.
     if(
-        separator_char_.value == "comma" ||
-        separator_char_.value == ","
-    ) {
-        return ',';
-    } else if(
         separator_char_.value == "tab" ||
         separator_char_.value == "tabulator" ||
         separator_char_.value == "\t"
     ) {
         return '\t';
+    } else if(
+        separator_char_.value == "comma" ||
+        separator_char_.value == ","
+    ) {
+        return ',';
     } else if(
         separator_char_.value == "space" ||
         separator_char_.value == " "
@@ -98,7 +98,7 @@ char TableOutputOptions::get_separator_char() const
         return ';';
     } else {
         throw CLI::ValidationError(
-            "--separator-char",
+            separator_char_.option->get_name(),
             "Invalid separator char '" + separator_char_.value + "'."
         );
     }
