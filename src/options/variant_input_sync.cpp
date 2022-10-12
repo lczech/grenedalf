@@ -37,32 +37,32 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputSyncOptions::add_sync_input_opt_to_app(
+CLI::Option* VariantInputSyncOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
-        sync_file_.option() == nullptr,
+        file_input_.option() == nullptr,
         "Cannot use the same VariantInputSyncOptions object multiple times."
     );
 
     // Add the option
-    sync_file_.add_multi_file_input_opt_to_app(
+    file_input_.add_multi_file_input_opt_to_app(
         sub, "sync", "sync (as specified by PoPoolation2)",
         "sync(\\.gz)?", "sync[.gz]",
         required, group
     );
 
-    return sync_file_.option();
+    return file_input_.option();
 }
 
 // =================================================================================================
 //      Run Functions
 // =================================================================================================
 
-VariantInputSyncOptions::VariantInputIterator VariantInputSyncOptions::prepare_sync_iterator(
+VariantInputSyncOptions::VariantInputIterator VariantInputSyncOptions::get_iterator_(
     std::string const& filename,
     VariantInputSampleNamesOptions const& sample_names_options
 ) const {

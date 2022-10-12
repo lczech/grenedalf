@@ -40,21 +40,21 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputPileupOptions::add_pileup_input_opt_to_app(
+CLI::Option* VariantInputPileupOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
-        pileup_file_.option() == nullptr,
+        file_input_.option() == nullptr,
         "Cannot use the same VariantInputPileupOptions object multiple times."
     );
 
     // TODO add options for reading: with quality, with ancestral base
 
     // Add the option
-    pileup_file_.add_multi_file_input_opt_to_app(
+    file_input_.add_multi_file_input_opt_to_app(
         sub, "pileup", "(m)pileup",
         "(plp|mplp|pileup|mpileup)(\\.gz)?",
         "(plp|mplp|pileup|mpileup)[.gz]",
@@ -71,7 +71,7 @@ CLI::Option* VariantInputPileupOptions::add_pileup_input_opt_to_app(
     );
     pileup_min_base_qual_.option->group( group );
     pileup_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    pileup_min_base_qual_.option->needs( pileup_file_.option() );
+    pileup_min_base_qual_.option->needs( file_input_.option() );
 
     // Quality encoding.
     pileup_quality_encoding_.option = sub->add_option(
@@ -92,16 +92,16 @@ CLI::Option* VariantInputPileupOptions::add_pileup_input_opt_to_app(
             CLI::ignore_case
         )
     );
-    pileup_quality_encoding_.option->needs( pileup_file_.option() );
+    pileup_quality_encoding_.option->needs( file_input_.option() );
 
-    return pileup_file_.option();
+    return file_input_.option();
 }
 
 // =================================================================================================
 //      Run Functions
 // =================================================================================================
 
-VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::prepare_pileup_iterator(
+VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::get_iterator_(
     std::string const& filename,
     VariantInputSampleNamesOptions const& sample_names_options
 ) const {

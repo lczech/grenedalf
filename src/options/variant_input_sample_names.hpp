@@ -46,12 +46,6 @@ class VariantInputSampleNamesOptions
 public:
 
     // -------------------------------------------------------------------------
-    //     Typedefs and Enums
-    // -------------------------------------------------------------------------
-
-    friend VariantInputOptions;
-
-    // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
@@ -74,11 +68,27 @@ public:
     );
 
     // -------------------------------------------------------------------------
-    //     Run Functions
+    //     Access Functions
     // -------------------------------------------------------------------------
 
     /**
-     * @brief Get the string given by the user for including sample names.
+     * @brief Get the option for setting the sample names.
+     */
+    CliOption<std::string> const& get_sample_name_list() const
+    {
+        return sample_name_list_;
+    }
+
+    /**
+     * @brief Get the option for setting the sample prefix.
+     */
+    CliOption<std::string> const& get_sample_name_prefix() const
+    {
+        return sample_name_prefix_;
+    }
+
+    /**
+     * @brief Get the option for including sample names.
      */
     CliOption<std::string> const& get_filter_samples_include() const
     {
@@ -86,12 +96,16 @@ public:
     }
 
     /**
-     * @brief Get the string given by the user for excluding sample names.
+     * @brief Get the option for excluding sample names.
      */
     CliOption<std::string> const& get_filter_samples_exclude() const
     {
         return filter_samples_exclude_;
     }
+
+    // -------------------------------------------------------------------------
+    //     Run Functions
+    // -------------------------------------------------------------------------
 
     /**
      * @brief Get a list of sample names, for example for pileup or sync files that do not have

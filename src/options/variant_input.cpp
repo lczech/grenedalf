@@ -31,6 +31,7 @@
 #include "genesis/population/functions/functions.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/core/std.hpp"
 #include "genesis/utils/core/options.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -70,11 +71,19 @@ void VariantInputOptions::add_variant_input_opts_to_app(
     std::string const& group
 ) {
 
-    // Add input file type options.
-    input_sam_.add_sam_input_opt_to_app( sub );
-    input_pileup_.add_pileup_input_opt_to_app( sub );
-    input_sync_.add_sync_input_opt_to_app( sub );
-    input_vcf_.add_vcf_input_opt_to_app( sub );
+    // Add input file type options. This is the only point where we explicitly state
+    // which file types we want to add. If we want to make some of them optional later for
+    // certain commands - here is the place to do so.
+    input_files_.emplace_back( genesis::utils::make_unique<VariantInputSamOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantInputPileupOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantInputSyncOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantInputVcfOptions>() );
+
+    // Now add all command line arguments of these file types to the CLI app,
+    // in the order in which we added them above.
+    for( auto const& input_file : input_files_ ) {
+        input_file->add_file_input_opt_to_app( sub );
+    }
 
     // Multi file set operation. In the VariantParallelInputIterator, we have a different way
     // of expressing which loci of which input source to visit, but that would be way too complex
@@ -157,30 +166,6 @@ void VariantInputOptions::add_combined_filter_and_transforms(
 }
 
 // =================================================================================================
-//      Run Functions
-// =================================================================================================
-
-// -------------------------------------------------------------------------
-//     sample_names
-// -------------------------------------------------------------------------
-
-std::vector<std::string> const& VariantInputOptions::sample_names() const
-{
-    prepare_data_();
-    return sample_names_;
-}
-
-// -------------------------------------------------------------------------
-//     get_iterator
-// -------------------------------------------------------------------------
-
-genesis::population::VariantInputIterator& VariantInputOptions::get_iterator() const
-{
-    prepare_data_();
-    return iterator_;
-}
-
-// =================================================================================================
 //      Iterator Setup
 // =================================================================================================
 
@@ -200,24 +185,12 @@ void VariantInputOptions::prepare_data_() const
         return;
     }
 
-    // We first read all region filters, so that they can be re-used for all inputs.
-    region_filter_.prepare_region_filters();
-
     // Check how many files are given. If it is a single one, we just use that for the input
     // iterator, which is faster than piping it through a parallel iterator. For multiple files,
     // we create a parallel iterator.
     size_t file_count = 0;
-    if( input_sam_.get_file_input_options().provided() ) {
-        file_count += input_sam_.get_file_input_options().file_count();
-    }
-    if( input_pileup_.get_file_input_options().provided() ) {
-        file_count += input_pileup_.get_file_input_options().file_count();
-    }
-    if( input_sync_.get_file_input_options().provided() ) {
-        file_count += input_sync_.get_file_input_options().file_count();
-    }
-    if( input_vcf_.get_file_input_options().provided() ) {
-        file_count += input_vcf_.get_file_input_options().file_count();
+    for( auto const& input_file : input_files_ ) {
+        file_count += input_file->get_file_input_options().file_count();
     }
 
     // Set up iterator depending on how many files we found in total across all inputs.
@@ -260,73 +233,54 @@ void VariantInputOptions::prepare_data_single_file_() const
         "prepare_data_single_file_() called in an invalid context."
     );
 
-    // Check that we have exactly one input files.
-    auto const is_sam    = input_sam_.get_file_input_options().provided();
-    auto const is_pileup = input_pileup_.get_file_input_options().provided();
-    auto const is_sync   = input_sync_.get_file_input_options().provided();
-    auto const is_vcf    = input_vcf_.get_file_input_options().provided();
-    internal_check(
-        ( is_sam + is_pileup + is_sync + is_vcf == 1 ) &&
-        (
-            input_sam_.get_file_input_options().file_count()    + input_pileup_.get_file_input_options().file_count() +
-            input_sync_.get_file_input_options().file_count()   + input_vcf_.get_file_input_options().file_count()    == 1
-        ),
-        "prepare_data_single_file_() called with more than one file provided"
-    );
+    // Get the input file as a pointer, using the one input that the user provided,
+    // and asserting that it only was one that was provided.
+    VariantInputFileOptions const* provided_input_file = nullptr;
+    for( auto const& input_file : input_files_ ) {
+        if( input_file->get_file_input_options().provided() ) {
+            if( provided_input_file == nullptr ) {
+                provided_input_file = input_file.get();
+            } else {
+                internal_check(
+                    false, "prepare_data_single_file_() called with more than one file provided"
+                );
+            }
+        }
+    }
+    internal_check( provided_input_file, "prepare_data_single_file_() called with no file provided" );
 
     // If a sample name prefix or a list is given,
     // we check that this is only for the allowed file types.
     auto const is_sample_name_list = (
-        input_sample_names_.sample_name_list_.option &&
-        *input_sample_names_.sample_name_list_.option
+        input_sample_names_.get_sample_name_list().option &&
+        *input_sample_names_.get_sample_name_list().option
     );
     auto const is_sample_name_pref = (
-        input_sample_names_.sample_name_prefix_.option &&
-        *input_sample_names_.sample_name_prefix_.option
+        input_sample_names_.get_sample_name_prefix().option &&
+        *input_sample_names_.get_sample_name_prefix().option
     );
     if( is_sample_name_list || is_sample_name_pref ) {
         // Not both can be given, as the options are mutually exclusive.
         assert( is_sample_name_list ^ is_sample_name_pref );
-        if( !( is_sam && ! input_sam_.sam_split_by_rg() ) && ! is_pileup && ! is_sync ) {
+        if( provided_input_file->has_sample_names() ) {
             throw CLI::ValidationError(
-                "Can only use " + input_sample_names_.sample_name_list_.option->get_name() + " or " +
-                input_sample_names_.sample_name_prefix_.option->get_name() + " for input file "
-                "formats that do not already have sample sames, such as (m)pileup or sync files, "
-                "or sam/bam/cram files without splitting by @RG read group tags (which then is "
-                "considered as a single sample that contains all reads independent of their @RG)."
+                "Can only use " + input_sample_names_.get_sample_name_list().option->get_name() +
+                " or " + input_sample_names_.get_sample_name_prefix().option->get_name() +
+                " for input file formats that do not already have sample sames, such as (m)pileup "
+                "or sync files, or sam/bam/cram files without splitting by @RG read group tags "
+                "(which then is considered as a single sample that contains all reads independent "
+                "of their @RG)."
             );
         }
     }
 
-    // Prepare the iterator depending on the input file format.
-    if( input_sam_.get_file_input_options().provided() ) {
-        assert( input_sam_.get_file_input_options().file_count() == 1 );
-        iterator_ = input_sam_.prepare_sam_iterator(
-            input_sam_.get_file_input_options().file_paths()[0],
-            input_sample_names_
-        );
-    }
-    if( input_pileup_.get_file_input_options().provided() ) {
-        assert( input_pileup_.get_file_input_options().file_count() == 1 );
-        iterator_ = input_pileup_.prepare_pileup_iterator(
-            input_pileup_.get_file_input_options().file_paths()[0],
-            input_sample_names_
-        );
-    }
-    if( input_sync_.get_file_input_options().provided() ) {
-        assert( input_sync_.get_file_input_options().file_count() == 1 );
-        iterator_ = input_sync_.prepare_sync_iterator(
-            input_sync_.get_file_input_options().file_paths()[0],
-            input_sample_names_
-        );
-    }
-    if( input_vcf_.get_file_input_options().provided() ) {
-        assert( input_vcf_.get_file_input_options().file_count() == 1 );
-        iterator_ = input_vcf_.prepare_vcf_iterator(
-            input_vcf_.get_file_input_options().file_paths()[0],
-            input_sample_names_
-        );
-    }
+    // Prepare the iterator depending on the input file format, using the pointer.
+    assert( provided_input_file );
+    assert( provided_input_file->get_file_input_options().file_count() == 1 );
+    iterator_ = provided_input_file->get_iterator(
+        provided_input_file->get_file_input_options().file_paths()[0],
+        input_sample_names_
+    );
 
     // Copy over the sample names from the iterator, so that they are accessible.
     sample_names_ = iterator_.data().sample_names;
@@ -379,33 +333,27 @@ void VariantInputOptions::prepare_data_multiple_files_() const
         "prepare_data_multiple_files_() called in an invalid context."
     );
 
-    // Check that we have multiple input files.
-    internal_check(
-        input_sam_.get_file_input_options().file_count()    +
-        input_pileup_.get_file_input_options().file_count() +
-        input_sync_.get_file_input_options().file_count()   +
-        input_vcf_.get_file_input_options().file_count()    > 1,
-        "prepare_data_multiple_files_() called with just one file provided"
-    );
-
     // Sample name list cannot be used with multiple files.
-    if( input_sample_names_.sample_name_list_.option && *input_sample_names_.sample_name_list_.option ) {
+    if(
+        input_sample_names_.get_sample_name_list().option &&
+        *input_sample_names_.get_sample_name_list().option
+    ) {
         throw CLI::ValidationError(
-            "Can only use " + input_sample_names_.sample_name_list_.option->get_name() +
+            "Can only use " + input_sample_names_.get_sample_name_list().option->get_name() +
             " for single input files, but not when multiple input files are given."
         );
     }
 
     // No sample name filters can be given, as that would just be too tedious to specify via a CLI.
     if(
-        ! input_sample_names_.filter_samples_include_.value.empty() ||
-        ! input_sample_names_.filter_samples_exclude_.value.empty()
+        ! input_sample_names_.get_filter_samples_include().value.empty() ||
+        ! input_sample_names_.get_filter_samples_exclude().value.empty()
     ) {
         throw CLI::ValidationError(
-            input_sample_names_.filter_samples_include_.option->get_name() + "(" +
-            input_sample_names_.filter_samples_include_.value + "), " +
-            input_sample_names_.filter_samples_exclude_.option->get_name() + "(" +
-            input_sample_names_.filter_samples_exclude_.value + ")",
+            input_sample_names_.get_filter_samples_include().option->get_name() + "(" +
+            input_sample_names_.get_filter_samples_include().value + "), " +
+            input_sample_names_.get_filter_samples_exclude().option->get_name() + "(" +
+            input_sample_names_.get_filter_samples_exclude().value + ")",
             "Can only use sample name filters for single input files, "
             "but not when multiple input files are given, "
             "as specifying filters per file via a command line interface is just too tedious."
@@ -420,27 +368,21 @@ void VariantInputOptions::prepare_data_multiple_files_() const
     // Make a parallel input iterator, and add all input from all file formats to it,
     // using the same contribution type for all of them, which either results in the union
     // or the intersection of all input loci. See VariantParallelInputIterator for details.
+    size_t file_count = 0;
     VariantParallelInputIterator parallel_it;
-    for( auto const& file : input_sam_.get_file_input_options().file_paths() ) {
-        parallel_it.add_variant_input_iterator(
-            input_sam_.prepare_sam_iterator( file, input_sample_names_ ), contribution
-        );
+    for( auto const& input_file : input_files_ ) {
+        for( auto const& file : input_file->get_file_input_options().file_paths() ) {
+            parallel_it.add_variant_input_iterator(
+                input_file->get_iterator( file, input_sample_names_ ), contribution
+            );
+            ++file_count;
+        }
     }
-    for( auto const& file : input_pileup_.get_file_input_options().file_paths() ) {
-        parallel_it.add_variant_input_iterator(
-            input_pileup_.prepare_pileup_iterator( file, input_sample_names_ ), contribution
-        );
-    }
-    for( auto const& file : input_sync_.get_file_input_options().file_paths() ) {
-        parallel_it.add_variant_input_iterator(
-            input_sync_.prepare_sync_iterator( file, input_sample_names_ ), contribution
-        );
-    }
-    for( auto const& file : input_vcf_.get_file_input_options().file_paths() ) {
-        parallel_it.add_variant_input_iterator(
-            input_vcf_.prepare_vcf_iterator( file, input_sample_names_ ), contribution
-        );
-    }
+
+    // Check that we have multiple input files.
+    internal_check(
+        file_count > 1, "prepare_data_multiple_files_() called with just one file provided"
+    );
 
     // Go through all sources again, build the sample names list from them,
     // and add the individual samples filters to all of them, e.g., so that regions are filtered

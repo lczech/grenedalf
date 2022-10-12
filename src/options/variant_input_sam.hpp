@@ -27,18 +27,11 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
+#include "options/variant_input_file.hpp"
 #include "tools/cli_option.hpp"
-
-#include "genesis/population/formats/variant_input_iterator.hpp"
-#include "genesis/population/genome_locus_set.hpp"
-#include "genesis/population/variant.hpp"
 
 #include <string>
 #include <vector>
-
-// Forward Declaration
-class VariantInputOptions;
-class VariantInputSampleNamesOptions;
 
 // =================================================================================================
 //      Variant Input Sam Options
@@ -47,17 +40,9 @@ class VariantInputSampleNamesOptions;
 /**
  * @brief
  */
-class VariantInputSamOptions
+class VariantInputSamOptions final : public VariantInputFileOptions
 {
 public:
-
-    // -------------------------------------------------------------------------
-    //     Typedefs and Enums
-    // -------------------------------------------------------------------------
-
-    using Variant = genesis::population::Variant;
-    using GenomeLocusSet = genesis::population::GenomeLocusSet;
-    using VariantInputIterator = genesis::population::VariantInputIterator;
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
@@ -73,30 +58,28 @@ public:
     VariantInputSamOptions& operator= ( VariantInputSamOptions&& )            = default;
 
     // -------------------------------------------------------------------------
-    //     Setup Functions
+    //     Virtual Functions
     // -------------------------------------------------------------------------
 
-    CLI::Option* add_sam_input_opt_to_app(
+private:
+
+    CLI::Option* add_file_input_opt_to_app_(
         CLI::App* sub,
-        bool required = false,
-        std::string const& group = "Input SAM/BAM/CRAM"
+        bool required,
+        std::string const& group
     );
 
-    // -------------------------------------------------------------------------
-    //     Run Functions
-    // -------------------------------------------------------------------------
-
-    FileInputOptions const& get_file_input_options() const
+    std::string get_default_group_name_() const
     {
-        return sam_file_;
+        return "Input SAM/BAM/CRAM";
     }
 
-    bool sam_split_by_rg() const
+    bool has_sample_names_() const
     {
         return sam_split_by_rg_.value;
     }
 
-    VariantInputIterator prepare_sam_iterator(
+    VariantInputIterator get_iterator_(
         std::string const& filename,
         VariantInputSampleNamesOptions const& sample_names_options
     ) const;
@@ -108,7 +91,6 @@ public:
 private:
 
     // SAM/BAM/CRAM
-    FileInputOptions       sam_file_;
     CliOption<size_t>      sam_min_map_qual_      = 0;
     CliOption<size_t>      sam_min_base_qual_     = 0;
     CliOption<bool>        sam_split_by_rg_       = false;

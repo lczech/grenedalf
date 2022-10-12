@@ -27,18 +27,11 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
+#include "options/variant_input_file.hpp"
 #include "tools/cli_option.hpp"
-
-#include "genesis/population/formats/variant_input_iterator.hpp"
-#include "genesis/population/genome_locus_set.hpp"
-#include "genesis/population/variant.hpp"
 
 #include <string>
 #include <vector>
-
-// Forward Declaration
-class VariantInputOptions;
-class VariantInputSampleNamesOptions;
 
 // =================================================================================================
 //      VariantInputPileup Options
@@ -47,17 +40,9 @@ class VariantInputSampleNamesOptions;
 /**
  * @brief
  */
-class VariantInputPileupOptions
+class VariantInputPileupOptions final : public VariantInputFileOptions
 {
 public:
-
-    // -------------------------------------------------------------------------
-    //     Typedefs and Enums
-    // -------------------------------------------------------------------------
-
-    using Variant = genesis::population::Variant;
-    using GenomeLocusSet = genesis::population::GenomeLocusSet;
-    using VariantInputIterator = genesis::population::VariantInputIterator;
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
@@ -73,25 +58,28 @@ public:
     VariantInputPileupOptions& operator= ( VariantInputPileupOptions&& )            = default;
 
     // -------------------------------------------------------------------------
-    //     Setup Functions
+    //     Virtual Functions
     // -------------------------------------------------------------------------
 
-    CLI::Option* add_pileup_input_opt_to_app(
+private:
+
+    CLI::Option* add_file_input_opt_to_app_(
         CLI::App* sub,
-        bool required = false,
-        std::string const& group = "Input (m)pileup"
+        bool required,
+        std::string const& group
     );
 
-    // -------------------------------------------------------------------------
-    //     Run Functions
-    // -------------------------------------------------------------------------
-
-    FileInputOptions const& get_file_input_options() const
+    std::string get_default_group_name_() const
     {
-        return pileup_file_;
+        return "Input (m)pileup";
     }
 
-    VariantInputIterator prepare_pileup_iterator(
+    bool has_sample_names_() const
+    {
+        return false;
+    }
+
+    VariantInputIterator get_iterator_(
         std::string const& filename,
         VariantInputSampleNamesOptions const& sample_names_options
     ) const;
@@ -102,8 +90,6 @@ public:
 
 private:
 
-    // Pileup
-    FileInputOptions       pileup_file_;
     CliOption<size_t>      pileup_min_base_qual_    = 0;
     CliOption<std::string> pileup_quality_encoding_ = "sanger";
     // CliOption<bool> with_quality_string_ = true;

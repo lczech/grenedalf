@@ -38,14 +38,14 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
+CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
-        sam_file_.option() == nullptr,
+        file_input_.option() == nullptr,
         "Cannot use the same VariantInputSamOptions object multiple times."
     );
 
@@ -53,7 +53,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
     // but at least the first two should actually be general filter settings.
 
     // Add the option
-    sam_file_.add_multi_file_input_opt_to_app(
+    file_input_.add_multi_file_input_opt_to_app(
         sub, "sam", "sam/bam/cram", "(sam(\\.gz)?|bam|cram)", ".sam[.gz]|.bam|.cram", required, group
     );
 
@@ -68,7 +68,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
     );
     sam_min_map_qual_.option->group( group );
     sam_min_map_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    sam_min_map_qual_.option->needs( sam_file_.option() );
+    sam_min_map_qual_.option->needs( file_input_.option() );
 
     // Min base qual
     sam_min_base_qual_.option = sub->add_option(
@@ -80,7 +80,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
     );
     sam_min_base_qual_.option->group( group );
     sam_min_base_qual_.option->check( CLI::Range( static_cast<size_t>(0), static_cast<size_t>(90) ));
-    sam_min_base_qual_.option->needs( sam_file_.option() );
+    sam_min_base_qual_.option->needs( file_input_.option() );
 
     // Split by RG read group tag.
     sam_split_by_rg_.option = sub->add_flag(
@@ -91,7 +91,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
         "Reads with an invalid (not in the header) read group tag or without a tag are ignored."
     );
     sam_split_by_rg_.option->group( group );
-    sam_split_by_rg_.option->needs( sam_file_.option() );
+    sam_split_by_rg_.option->needs( file_input_.option() );
 
     // Flags include all
     sam_flags_include_all_.option = sub->add_flag(
@@ -106,7 +106,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
         "capitalization and delimiteres such as dashes and underscores in the flag names as well."
     );
     sam_flags_include_all_.option->group( group );
-    sam_flags_include_all_.option->needs( sam_file_.option() );
+    sam_flags_include_all_.option->needs( file_input_.option() );
 
     // Flags include any
     sam_flags_include_any_.option = sub->add_flag(
@@ -117,7 +117,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
         "`samtools view`. See `--sam-flags-include-all` above for how to specify the value."
     );
     sam_flags_include_any_.option->group( group );
-    sam_flags_include_any_.option->needs( sam_file_.option() );
+    sam_flags_include_any_.option->needs( file_input_.option() );
 
     // Flags exclude all
     sam_flags_exclude_all_.option = sub->add_flag(
@@ -128,7 +128,7 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
         "See `--sam-flags-include-all` above for how to specify the value."
     );
     sam_flags_exclude_all_.option->group( group );
-    sam_flags_exclude_all_.option->needs( sam_file_.option() );
+    sam_flags_exclude_all_.option->needs( file_input_.option() );
 
     // Flags exclude any
     sam_flags_exclude_any_.option = sub->add_flag(
@@ -139,16 +139,16 @@ CLI::Option* VariantInputSamOptions::add_sam_input_opt_to_app(
         "`samtools view`. See `--sam-flags-include-all` above for how to specify the value."
     );
     sam_flags_exclude_any_.option->group( group );
-    sam_flags_exclude_any_.option->needs( sam_file_.option() );
+    sam_flags_exclude_any_.option->needs( file_input_.option() );
 
-    return sam_file_.option();
+    return file_input_.option();
 }
 
 // =================================================================================================
 //      Run Functions
 // =================================================================================================
 
-VariantInputSamOptions::VariantInputIterator VariantInputSamOptions::prepare_sam_iterator(
+VariantInputSamOptions::VariantInputIterator VariantInputSamOptions::get_iterator_(
     std::string const& filename,
     VariantInputSampleNamesOptions const& sample_names_options
 ) const {

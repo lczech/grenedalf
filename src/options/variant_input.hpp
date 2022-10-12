@@ -28,6 +28,7 @@
 
 #include "options/file_input.hpp"
 #include "options/variant_filter_region.hpp"
+#include "options/variant_input_file.hpp"
 #include "options/variant_input_pileup.hpp"
 #include "options/variant_input_sam.hpp"
 #include "options/variant_input_sample_names.hpp"
@@ -95,8 +96,6 @@ public:
     //     Command Setup Functions
     // -------------------------------------------------------------------------
 
-public:
-
     /**
      * @brief Transformations and filters for individual input sources.
      *
@@ -125,19 +124,25 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
-public:
-
     /**
      * @brief Get all sample names given in the input file that are not filtered out.
      */
-    std::vector<std::string> const& sample_names() const;
+    std::vector<std::string> const& sample_names() const
+    {
+        prepare_data_();
+        return sample_names_;
+    }
 
     /**
      * @brief Get an iterator over the positions in the input file.
      *
      * This takes care of any filtering of samples, chromosomes, and positions.
      */
-    VariantInputIterator& get_iterator() const;
+    VariantInputIterator& get_iterator() const
+    {
+        prepare_data_();
+        return iterator_;
+    }
 
     // -------------------------------------------------------------------------
     //     Internal Helpers
@@ -174,12 +179,11 @@ private:
     // -------------------------------------
 
     // Input file types
-    VariantInputSamOptions    input_sam_;
-    VariantInputPileupOptions input_pileup_;
-    VariantInputSyncOptions   input_sync_;
-    VariantInputVcfOptions    input_vcf_;
+    // We use our abstract base class to model different types of input files,
+    // to avoid code repetition when adding and processing them here.
+    std::vector<std::unique_ptr<VariantInputFileOptions>> input_files_;
 
-    // Sample Names, for file types without them
+    // Sample names, for file types without them, and filters for sample names
     VariantInputSampleNamesOptions input_sample_names_;
 
     // Filters

@@ -36,19 +36,19 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputVcfOptions::add_vcf_input_opt_to_app(
+CLI::Option* VariantInputVcfOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
-        vcf_file_.option() == nullptr,
+        file_input_.option() == nullptr,
         "Cannot use the same VariantInputVcfOptions object multiple times."
     );
 
     // Add the option
-    vcf_file_.add_multi_file_input_opt_to_app(
+    file_input_.add_multi_file_input_opt_to_app(
         sub, "vcf", "vcf/bcf", "(vcf(\\.gz)?|bcf)", ".vcf[.gz]|.bcf", required, group,
         "This expects that the input file has the per-sample VCF FORMAT field `AD` (alleleic depth) "
         "given, containing the counts of the reference and alternative base. "
@@ -57,14 +57,14 @@ CLI::Option* VariantInputVcfOptions::add_vcf_input_opt_to_app(
         "We then interpret the `AD` field as the allele counts of each pool of individuals."
     );
 
-    return vcf_file_.option();
+    return file_input_.option();
 }
 
 // =================================================================================================
 //      Run Functions
 // =================================================================================================
 
-VariantInputVcfOptions::VariantInputIterator VariantInputVcfOptions::prepare_vcf_iterator(
+VariantInputVcfOptions::VariantInputIterator VariantInputVcfOptions::get_iterator_(
     std::string const& filename,
     VariantInputSampleNamesOptions const& sample_names_options
 ) const {
