@@ -44,9 +44,9 @@ void setup_frequency( CLI::App& app )
     );
 
     // Required input of some frequency format (mpileup or vcf at the moment).
-    options->variant_input.add_frequency_input_opts_to_app( sub );
-    options->variant_input.add_sample_name_opts_to_app( sub );
-    options->variant_input.add_region_filter_opts_to_app( sub );
+    options->variant_input.add_variant_input_opts_to_app( sub );
+    // options->variant_input.add_sample_name_opts_to_app( sub );
+    // options->variant_input.add_region_filter_opts_to_app( sub );
 
     // Add per-sample output selection.
     options->write_sample_counts.option = sub->add_flag(

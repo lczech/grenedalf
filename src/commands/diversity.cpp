@@ -53,9 +53,9 @@ void setup_diversity( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Required input of some frequency format, and settings for the sliding window.
-    options->variant_input.add_frequency_input_opts_to_app( sub );
-    options->variant_input.add_sample_name_opts_to_app( sub );
-    options->variant_input.add_region_filter_opts_to_app( sub );
+    options->variant_input.add_variant_input_opts_to_app( sub );
+    // options->variant_input.add_sample_name_opts_to_app( sub );
+    // options->variant_input.add_region_filter_opts_to_app( sub );
     options->window.add_window_opts_to_app( sub );
 
     // -------------------------------------------------------------------------

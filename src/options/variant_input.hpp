@@ -27,10 +27,17 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
+#include "options/variant_filter_region.hpp"
+#include "options/variant_input_pileup.hpp"
+#include "options/variant_input_sam.hpp"
+#include "options/variant_input_sample_names.hpp"
+#include "options/variant_input_sync.hpp"
+#include "options/variant_input_vcf.hpp"
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/variant.hpp"
 #include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/genome_locus_set.hpp"
+#include "genesis/population/variant.hpp"
 #include "genesis/utils/containers/lambda_iterator.hpp"
 #include "genesis/utils/containers/range.hpp"
 
@@ -77,55 +84,18 @@ public:
     //     CLI Setup Functions
     // -------------------------------------------------------------------------
 
-    void add_frequency_input_opts_to_app(
+    void add_variant_input_opts_to_app(
         CLI::App* sub,
-        // bool required = true,
-        // bool with_sample_name_opts = true,
-        // bool with_filter_opts = true,
-        std::string const& group = "Input"
-    );
-
-private:
-
-    CLI::Option* add_sam_input_opt_to_app(
-        CLI::App* sub,
-        bool required = false,
-        std::string const& group = "Input SAM/BAM/CRAM"
-    );
-
-    CLI::Option* add_pileup_input_opt_to_app(
-        CLI::App* sub,
-        bool required = false,
-        std::string const& group = "Input (m)pileup"
-    );
-
-    CLI::Option* add_sync_input_opt_to_app(
-        CLI::App* sub,
-        bool required = false,
-        std::string const& group = "Input sync"
-    );
-
-    CLI::Option* add_vcf_input_opt_to_app(
-        CLI::App* sub,
-        bool required = false,
-        std::string const& group = "Input VCF"
-    );
-
-public:
-
-    void add_sample_name_opts_to_app(
-        CLI::App* sub,
-        std::string const& group = "Sample Names and Filters"
-    );
-
-    void add_region_filter_opts_to_app(
-        CLI::App* sub,
-        std::string const& group = "Region Filters"
+        bool with_sample_name_opts = true,
+        bool with_region_filter_opts = true,
+        std::string const& group = "Input Settings"
     );
 
     // -------------------------------------------------------------------------
     //     Command Setup Functions
     // -------------------------------------------------------------------------
+
+public:
 
     /**
      * @brief Transformations and filters for individual input sources.
@@ -179,16 +149,6 @@ private:
     void prepare_data_single_file_() const;
     void prepare_data_multiple_files_() const;
 
-    VariantInputIterator prepare_sam_iterator_( std::string const& filename ) const;
-    VariantInputIterator prepare_pileup_iterator_( std::string const& filename ) const;
-    VariantInputIterator prepare_sync_iterator_( std::string const& filename ) const;
-    VariantInputIterator prepare_vcf_iterator_( std::string const& filename ) const;
-
-    /**
-     * @brief Parse the region filter files, e.g., BED or GFF, and make a filter from them.
-     */
-    void prepare_region_filters_() const;
-
     /**
      * @brief Add filters and transformations that are to be applied to each input individually.
      */
@@ -203,91 +163,34 @@ private:
         VariantInputIterator& iterator
     ) const;
 
-    /**
-     * @brief Get a list of sample names, for example for pileup or sync files that do not have
-     * sample names in the file, or to filter by sample name. The given @p list is interpreted
-     * either as a file with one sample name per line, or as a list of sample names, tab or comma
-     * separated.
-     */
-    std::vector<std::string> process_sample_name_list_option_(
-        std::string const& list
-    ) const;
-
-    /**
-     * @brief For file formats that do not have sample names, use this function to get
-     * their sample names, taking the sample naming options into account.
-     */
-    std::vector<std::string> make_anonymous_sample_names_( size_t sample_count ) const;
-
-    /**
-     * @brief Return a list of the sample indices, which is needed for some of the readers
-     * that only take indices for filtering.
-     *
-     * Get a list of sample indices that remain after filtering, based on sample names
-     * and filtering options, and whether that list is inversed (use all _but_ the given indices).
-     *
-     * This looks at the filter_samples_include_ and filter_samples_exclude_ list, and determines
-     * which one to use as a list of input filters. If neither is given by the user, we return
-     * an empty vector. If the exclude list is given, the bool of the returned pair is true,
-     * indicating that the indices are to be interpreted as inverses.
-     *
-     * As this function is only needed for readers that process file types without sample names,
-     * we here translate to indices. If the user provided a list of sample names to be used,
-     * we use that to find the indices. If not, we use the sample name prefix and simply count
-     * sample numbers.
-     */
-    std::pair<std::vector<size_t>, bool> find_sample_indices_from_sample_filters_() const;
+private:
 
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
-
-private:
 
     // -------------------------------------
     //     CLI Options
     // -------------------------------------
 
     // Input file types
+    VariantInputSamOptions    input_sam_;
+    VariantInputPileupOptions input_pileup_;
+    VariantInputSyncOptions   input_sync_;
+    VariantInputVcfOptions    input_vcf_;
 
-    // SAM/BAM/CRAM
-    FileInputOptions       sam_file_;
-    CliOption<size_t>      sam_min_map_qual_      = 0;
-    CliOption<size_t>      sam_min_base_qual_     = 0;
-    CliOption<bool>        sam_split_by_rg_       = false;
-    CliOption<std::string> sam_flags_include_all_;
-    CliOption<std::string> sam_flags_include_any_;
-    CliOption<std::string> sam_flags_exclude_all_;
-    CliOption<std::string> sam_flags_exclude_any_;
+    // Sample Names, for file types without them
+    VariantInputSampleNamesOptions input_sample_names_;
 
-    // Pileup
-    FileInputOptions       pileup_file_;
-    CliOption<size_t>      pileup_min_base_qual_    = 0;
-    CliOption<std::string> pileup_quality_encoding_ = "sanger";
-    // CliOption<bool> with_quality_string_ = true;
-    // CliOption<bool> with_ancestral_base_ = false;
-
-    // Sync, VCF
-    FileInputOptions       sync_file_;
-    FileInputOptions       vcf_file_;
+    // Filters
+    VariantFilterRegionOptions region_filter_;
 
     // General input settings
     CliOption<std::string> multi_file_loci_set_ = "union";
 
-    // Sample names and filters
-    CliOption<std::string> sample_name_list_ = "";
-    CliOption<std::string> sample_name_prefix_ = ""; // "Sample_"
-    CliOption<std::string> filter_samples_include_ = "";
-    CliOption<std::string> filter_samples_exclude_ = "";
-
-    // Filters for rows and columns
-    CliOption<std::vector<std::string>> filter_region_ ;
-    CliOption<std::vector<std::string>> filter_region_list_ ;
-    CliOption<std::vector<std::string>> filter_region_bed_ ;
-    CliOption<std::vector<std::string>> filter_region_gff_ ;
-    CliOption<std::vector<std::string>> filter_region_bim_ ;
-    CliOption<std::vector<std::string>> filter_region_vcf_ ;
-    CliOption<std::string> filter_region_set_ = "union";
+    // Hidden options to set the LambdaIterator block size for speed.
+    CliOption<size_t> iterator_block_size_ = 8192;
+    CliOption<size_t> parallel_block_size_ = 4096;
 
     // Transformations and filters, can be added by the commands as needed for their processing.
     // The individual is applied per input source, and the compbined is applied on the whole
@@ -298,10 +201,6 @@ private:
     // as well, but somehow, that part of the command seems that it should be more about the CLI.
     mutable std::vector<std::function<bool(Variant&)>> individual_filters_and_transforms_;
     mutable std::vector<std::function<bool(Variant&)>> combined_filters_and_transforms_;
-
-    // Hidden options to set the LambdaIterator block size for speed.
-    CliOption<size_t> iterator_block_size_ = 8192;
-    CliOption<size_t> parallel_block_size_ = 4096;
 
     // -------------------------------------
     //     Run Data
@@ -317,10 +216,6 @@ private:
 
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
-
-    // We keep the region filter here, so that it can be re-used for all inputs.
-    // This filter is created by combining (union or intersection) all input filter files.
-    mutable std::shared_ptr<GenomeLocusSet> region_filter_;
 
 };
 
