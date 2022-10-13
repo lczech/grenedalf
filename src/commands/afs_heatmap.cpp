@@ -452,7 +452,7 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
     auto window_it = options.window.get_variant_window_iterator(
         options.variant_input.get_iterator()
     );
-    for( auto cur_it = window_it.begin(); cur_it != window_it.end(); ++cur_it ) {
+    for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
 
         // Things to do when we start with a new chromosome.

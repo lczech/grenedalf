@@ -375,7 +375,7 @@ void run_diversity( DiversityOptions const& options )
         options.variant_input.get_iterator()
     );
     auto sample_divs = std::vector<PoolDiversityResults>( sample_names.size() );
-    for( auto cur_it = window_it.begin(); cur_it != window_it.end(); ++cur_it ) {
+    for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
         ++win_cnt;
         pos_cnt += window.size();

@@ -336,7 +336,7 @@ void run_fst( FstOptions const& options )
         options.variant_input.get_iterator()
     );
     auto window_fst = std::vector<double>( sample_pairs.size() );
-    for( auto cur_it = window_it.begin(); cur_it != window_it.end(); ++cur_it ) {
+    for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
         pos_cnt += window.size();
 
