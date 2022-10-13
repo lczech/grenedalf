@@ -100,12 +100,12 @@ public:
 private:
 
     // Filters for rows and columns
-    CliOption<std::vector<std::string>> filter_region_ ;
-    CliOption<std::vector<std::string>> filter_region_list_ ;
-    CliOption<std::vector<std::string>> filter_region_bed_ ;
-    CliOption<std::vector<std::string>> filter_region_gff_ ;
-    CliOption<std::vector<std::string>> filter_region_bim_ ;
-    CliOption<std::vector<std::string>> filter_region_vcf_ ;
+    CliOption<std::vector<std::string>> filter_region_;
+    CliOption<std::vector<std::string>> filter_region_list_;
+    CliOption<std::vector<std::string>> filter_region_bed_;
+    CliOption<std::vector<std::string>> filter_region_gff_;
+    CliOption<std::vector<std::string>> filter_region_bim_;
+    CliOption<std::vector<std::string>> filter_region_vcf_;
     CliOption<std::string> filter_region_set_ = "union";
 
     // We keep the region filter here, so that it can be re-used for all inputs.
