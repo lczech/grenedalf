@@ -258,43 +258,69 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
 
     // Create a region list to which we add all provided regions.
     auto region_list = std::make_shared<GenomeRegionList>();
+    size_t in_regions = 0;
 
     // Add the regions from strings.
     for( auto const& value : region_.value ) {
         region_list->add( parse_genome_region( value ));
+        ++in_regions;
     }
 
     // Add the region list files.
     for( auto const& list_file : region_list_.value ) {
         LOG_MSG2 << "Reading regions list file " << list_file;
         GenomeRegionReader().read_as_genome_region_list( from_file( list_file ), *region_list );
+        ++in_regions;
     }
 
     // Add the regions from bed files.
     for( auto const& file : region_bed_.value ) {
         LOG_MSG2 << "Reading regions BED file " << file;
         BedReader().read_as_genome_region_list( from_file( file ), *region_list );
+        ++in_regions;
     }
 
     // Add the regions from gff files.
     for( auto const& file : region_gff_.value ) {
         LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
         GffReader().read_as_genome_region_list( from_file( file ), *region_list );
+        ++in_regions;
     }
 
     // Add the regions from map/bim files.
     for( auto const& file : region_bim_.value ) {
         LOG_MSG2 << "Reading regions MAP/BIM file " << file;
         MapBimReader().read_as_genome_region_list( from_file( file ), *region_list );
+        ++in_regions;
     }
 
     // Add the regions from vcf files.
     for( auto const& file : region_vcf_.value ) {
         LOG_MSG2 << "Reading regions VCF/BCF file " << file;
         genome_region_list_from_vcf_file( file, *region_list );
+        ++in_regions;
+    }
+
+    // User error. We only check that some input regions were provided, but not whether
+    // they actually contain anything... That would be on the user.
+    if( in_regions == 0) {
+        throw CLI::ValidationError(
+            window_type_.option->get_name(),
+            "Window type '" + window_type_.value + "' specified, but no region inputs are given. "
+            "At least one type of input containing regions to process has to be provided."
+        );
+    }
+
+    // Count how many regions we have, in total, for user convenience.
+    LOG_MSG << "Iterating over " << region_list->total_region_count() << " total regions across "
+            << region_list->chromosome_count() << " chromosomes.";
+    for( auto const& chr : region_list->chromosome_names() ) {
+        LOG_MSG2 << " - Chromosome \"" << chr << "\" with "
+                 << region_list->region_count( chr ) << " regions";
     }
 
     // Return an iterator over the regions that we just read.
+    // It copies the shared pointer to the regions, keeping it alive.
     return genesis::utils::make_unique<VariantRegionWindowIterator>(
         genesis::population::make_default_region_window_iterator(
             input.begin(), input.end(), region_list
