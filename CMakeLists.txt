@@ -122,6 +122,11 @@ IF(GRENEDALF_BUILD_STATIC)
 ENDIF()
 message( STATUS "Static linking of system libraries: ${GRENEDALF_BUILD_STATIC}")
 
+# Genesis uses LTO, and so do we.
+if( NOT ( CMAKE_VERSION VERSION_LESS 3.9 ))
+    cmake_policy(SET CMP0069 NEW)
+endif()
+
 # --------------------------------------------------------------------------------------------------
 #   Download Dependencies
 # --------------------------------------------------------------------------------------------------
@@ -192,6 +197,14 @@ add_executable( grenedalf ${grenedalf_sources} )
 
 # Link it against Genesis, and against all dependencies of Genesis.
 target_link_libraries ( grenedalf ${GENESIS_LINK_LIBRARIES} )
+
+# We have to use LTO for grenedalf as well for some compilers to properly link, I think.
+if(GENESIS_HAS_LTO)
+    message(STATUS "Building with LTO/IPO support")
+    set_property(TARGET grenedalf PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "Building without LTO/IPO support")
+endif()
 
 message( STATUS "CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS}" )
 message( STATUS "GENESIS_LINK_LIBRARIES ${GENESIS_LINK_LIBRARIES}" )

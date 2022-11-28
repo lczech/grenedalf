@@ -153,17 +153,27 @@ jobs:
 
       - name: Install Dependencies - Ubuntu
         if: runner.os == 'linux'
-        # clang on ubuntu 22 is not properly set up, we need libtinfo5,
-        # see https://github.com/aminya/setup-cpp/issues/149
+        # 1: htslib dependencies, see https://github.com/samtools/htslib/blob/develop/INSTALL
+        # 2: clang on ubuntu 22 is not properly set up, we need libtinfo5,
+        #    see https://github.com/aminya/setup-cpp/issues/149
         run: |
+          sudo apt-get install autoconf automake zlib1g-dev libbz2-dev liblzma-dev
           sudo apt-get install libtinfo5
 
       - name: Install Dependencies - MacOS
         if: runner.os == 'macos'
-        # For our test script, we need gdate, see https://apple.stackexchange.com/a/47181
-        # and see ./test/run.sh for details.
+        #  - Install simple dependencies of htslib
+        #  - For our test script, we might need gdate, see https://apple.stackexchange.com/a/47181
+        #    This is not used at the moment, but we keep it here for the future.
+        #  - switch xcode mode, see https://stackoverflow.com/a/67654877
         run: |
+          brew install autoconf automake libdeflate
           brew install coreutils
+
+          if [[ "${{ matrix.compiler }}" == gcc* ]]; then
+            echo "Patching xcode gcc issues"
+            sudo xcode-select --switch /Library/Developer/CommandLineTools
+          fi
 
       # -------------------------------------------------------
       #     Configure
@@ -188,7 +198,15 @@ jobs:
       # -------------------------------------------------------
 
       - name: Build
+        # Below we use a workaround for LLVM as configured by setup-cpp, which clashes with htslib:
+        # https://github.com/samtools/htslib/issues/1527 and
+        # https://github.com/aminya/setup-cpp/issues/145
         run: |
+          if [[ ! -z "${LLVM_PATH}" ]]; then
+            export LDFLAGS=`echo ${LDFLAGS} | sed 's/"//g'`
+            export CPPFLAGS=`echo ${CPPFLAGS} | sed 's/"//g'`
+          fi
+
           # Need to set the xcode patch here as well, as job steps don't keep status.
           if [[ "${RUNNER_OS}" == "macOS" ]] && [[ "${{ matrix.compiler }}" == gcc* ]]; then
             echo "Patching xcode gcc issues"
