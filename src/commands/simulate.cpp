@@ -402,7 +402,7 @@ void run_simulate( SimulateOptions const& options )
             // We use an array of counts to store them, in the order of sync files, ATCG N D.
             // This works for now. For pileup, we just access the two alleles that we need,
             // but ignore the rest.
-            std::array<size_t, 6> counts = { 0, 0, 0, 0, 0, 0 };
+            std::array<size_t, 6> counts = {{ 0, 0, 0, 0, 0, 0 }};
             counts[ a1 ] = coverage * fraction;
             counts[ a2 ] = coverage - counts[ a1 ];
 
