@@ -101,8 +101,9 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
         "This is equivalent to the `-f` / `--require-flags` setting in `samtools view`. "
         "The value can be specified in hex by beginning with `0x` (i.e., `/^0x[0-9A-F]+/`), "
         "in octal by beginning with `0` (i.e., `/^0[0-7]+/`), as a decimal number not beginning "
-        "with '0', or as a comma-, plus-, space-, or vertiacal-bar-separated list of flag names. "
-        "We are more lenient in parsing flag names then `samtools`, and allow different "
+        "with '0', or as a comma-, plus-, space-, or vertiacal-bar-separated list of flag names "
+        "as specified by samtools. "
+        "We are more lenient in parsing flag names than `samtools`, and allow different "
         "capitalization and delimiteres such as dashes and underscores in the flag names as well."
     );
     sam_flags_include_all_.option->group( group );
