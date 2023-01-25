@@ -56,6 +56,36 @@ endif()
 
 project ( grenedalf CXX )
 
+# We already check here whether the requirements for autotools are met,
+# as we need it in grenedalf, but want to avoid the misleading error message from genesis
+# in case we don't have autotools.
+find_program(AUTOCONF_RUNTIME autoconf)
+if( AUTOCONF_RUNTIME STREQUAL "AUTOCONF_RUNTIME-NOTFOUND" )
+
+    message (
+        STATUS "${ColorRed}We could not find autotools/autoconf, "
+        "which is needed to compile htslib.${ColorEnd}"
+    )
+    IF(APPLE)
+        message ( STATUS "On MacOS, try: `brew install autoconf automake libtool`" )
+    ELSE()
+        message ( STATUS "On Linux, try: `sudo apt-get install autoconf autotools-dev`" )
+    ENDIF()
+    message( FATAL_ERROR "Required autotools/autoconf for building htslib not found.")
+endif()
+
+# Some fun for the users to figure this out :-( Hope to improve this error message in the future.
+if(GENESIS_USE_HTSLIB STREQUAL "OFF")
+    message(
+        FATAL_ERROR "${ColorRed}Support for htslib has been deactivated, probably because some "
+        "previous attempt to build grenedalf recommended to set `-DGENESIS_USE_HTSLIB=OFF`. "
+        "Unfortunately, this recommendation is produced by our library genesis, which can work "
+        "without htslib, and hence produces this message. For grenedalf however, we do need htslib. "
+        "Hence, please instead install the dependencies required to build htslib, and try again. "
+        "Sorry for the confusion.${ColorEnd}"
+    )
+endif()
+
 # --------------------------------------------------------------------------------------------------
 #   Build Options
 # --------------------------------------------------------------------------------------------------
