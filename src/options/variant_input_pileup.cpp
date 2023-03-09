@@ -78,7 +78,7 @@ CLI::Option* VariantInputPileupOptions::add_file_input_opt_to_app_(
         "--pileup-quality-encoding",
         pileup_quality_encoding_.value,
         "Encoding of the quality scores of the bases in (m)pileup files, when using "
-        "--pileup-min-base-qual. "
+        "`--pileup-min-base-qual`. "
         "Default is `\"sanger\"`, which seems to be the most common these days. "
         "Both `\"sanger\"` and `\"illumina-1.8\"` are identical and use an ASCII offset of 33, "
         "while `\"illumina-1.3\"` and `\"illumina-1.5\"` are identical with an ASCII offset of 64 "

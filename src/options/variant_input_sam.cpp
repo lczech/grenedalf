@@ -98,7 +98,8 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
         "--sam-flags-include-all",
         sam_flags_include_all_.value,
         "Only use reads with all bits in the given value present in the FLAG field of the read. "
-        "This is equivalent to the `-f` / `--require-flags` setting in `samtools view`. "
+        "This is equivalent to the `-f` / `--require-flags` setting in `samtools view`, "
+        "and uses the same flag names and their corresponding binary values. "
         "The value can be specified in hex by beginning with `0x` (i.e., `/^0x[0-9A-F]+/`), "
         "in octal by beginning with `0` (i.e., `/^0[0-7]+/`), as a decimal number not beginning "
         "with '0', or as a comma-, plus-, space-, or vertiacal-bar-separated list of flag names "

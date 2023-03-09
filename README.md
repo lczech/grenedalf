@@ -39,7 +39,7 @@ archive. Unpack, and call `make` in the main directory to build everything.
 
 Requirements:
 
- *  [Make](https://www.gnu.org/software/make/) and [CMake](https://cmake.org/) 2.8.12 or higher.
+ *  [Make](https://www.gnu.org/software/make/) and [CMake](https://cmake.org/) 3.1 or higher.
  *  A fairly up-to-date C++11 compiler, e.g.,
     [clang++ 3.6](http://clang.llvm.org/) or [GCC 4.9](https://gcc.gnu.org/), or higher.
 
