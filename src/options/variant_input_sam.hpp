@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,14 +67,14 @@ private:
         CLI::App* sub,
         bool required,
         std::string const& group
-    );
+    ) override;
 
-    std::string get_default_group_name_() const
+    std::string get_default_group_name_() const override
     {
         return "Input SAM/BAM/CRAM";
     }
 
-    bool has_sample_names_() const
+    bool has_sample_names_() const override
     {
         return sam_split_by_rg_.value;
     }
@@ -82,7 +82,7 @@ private:
     VariantInputIterator get_iterator_(
         std::string const& filename,
         VariantInputSampleNamesOptions const& sample_names_options
-    ) const;
+    ) const override ;
 
     // -------------------------------------------------------------------------
     //     Option Members
