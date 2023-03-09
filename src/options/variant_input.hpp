@@ -68,7 +68,7 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputOptions()  = default;
+    VariantInputOptions();
     ~VariantInputOptions() = default;
 
     VariantInputOptions( VariantInputOptions const& other ) = default;
@@ -216,6 +216,10 @@ private:
 
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
+
+    // While running, we also want to print where the input is currently at.
+    // For that, we need to know when we change chromosome, so let's store the current one.
+    mutable std::string current_chr_;
 
 };
 

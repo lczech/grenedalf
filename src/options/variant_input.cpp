@@ -36,6 +36,7 @@
 #include "genesis/population/functions/functions.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/std.hpp"
 #include "genesis/utils/core/options.hpp"
 #include "genesis/utils/text/convert.hpp"
@@ -60,6 +61,29 @@ std::vector<
     { "union",        genesis::population::VariantParallelInputIterator::ContributionType::kCarrying },
     { "intersection", genesis::population::VariantParallelInputIterator::ContributionType::kFollowing }
 };
+
+// =================================================================================================
+//      Constructor and Rule of Five
+// =================================================================================================
+
+VariantInputOptions::VariantInputOptions()
+{
+    // We always print out where the input is at, at the moment. This is added first to the
+    // filters/transformations, so that it's always executed first, even if positions are filtered
+    // out by a later filter. That makes sure that we always get some progress update,
+    // which is probably more useful for the user than waiting too long without any.
+    // Note though that region filters are applied per input file, and so might have already removed
+    // chromosomes, so that they won't be printed here.
+    combined_filters_and_transforms_.push_back(
+        [this]( Variant& variant ){
+            if( this->current_chr_ != variant.chromosome ) {
+                this->current_chr_ = variant.chromosome;
+                LOG_MSG << "At chromosome " << variant.chromosome;
+            }
+            return true;
+        }
+    );
+}
 
 // =================================================================================================
 //      CLI Setup Functions
