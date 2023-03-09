@@ -48,7 +48,17 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputFrequencyTableOptions()  = default;
+    /**
+     * @brief Create an instance, with additional settings.
+     *
+     * We cheat here a bit and have the extra settings provided in the constructor,
+     * instead of normal getters/setters, as this allows us to set them in the VariantInputOptions
+     * when creating the instance, instead of having to cast later etc... hacky, but good enough.
+     */
+    VariantInputFrequencyTableOptions( bool add_extra_opts = true )
+        : add_extra_opts_( add_extra_opts )
+    {}
+
     ~VariantInputFrequencyTableOptions() = default;
 
     VariantInputFrequencyTableOptions( VariantInputFrequencyTableOptions const& other ) = default;
@@ -81,6 +91,11 @@ private:
         std::string const& group
     ) override;
 
+    void add_extra_file_input_opts_to_app_(
+        CLI::App* sub,
+        std::string const& group
+    );
+
     std::string get_default_group_name_() const override
     {
         return "Input frequency table";
@@ -102,9 +117,21 @@ private:
 
 private:
 
+    // Basic frequency table options
     CliOption<std::string> separator_char_ = "comma";
     CliOption<double>      int_factor_;
     CliOption<bool>        frequency_is_alt_ = false;
+
+    // Extra options
+    bool add_extra_opts_ = true;
+    CliOption<std::string> usr_chr_name_;
+    CliOption<std::string> usr_pos_name_;
+    CliOption<std::string> usr_ref_name_;
+    CliOption<std::string> usr_alt_name_;
+    CliOption<std::string> usr_smp_ref_name_;
+    CliOption<std::string> usr_smp_alt_name_;
+    CliOption<std::string> usr_smp_frq_name_;
+    CliOption<std::string> usr_smp_cov_name_;
 
 };
 

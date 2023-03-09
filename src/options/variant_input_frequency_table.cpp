@@ -91,7 +91,123 @@ CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
     frequency_is_alt_.option->group( group );
     frequency_is_alt_.option->needs( file_input_.option() );
 
+    // Set the extra options
+    if( add_extra_opts_ ) {
+        add_extra_file_input_opts_to_app_( sub, group );
+    }
+
     return file_input_.option();
+}
+
+void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
+    CLI::App* sub,
+    std::string const& group
+) {
+    // Chromosome column
+    usr_chr_name_.option = sub->add_flag(
+        "--frequency-table-chromosome-column",
+        usr_chr_name_.value,
+        "Specify the name of the chromosome column in the header, case sensitive. "
+        "By default, we look for columns named \"chromosome\", \"chrom\", \"chr\", or \"contig\", "
+        "case insensitive."
+        // "With this option however, the given string is searched instead in the header, and "
+        // "the respective column is used for the chromosome information when parsing the table."
+    );
+    usr_chr_name_.option->group( group );
+    usr_chr_name_.option->needs( file_input_.option() );
+
+    // Position column
+    usr_pos_name_.option = sub->add_flag(
+        "--frequency-table-position-column",
+        usr_pos_name_.value,
+        "Specify the name of the position column in the header, case sensitive. "
+        "By default, we look for columns named \"position\" or \"pos\", case insensitive."
+    );
+    usr_pos_name_.option->group( group );
+    usr_pos_name_.option->needs( file_input_.option() );
+
+    // Reference base column
+    usr_ref_name_.option = sub->add_flag(
+        "--frequency-table-reference-base-column",
+        usr_ref_name_.value,
+        "Specify the name of the reference base column in the header, case sensitive. "
+        "By default, we look for columns named \"reference\", \"referencebase\", \"ref\", or "
+        "\"refbase\", case insensitive, and ignoring any extra punctuation marks."
+    );
+    usr_ref_name_.option->group( group );
+    usr_ref_name_.option->needs( file_input_.option() );
+
+    // Alternative base column
+    usr_alt_name_.option = sub->add_flag(
+        "--frequency-table-alternative-base-column",
+        usr_alt_name_.value,
+        "Specify the name of the alternative base column in the header, case sensitive. "
+        "By default, we look for columns named \"alternative\", \"alternativebase\", \"alt\", or "
+        "\"altbase\", case insensitive, and ignoring any extra punctuation marks."
+    );
+    usr_alt_name_.option->group( group );
+    usr_alt_name_.option->needs( file_input_.option() );
+
+    // Sample reference count column
+    usr_smp_ref_name_.option = sub->add_flag(
+        "--frequency-table-sample-reference-count-column",
+        usr_smp_ref_name_.value,
+        "Specify the exact prefix or suffix of the per-sample reference count columns in the "
+        "header, case sensitive. "
+        "By default, we look leniently for column names that combine any of \"reference\", "
+        "\"referencebase\", \"ref\", or \"refbase\" with any of \"counts\", \"count\", \"cnt\", or "
+        "\"ct\", case insensitive, and ignoring any extra punctuation marks, as a prefix or suffix, "
+        "with the remainder of the column name used as the sample name. For example, \"S1.ref_cnt\" "
+        "indicates the reference count column for sample \"S1\"."
+    );
+    usr_smp_ref_name_.option->group( group );
+    usr_smp_ref_name_.option->needs( file_input_.option() );
+
+    // Sample alternative count column
+    usr_smp_alt_name_.option = sub->add_flag(
+        "--frequency-table-sample-alternative-count-column",
+        usr_smp_alt_name_.value,
+        "Specify the exact prefix or suffix of the per-sample alternative count columns in the "
+        "header, case sensitive. "
+        "By default, we look leniently for column names that combine any of \"alternative\", "
+        "\"alternativebase\", \"alt\", or \"altbase\" with any of \"counts\", \"count\", \"cnt\", or "
+        "\"ct\", case insensitive, and ignoring any extra punctuation marks, as a prefix or suffix, "
+        "with the remainder of the column name used as the sample name. For example, \"S1.alt_cnt\" "
+        "indicates the alternative count column for sample \"S1\"."
+    );
+    usr_smp_alt_name_.option->group( group );
+    usr_smp_alt_name_.option->needs( file_input_.option() );
+
+    // Sample frequency column
+    usr_smp_frq_name_.option = sub->add_flag(
+        "--frequency-table-sample-frequency-column",
+        usr_smp_frq_name_.value,
+        "Specify the exact prefix or suffix of the per-sample frequency columns in the "
+        "header, case sensitive. "
+        "By default, we look for column names having \"frequency\", \"freq\", \"maf\", \"af\", "
+        "or \"allelefrequency\", case insensitive, and ignoring any extra punctuation marks, "
+        "as a prefix or suffix, with the remainder of the column name used as the sample name. "
+        "For example, \"S1.freq\" indicates the frequency column for sample \"S1\". "
+        "Note that when the input data contains frequencies, but no reference or alternative base "
+        "columns, such as HAF-pipe output tables, we cannot know the bases, and will hence guess. "
+        // "To properly set the reference bases, consider providing the `--reference-genome-file` option."
+    );
+    usr_smp_frq_name_.option->group( group );
+    usr_smp_frq_name_.option->needs( file_input_.option() );
+
+    // Sample coverage column
+    usr_smp_cov_name_.option = sub->add_flag(
+        "--frequency-table-sample-coverage-column",
+        usr_smp_cov_name_.value,
+        "Specify the exact prefix or suffix of the per-sample coverage (i.e., depth) columns "
+        "in the header, case sensitive. "
+        "By default, we look for column names having \"coverage\", \"cov\", \"depth\", or \"ad\", "
+        "case insensitive, and ignoring any extra punctuation marks, as a prefix or suffix, "
+        "with the remainder of the column name used as the sample name. "
+        "For example, \"S1.cov\" indicates the coverage column for sample \"S1\"."
+    );
+    usr_smp_cov_name_.option->group( group );
+    usr_smp_cov_name_.option->needs( file_input_.option() );
 }
 
 // =================================================================================================
@@ -114,6 +230,32 @@ VariantInputFrequencyTableOptions::VariantInputIterator VariantInputFrequencyTab
     reader.separator_char( get_separator_char_() );
     reader.int_factor( int_factor_.value );
     reader.frequency_is_ref( ! frequency_is_alt_.value );
+
+    // If provided, set the user specified header name fragments.
+    if( *usr_chr_name_.option ) {
+        reader.header_chromosome_string( usr_chr_name_.value );
+    }
+    if( *usr_pos_name_.option ) {
+        reader.header_position_string( usr_pos_name_.value );
+    }
+    if( *usr_ref_name_.option ) {
+        reader.header_reference_base_string( usr_ref_name_.value );
+    }
+    if( *usr_alt_name_.option ) {
+        reader.header_alternative_base_string( usr_alt_name_.value );
+    }
+    if( *usr_smp_ref_name_.option ) {
+        reader.header_sample_reference_count_substring( usr_smp_ref_name_.value );
+    }
+    if( *usr_smp_alt_name_.option ) {
+        reader.header_sample_alternative_count_substring( usr_smp_alt_name_.value );
+    }
+    if( *usr_smp_frq_name_.option ) {
+        reader.header_sample_frequency_substring( usr_smp_frq_name_.value );
+    }
+    if( *usr_smp_cov_name_.option ) {
+        reader.header_sample_coverage_substring( usr_smp_cov_name_.value );
+    }
 
     // Prepare the iterator.
     // See if we want to filter by sample name, and if so, resolve the name list.
