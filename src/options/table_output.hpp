@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,8 +94,10 @@ private:
 
     // FileOutputOptions  file_output_;
 
-    CliOption<std::string> separator_char_ = "tab";
+    CliOption<std::string> separator_char_ = "comma";
     CliOption<std::string> na_entry_ = "NA";
+
+    mutable char separator_char_value_ = 0;
 
 };
 

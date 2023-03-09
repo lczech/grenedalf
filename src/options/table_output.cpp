@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ CLI::Option* TableOutputOptions::add_separator_char_opt_to_app(
         separator_char_.value,
         "Separator char between fields of output tabular data."
     )->transform(
-        CLI::IsMember({ "tab", "comma", "space", "semicolon" }, CLI::ignore_case )
+        CLI::IsMember({ "comma", "tab", "space", "semicolon" }, CLI::ignore_case )
     );
     separator_char_.option->group( group );
     return separator_char_.option;
@@ -74,32 +74,34 @@ CLI::Option* TableOutputOptions::add_na_entry_opt_to_app(
 
 char TableOutputOptions::get_separator_char() const
 {
-    // Get sep char.
-    if(
-        separator_char_.value == "tab" ||
-        separator_char_.value == "tabulator" ||
-        separator_char_.value == "\t"
-    ) {
-        return '\t';
-    } else if(
-        separator_char_.value == "comma" ||
-        separator_char_.value == ","
-    ) {
-        return ',';
-    } else if(
-        separator_char_.value == "space" ||
-        separator_char_.value == " "
-    ) {
-        return ' ';
-    } else if(
-        separator_char_.value == "semicolon" ||
-        separator_char_.value == ";"
-    ) {
-        return ';';
-    } else {
-        throw CLI::ValidationError(
-            separator_char_.option->get_name(),
-            "Invalid separator char '" + separator_char_.value + "'."
-        );
+    if( separator_char_value_ == 0 ) {
+        if(
+            separator_char_.value == "comma" ||
+            separator_char_.value == ","
+        ) {
+            separator_char_value_ = ',';
+        } else if(
+            separator_char_.value == "tab" ||
+            separator_char_.value == "tabulator" ||
+            separator_char_.value == "\t"
+        ) {
+            separator_char_value_ = '\t';
+        } else if(
+            separator_char_.value == "space" ||
+            separator_char_.value == " "
+        ) {
+            separator_char_value_ = ' ';
+        } else if(
+            separator_char_.value == "semicolon" ||
+            separator_char_.value == ";"
+        ) {
+            separator_char_value_ = ';';
+        } else {
+            throw CLI::ValidationError(
+                separator_char_.option->get_name(),
+                "Invalid separator char '" + separator_char_.value + "'."
+            );
+        }
     }
+    return separator_char_value_;
 }
