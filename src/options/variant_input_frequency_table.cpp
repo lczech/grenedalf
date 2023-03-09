@@ -63,7 +63,7 @@ CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
     );
     separator_char_.option->group( group );
     separator_char_.option->transform(
-        CLI::IsMember({ "tab", "comma", "space", "semicolon" }, CLI::ignore_case )
+        CLI::IsMember({ "comma", "tab", "space", "semicolon" }, CLI::ignore_case )
     );
     separator_char_.option->needs( file_input_.option() );
 
@@ -100,34 +100,7 @@ CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
 
 char VariantInputFrequencyTableOptions::get_separator_char_() const
 {
-    // Get sep char.
-    if(
-        separator_char_.value == "comma" ||
-        separator_char_.value == ","
-    ) {
-        return ',';
-    } else if(
-        separator_char_.value == "tab" ||
-        separator_char_.value == "tabulator" ||
-        separator_char_.value == "\t"
-    ) {
-        return '\t';
-    } else if(
-        separator_char_.value == "space" ||
-        separator_char_.value == " "
-    ) {
-        return ' ';
-    } else if(
-        separator_char_.value == "semicolon" ||
-        separator_char_.value == ";"
-    ) {
-        return ';';
-    } else {
-        throw CLI::ValidationError(
-            separator_char_.option->get_name(),
-            "Invalid separator char '" + separator_char_.value + "'."
-        );
-    }
+    return translate_separator_char( separator_char_ );
 }
 
 VariantInputFrequencyTableOptions::VariantInputIterator VariantInputFrequencyTableOptions::get_iterator_(

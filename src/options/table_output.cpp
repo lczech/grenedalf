@@ -75,33 +75,7 @@ CLI::Option* TableOutputOptions::add_na_entry_opt_to_app(
 char TableOutputOptions::get_separator_char() const
 {
     if( separator_char_value_ == 0 ) {
-        if(
-            separator_char_.value == "comma" ||
-            separator_char_.value == ","
-        ) {
-            separator_char_value_ = ',';
-        } else if(
-            separator_char_.value == "tab" ||
-            separator_char_.value == "tabulator" ||
-            separator_char_.value == "\t"
-        ) {
-            separator_char_value_ = '\t';
-        } else if(
-            separator_char_.value == "space" ||
-            separator_char_.value == " "
-        ) {
-            separator_char_value_ = ' ';
-        } else if(
-            separator_char_.value == "semicolon" ||
-            separator_char_.value == ";"
-        ) {
-            separator_char_value_ = ';';
-        } else {
-            throw CLI::ValidationError(
-                separator_char_.option->get_name(),
-                "Invalid separator char '" + separator_char_.value + "'."
-            );
-        }
+        separator_char_value_ = translate_separator_char( separator_char_ );
     }
     return separator_char_value_;
 }

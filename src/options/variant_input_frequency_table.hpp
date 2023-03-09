@@ -102,7 +102,7 @@ private:
 
 private:
 
-    CliOption<std::string> separator_char_ = "tab";
+    CliOption<std::string> separator_char_ = "comma";
     CliOption<double>      int_factor_;
     CliOption<bool>        frequency_is_alt_ = false;
 

@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
     Department of Plant Biology, Carnegie Institution For Science
     260 Panama Street, Stanford, CA 94305, USA
 */
+
+#include "tools/cli_option.hpp"
 
 #include "CLI/CLI.hpp"
 
@@ -127,5 +129,11 @@ T get_enum_map_value( std::vector<std::pair<std::string, T>> const& map, std::st
         "Internal error: Key \"" + key + "\" not found in list of possible values."
     );
 }
+
+/**
+ * @brief Helper function to get the char representation for table separator chars,
+ * given its textual description from the option.
+ */
+char translate_separator_char( CliOption<std::string> const& option );
 
 #endif // include guard

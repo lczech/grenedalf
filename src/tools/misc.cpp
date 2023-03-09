@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,4 +113,35 @@ void write_columns(
         out << rcpy;
     }
     out << "\n";
+}
+
+char translate_separator_char( CliOption<std::string> const& option )
+{
+    if(
+        option.value == "comma" ||
+        option.value == ","
+    ) {
+        return ',';
+    } else if(
+        option.value == "tab" ||
+        option.value == "tabulator" ||
+        option.value == "\t"
+    ) {
+        return '\t';
+    } else if(
+        option.value == "space" ||
+        option.value == " "
+    ) {
+        return ' ';
+    } else if(
+        option.value == "semicolon" ||
+        option.value == ";"
+    ) {
+        return ';';
+    } else {
+        throw CLI::ValidationError(
+            option.option->get_name(),
+            "Invalid separator char '" + option.value + "'."
+        );
+    }
 }
