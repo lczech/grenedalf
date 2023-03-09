@@ -188,8 +188,10 @@ endif (APPLE)
 #   Dependencies Settings
 # --------------------------------------------------------------------------------------------------
 
+# Force to set te options used for genesis. Bit cumbersome in cmake...
+set(GENESIS_USE_OPENMP OFF CACHE BOOL "Use OpenMP." FORCE)
+
 # Add Genesis as dependency.
-SET(GENESIS_UNITY_BUILD OFF)
 add_subdirectory(${PROJECT_SOURCE_DIR}/libs/genesis)
 
 # Use everything that Genesis exports, just to be sure that we use the same setup.
@@ -200,15 +202,15 @@ set( CMAKE_CXX_FLAGS        "${CMAKE_CXX_FLAGS}        ${GENESIS_CXX_FLAGS}" )
 set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GENESIS_EXE_LINKER_FLAGS}" )
 
 # Genesis exports the OpenMP variables. We use it to check and give advice in case it is not found.
-if( NOT OPENMP_FOUND )
-    string(ASCII 27 Esc)
-    message( STATUS "${Esc}[31m"
-        "OpenMP was not found or has been deactivated. This results in a considerably slower "
-        "runtime for the program. Try to use a different compiler. Alternatively, if you are sure "
-        "your compiler supports OpenMP, you can add the needed compiler flags to the CMake script."
-        # " See BUILD.md for details."
-    "${Esc}[0m" )
-endif()
+# if( NOT OPENMP_FOUND )
+#     string(ASCII 27 Esc)
+#     message( STATUS "${Esc}[31m"
+#         "OpenMP was not found or has been deactivated. This results in a considerably slower "
+#         "runtime for the program. Try to use a different compiler. Alternatively, if you are sure "
+#         "your compiler supports OpenMP, you can add the needed compiler flags to the CMake script."
+#         # " See BUILD.md for details."
+#     "${Esc}[0m" )
+# endif()
 
 # Add CLI11 as dependency. It's header-only, so this is easy.
 include_directories( SYSTEM "libs/CLI11/include" )
