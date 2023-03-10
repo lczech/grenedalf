@@ -32,6 +32,7 @@
 #include "genesis/population/formats/variant_input_iterator.hpp"
 #include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
+#include "genesis/sequence/reference_genome.hpp"
 
 #include <string>
 #include <vector>
@@ -90,6 +91,12 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
+    void add_reference_genome(
+        std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome
+    ) const {
+        add_reference_genome_( reference_genome );
+    }
+
     /**
      * @brief Get the file input options object that is used to store the input file paths.
      */
@@ -125,6 +132,12 @@ public:
     // -------------------------------------------------------------------------
 
 protected:
+
+    virtual void add_reference_genome_(
+        std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome
+    ) const {
+        (void) reference_genome;
+    }
 
     virtual CLI::Option* add_file_input_opt_to_app_(
         CLI::App* sub,

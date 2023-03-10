@@ -35,6 +35,7 @@
 #include "genesis/population/formats/variant_input_iterator.hpp"
 #include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
+#include "genesis/sequence/reference_genome.hpp"
 #include "genesis/utils/containers/lambda_iterator.hpp"
 #include "genesis/utils/containers/range.hpp"
 
@@ -140,6 +141,14 @@ public:
         return iterator_;
     }
 
+    /**
+     * @brief Return the pointer to the reference genome, if provided, or nullptr.
+     */
+    std::shared_ptr<genesis::sequence::ReferenceGenome> get_reference_genome() const
+    {
+        return reference_genome_;
+    }
+
     // -------------------------------------------------------------------------
     //     Internal Helpers
     // -------------------------------------------------------------------------
@@ -187,6 +196,7 @@ private:
 
     // General input settings
     CliOption<std::string> multi_file_loci_set_ = "union";
+    CliOption<std::string> reference_genome_file_;
 
     // Hidden options to set the LambdaIterator block size for speed.
     CliOption<size_t> iterator_block_size_ = 8192;
@@ -220,6 +230,9 @@ private:
     // While running, we also want to print where the input is currently at.
     // For that, we need to know when we change chromosome, so let's store the current one.
     mutable std::string current_chr_;
+
+    // Also load the reference genome, if provided.
+    mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;
 
 };
 

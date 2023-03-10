@@ -52,21 +52,29 @@ void setup_frequency( CLI::App& app )
     options->write_sample_counts.option = sub->add_flag(
         "--write-sample-counts",
         options->write_sample_counts.value,
-        "If set, write the 'REF_CNT' and 'ALT_CNT' columns per sample, "
-        "which contain the REF and ALT base counts at the position for each sample."
+        "If set, write 'REF_CNT' and 'ALT_CNT' columns per sample, "
+        "containing the REF and ALT base counts at the position for each sample."
     )->group( "Settings" );
     options->write_sample_coverage.option = sub->add_flag(
         "--write-sample-coverage",
         options->write_sample_coverage.value,
-        "If set, write the 'COV' column per sample, "
-        "which contains the coverage (sum of REF and ALT) counts of each sample."
+        "If set, write a 'COV' column per sample, "
+        "containing the coverage (sum of REF and ALT) counts of each sample."
     )->group( "Settings" );
-    options->write_sample_frequency.option = sub->add_flag(
-        "--write-sample-frequency",
-        options->write_sample_frequency.value,
-        "If set, write the 'FREQ' column per sample, "
-        "which contains the frequency, computed as REF/(REF+ALT) of the counts of each sample."
+    options->write_sample_ref_freq.option = sub->add_flag(
+        "--write-sample-ref-freq",
+        options->write_sample_ref_freq.value,
+        "If set, write a 'FREQ' column per sample, containing the reference allele frequency, "
+        "computed as REF/(REF+ALT) of the counts of each sample."
     )->group( "Settings" );
+    options->write_sample_alt_freq.option = sub->add_flag(
+        "--write-sample-alt-freq",
+        options->write_sample_alt_freq.value,
+        "If set, write a 'FREQ' column per sample, containing the alternative allele frequency, "
+        "computed as ALT/(REF+ALT) of the counts of each sample."
+    )->group( "Settings" );
+    options->write_sample_ref_freq.option->excludes( options->write_sample_alt_freq.option );
+    options->write_sample_alt_freq.option->excludes( options->write_sample_ref_freq.option );
 
     // Add total output selection.
     options->write_total_counts.option = sub->add_flag(
@@ -79,13 +87,13 @@ void setup_frequency( CLI::App& app )
         "--write-total-coverage",
         options->write_total_coverage.value,
         "If set, write the 'COV' column for the total, "
-        "which contains the coverage (sum of REF and ALT) counts across all samples."
+        "containing the coverage (sum of REF and ALT) counts across all samples."
     )->group( "Settings" );
     options->write_total_frequency.option = sub->add_flag(
         "--write-total-frequency",
         options->write_total_frequency.value,
         "If set, write the 'FREQ' column for the total, "
-        "which contains the frequency, computed as REF/(REF+ALT) of the counts across all samples."
+        "containing the frequency, computed as REF/(REF+ALT) of the counts across all samples."
     )->group( "Settings" );
 
     // Invariant site handling
@@ -133,16 +141,27 @@ void run_frequency( FrequencyOptions const& options )
     auto freq_oft = options.file_output.get_output_target( "frequency", "csv" );
     auto& freq_ofs = freq_oft->ostream();
 
-    // Most of our input sources do not provide ref, and almost non provide alt bases.
-    // So we use our guess function to augment the data. The function is idempotent
-    // (unless we set the `force` parameter, which we do not do here), so for sources that do
-    // contain ref and/or alt bases, nothing changes.
-    options.variant_input.add_combined_filter_and_transforms(
-        []( genesis::population::Variant& var ){
-            guess_and_set_ref_and_alt_bases( var );
-            return true;
-        }
-    );
+    // If we have a reference genome, use it to correctly get the bases for the output here.
+    if( options.variant_input.get_reference_genome() ) {
+        auto const ref_gen = options.variant_input.get_reference_genome();
+        options.variant_input.add_combined_filter_and_transforms(
+            [ref_gen]( genesis::population::Variant& var ){
+                guess_and_set_ref_and_alt_bases( var, *ref_gen );
+                return true;
+            }
+        );
+    } else {
+        // Most of our input sources do not provide ref, and almost non provide alt bases.
+        // So we use our guess function to augment the data. The function is idempotent
+        // (unless we set the `force` parameter, which we do not do here), so for sources that do
+        // contain ref and/or alt bases, nothing changes.
+        options.variant_input.add_combined_filter_and_transforms(
+            []( genesis::population::Variant& var ){
+                guess_and_set_ref_and_alt_bases( var );
+                return true;
+            }
+        );
+    }
 
     // -------------------------------------------------------------------------
     //     Output preparation
@@ -166,7 +185,7 @@ void run_frequency( FrequencyOptions const& options )
         fields.emplace_back( "COV" );
         write_anything = true;
     }
-    if( options.write_sample_frequency.value ) {
+    if( options.write_sample_ref_freq.value || options.write_sample_alt_freq.value ) {
         fields.emplace_back( "FREQ" );
         write_anything = true;
     }
@@ -208,6 +227,7 @@ void run_frequency( FrequencyOptions const& options )
     // Process the input file line by line and write the table data
     size_t line_cnt = 0;
     size_t skip_cnt = 0;
+    size_t tot_off_cnt = 0;
     for( auto const& freq_it : options.variant_input.get_iterator() ) {
         ++line_cnt;
 
@@ -216,7 +236,7 @@ void run_frequency( FrequencyOptions const& options )
         // That's probably okay for now. Might add code to issue a warning later when not sorted.
         if( chr_names.count( freq_it.chromosome ) == 0 ) {
             chr_names.insert( freq_it.chromosome );
-            LOG_MSG << "At chromosome " << freq_it.chromosome;
+            // LOG_MSG << "At chromosome " << freq_it.chromosome;
         }
 
         // If we want to omit invariant sites from the output, we need to do a prior check
@@ -225,9 +245,16 @@ void run_frequency( FrequencyOptions const& options )
         if( ! options.write_invariants.value ) {
             size_t ref_cnt = 0;
             size_t alt_cnt = 0;
+            size_t tot_cnt = 0;
             for( auto const& sample : freq_it.samples ) {
                 ref_cnt += get_base_count( sample, freq_it.reference_base );
                 alt_cnt += get_base_count( sample, freq_it.alternative_base );
+                tot_cnt += total_base_count_sum( sample );
+            }
+            if( 2 * ( ref_cnt + alt_cnt ) < tot_cnt ) {
+                // If the ref and alt counts make up less than half of the total counts,
+                // we likely have some issue in the data, mismatching the bases. Report that.
+                ++tot_off_cnt;
             }
             if( ref_cnt == 0 || alt_cnt == 0 ) {
                 ++skip_cnt;
@@ -265,9 +292,14 @@ void run_frequency( FrequencyOptions const& options )
             if( options.write_sample_coverage.value ) {
                 freq_ofs << sep_char << cnt_sum;
             }
-            if( options.write_sample_frequency.value ) {
+            if( options.write_sample_ref_freq.value || options.write_sample_alt_freq.value ) {
                 if( cnt_sum > 0 ) {
-                    auto const freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
+                    double freq = 0.0;
+                    if( options.write_sample_ref_freq.value ) {
+                        freq = static_cast<double>( ref_cnt ) / static_cast<double>( cnt_sum );
+                    } else if( options.write_sample_alt_freq.value ) {
+                        freq = static_cast<double>( alt_cnt ) / static_cast<double>( cnt_sum );
+                    }
                     freq_ofs << sep_char << freq;
                 } else {
                     freq_ofs << sep_char << options.table_output.get_na_entry();
@@ -310,5 +342,13 @@ void run_frequency( FrequencyOptions const& options )
         LOG_MSG << "Processed " << line_cnt << " genome positions of the input file, "
                 << "from " << chr_names.size() << " chromosomes, "
                 << "and thereof skipped " << skip_cnt << " due to being invariant sites.";
+    }
+    if( tot_off_cnt > line_cnt / 100 ) {
+        // Report this only if it happened in more thatn 1% of the cases.
+        LOG_WARN << "There were " << tot_off_cnt << " positions where the sum of the reference "
+                 << "and alternative base counts were less than have of the total counts at "
+                 << "the position. That is, the two remainding nucleotide counts were more in "
+                 << "sum than the two that we used here. This likely indicates some data error, "
+                 << "such as a mismatch of the reference base. Please check your data.";
     }
 }

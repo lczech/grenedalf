@@ -44,7 +44,8 @@ public:
 
     CliOption<bool> write_sample_counts    = false;
     CliOption<bool> write_sample_coverage  = false;
-    CliOption<bool> write_sample_frequency = false;
+    CliOption<bool> write_sample_ref_freq  = false;
+    CliOption<bool> write_sample_alt_freq  = false;
 
     CliOption<bool> write_total_counts     = false;
     CliOption<bool> write_total_coverage   = false;

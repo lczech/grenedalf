@@ -55,7 +55,9 @@ public:
      * instead of normal getters/setters, as this allows us to set them in the VariantInputOptions
      * when creating the instance, instead of having to cast later etc... hacky, but good enough.
      */
-    VariantInputFrequencyTableOptions( bool add_extra_opts = true )
+    VariantInputFrequencyTableOptions(
+        bool add_extra_opts = true
+    )
         : add_extra_opts_( add_extra_opts )
     {}
 
@@ -84,6 +86,12 @@ private:
     // -------------------------------------------------------------------------
 
 private:
+
+    void add_reference_genome_(
+        std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome
+    ) const override {
+        reference_genome_ = reference_genome;
+    }
 
     CLI::Option* add_file_input_opt_to_app_(
         CLI::App* sub,
@@ -120,7 +128,7 @@ private:
     // Basic frequency table options
     CliOption<std::string> separator_char_ = "comma";
     CliOption<double>      int_factor_;
-    CliOption<bool>        frequency_is_alt_ = false;
+    CliOption<bool>        frequency_is_ref_ = false;
 
     // Extra options
     bool add_extra_opts_ = true;
@@ -132,6 +140,10 @@ private:
     CliOption<std::string> usr_smp_alt_name_;
     CliOption<std::string> usr_smp_frq_name_;
     CliOption<std::string> usr_smp_cov_name_;
+
+    // Store a pointer to the ref genome, provided by the main VariantInputOptions,
+    // so that we can use it to correctly phase input frequencies, e.g., from HAF-pipe.
+    mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;
 
 };
 

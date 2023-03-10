@@ -81,15 +81,16 @@ CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
     int_factor_.option->needs( file_input_.option() );
 
     // Flags frequency is alt
-    frequency_is_alt_.option = sub->add_flag(
-        "--frequency-table-frequency-is-alt",
-        frequency_is_alt_.value,
+    frequency_is_ref_.option = sub->add_flag(
+        "--frequency-table-freq-is-ref",
+        frequency_is_ref_.value,
         "For frequency table input that contains allele frequencies, we need to decide whether those "
         "frequencies represent the reference or the alternative allele. By default, we assume the "
-        "former; use this flag to instead interpret them as alternative allele frequencies."
+        "latter, i.e., values are interpreted as alternative allele frequencies. "
+        "Use this flag to instead interpret them as reference allele frequencies."
     );
-    frequency_is_alt_.option->group( group );
-    frequency_is_alt_.option->needs( file_input_.option() );
+    frequency_is_ref_.option->group( group );
+    frequency_is_ref_.option->needs( file_input_.option() );
 
     // Set the extra options
     if( add_extra_opts_ ) {
@@ -105,7 +106,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 ) {
     // Chromosome column
     usr_chr_name_.option = sub->add_flag(
-        "--frequency-table-chromosome-column",
+        "--frequency-table-chr-column",
         usr_chr_name_.value,
         "Specify the name of the chromosome column in the header, case sensitive. "
         "By default, we look for columns named \"chromosome\", \"chrom\", \"chr\", or \"contig\", "
@@ -118,7 +119,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Position column
     usr_pos_name_.option = sub->add_flag(
-        "--frequency-table-position-column",
+        "--frequency-table-pos-column",
         usr_pos_name_.value,
         "Specify the name of the position column in the header, case sensitive. "
         "By default, we look for columns named \"position\" or \"pos\", case insensitive."
@@ -128,7 +129,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Reference base column
     usr_ref_name_.option = sub->add_flag(
-        "--frequency-table-reference-base-column",
+        "--frequency-table-ref-base-column",
         usr_ref_name_.value,
         "Specify the name of the reference base column in the header, case sensitive. "
         "By default, we look for columns named \"reference\", \"referencebase\", \"ref\", or "
@@ -139,7 +140,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Alternative base column
     usr_alt_name_.option = sub->add_flag(
-        "--frequency-table-alternative-base-column",
+        "--frequency-table-alt-base-column",
         usr_alt_name_.value,
         "Specify the name of the alternative base column in the header, case sensitive. "
         "By default, we look for columns named \"alternative\", \"alternativebase\", \"alt\", or "
@@ -150,7 +151,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Sample reference count column
     usr_smp_ref_name_.option = sub->add_flag(
-        "--frequency-table-sample-reference-count-column",
+        "--frequency-table-sample-ref-count-column",
         usr_smp_ref_name_.value,
         "Specify the exact prefix or suffix of the per-sample reference count columns in the "
         "header, case sensitive. "
@@ -165,7 +166,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Sample alternative count column
     usr_smp_alt_name_.option = sub->add_flag(
-        "--frequency-table-sample-alternative-count-column",
+        "--frequency-table-sample-alt-count-column",
         usr_smp_alt_name_.value,
         "Specify the exact prefix or suffix of the per-sample alternative count columns in the "
         "header, case sensitive. "
@@ -180,7 +181,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Sample frequency column
     usr_smp_frq_name_.option = sub->add_flag(
-        "--frequency-table-sample-frequency-column",
+        "--frequency-table-sample-freq-column",
         usr_smp_frq_name_.value,
         "Specify the exact prefix or suffix of the per-sample frequency columns in the "
         "header, case sensitive. "
@@ -197,7 +198,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 
     // Sample coverage column
     usr_smp_cov_name_.option = sub->add_flag(
-        "--frequency-table-sample-coverage-column",
+        "--frequency-table-sample-cov-column",
         usr_smp_cov_name_.value,
         "Specify the exact prefix or suffix of the per-sample coverage (i.e., depth) columns "
         "in the header, case sensitive. "
@@ -228,8 +229,13 @@ VariantInputFrequencyTableOptions::VariantInputIterator VariantInputFrequencyTab
     // Prepare the reader with our settings. Sep char is set twice - not needed, but okay.
     FrequencyTableInputIterator reader;
     reader.separator_char( get_separator_char_() );
-    reader.int_factor( int_factor_.value );
-    reader.frequency_is_ref( ! frequency_is_alt_.value );
+    reader.frequency_is_ref( frequency_is_ref_.value );
+    if( *int_factor_.option ) {
+        reader.int_factor( int_factor_.value );
+    }
+    if( reference_genome_ ) {
+        reader.reference_genome( reference_genome_ );
+    }
 
     // If provided, set the user specified header name fragments.
     if( *usr_chr_name_.option ) {

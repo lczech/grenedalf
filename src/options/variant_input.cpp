@@ -34,11 +34,12 @@
 #include "genesis/population/formats/variant_parallel_input_iterator.hpp"
 #include "genesis/population/functions/filter_transform.hpp"
 #include "genesis/population/functions/functions.hpp"
+#include "genesis/sequence/formats/fasta_reader.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/std.hpp"
 #include "genesis/utils/core/options.hpp"
+#include "genesis/utils/core/std.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
 
@@ -132,6 +133,17 @@ void VariantInputOptions::add_variant_input_opts_to_app(
         CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
     );
 
+    // Add option for reading in the reference genome.
+    reference_genome_file_.option = sub->add_option(
+        "--reference-genome-file",
+        reference_genome_file_.value,
+        "Provide a reference genome in fasta format. This allows to correctly assign the reference "
+        "bases in file formats that do not store them, and serves as an integrity check in those "
+        "that do."
+    );
+    reference_genome_file_.option->group( group );
+    reference_genome_file_.option->check( CLI::ExistingFile );
+
     // Hidden options to set the LambdaIterator block sizes for speed.
 
     // First for the main block size of the iterator that is collecing all Variants,
@@ -215,6 +227,32 @@ void VariantInputOptions::prepare_data_() const
     if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
         // Nothing to be done. We already prepared the data.
         return;
+    }
+
+    // Read the reference genome first, if provided, as some formats might want to use it.
+    if( *reference_genome_file_.option ) {
+        LOG_MSG << "Reading reference genome";
+        auto reader = genesis::sequence::FastaReader();
+        reference_genome_ = std::make_shared<genesis::sequence::ReferenceGenome>(
+            reader.read_reference_genome(
+                genesis::utils::from_file( reference_genome_file_.value )
+            )
+        );
+
+        // Some user output
+        LOG_MSG1 << "Reference genome contains " << reference_genome_->size() << " chromosome"
+                 << ( reference_genome_->size() != 1 ? "s" : "" );
+        for( auto const& chr : *reference_genome_ ) {
+            LOG_MSG2 << " - " << chr.label();
+        }
+
+        // Very hacky... at the moment, only the Frequency Table Input actually makes use of this,
+        // but we somehow need to get the ref genome to it before we initialize its iterator...
+        // So we do this here, and in order to avoid ugly casting of our different input file types,
+        // we just "set" the ref genome for all, which is a dummy function for all other types.
+        for( auto const& input_file : input_files_ ) {
+            input_file->add_reference_genome( reference_genome_ );
+        }
     }
 
     // Check how many files are given. If it is a single one, we just use that for the input
