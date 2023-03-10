@@ -238,6 +238,7 @@ VariantInputSampleNamesOptions::find_sample_indices_from_sample_filters() const
                     LOG_MSG << " - " << sn;
                 }
                 throw CLI::ValidationError(
+                    sample_name_list_.option->get_name(),
                     "Invalid sample name used for filtering: \"" + filtered_name  + "\"."
                 );
             } else {
@@ -258,6 +259,7 @@ VariantInputSampleNamesOptions::find_sample_indices_from_sample_filters() const
         for( auto filtered_name : filter_list ) {
             if( ! genesis::utils::starts_with( filtered_name, prefix )) {
                 throw CLI::ValidationError(
+                    sample_name_prefix_.option->get_name(),
                     "Invalid sample name used for filtering: \"" + filtered_name  + "\" "
                     "that does not fit the sample prefix given by " +
                     sample_name_prefix_.option->get_name()
@@ -276,6 +278,7 @@ VariantInputSampleNamesOptions::find_sample_indices_from_sample_filters() const
             }
             if( index == 0 ) {
                 throw CLI::ValidationError(
+                    sample_name_prefix_.option->get_name(),
                     "Invalid sample name used for filtering: \"" + filtered_name  + "\" "
                     "that does not contain a valid number after the prefix."
                 );

@@ -192,6 +192,7 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
         auto it = std::find( sample_names.begin(), sample_names.end(), name );
         if( it == sample_names.end() ) {
             throw CLI::ValidationError(
+                "Comparand sample names",
                 "Invalid sample name: \"" + name  + "\" that was not found in the input, "
                 "or was filtered out."
             );

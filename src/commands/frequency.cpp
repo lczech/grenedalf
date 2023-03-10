@@ -243,7 +243,8 @@ void run_frequency( FrequencyOptions const& options )
     // Let's help the user a bit.
     if( ! write_anything ) {
         throw CLI::ValidationError(
-            "Error: All count and frequency output columns are deselected; "
+            "--write-...",
+            "Error: No count or frequency output columns are selected; "
             "the output will hence not contain any actual frequency or count data."
         );
     }

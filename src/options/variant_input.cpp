@@ -266,7 +266,7 @@ void VariantInputOptions::prepare_data_() const
     // Set up iterator depending on how many files we found in total across all inputs.
     if( file_count == 0 ) {
         throw CLI::ValidationError(
-            "At least one input file has to be provided."
+            "Input sources", "At least one input file has to be provided."
         );
     } else if( file_count == 1 ) {
         prepare_data_single_file_();
@@ -334,6 +334,7 @@ void VariantInputOptions::prepare_data_single_file_() const
         assert( is_sample_name_list ^ is_sample_name_pref );
         if( provided_input_file->has_sample_names() ) {
             throw CLI::ValidationError(
+                "Input sources",
                 "Can only use " + input_sample_names_.get_sample_name_list().option->get_name() +
                 " or " + input_sample_names_.get_sample_name_prefix().option->get_name() +
                 " for input file formats that do not already have sample sames, such as (m)pileup "
@@ -409,6 +410,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
         *input_sample_names_.get_sample_name_list().option
     ) {
         throw CLI::ValidationError(
+            "Input sources",
             "Can only use " + input_sample_names_.get_sample_name_list().option->get_name() +
             " for single input files, but not when multiple input files are given."
         );

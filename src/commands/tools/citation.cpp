@@ -117,6 +117,6 @@ void run_citation( CitationOptions const& options )
         LOG_BOLD;
         LOG_BOLD << cite_markdown( list );
     } else {
-        throw CLI::ValidationError( "Invalid citation format: " + options.format );
+        throw CLI::ValidationError( "--format", "Invalid citation format: " + options.format );
     }
 }
