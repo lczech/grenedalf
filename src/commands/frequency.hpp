@@ -52,6 +52,8 @@ public:
     CliOption<bool> write_total_frequency  = false;
 
     CliOption<bool> write_invariants       = false;
+    CliOption<bool> omit_ref_alt_bases     = false;
+    CliOption<bool> omit_alt_bases         = false;
 
     VariantInputOptions variant_input;
     TableOutputOptions  table_output;

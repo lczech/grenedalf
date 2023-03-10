@@ -96,7 +96,7 @@ void setup_frequency( CLI::App& app )
         "containing the frequency, computed as REF/(REF+ALT) of the counts across all samples."
     )->group( "Settings" );
 
-    // Invariant site handling
+    // Special cases handling
     options->write_invariants.option = sub->add_flag(
         "--write-invariants",
         options->write_invariants.value,
@@ -105,6 +105,27 @@ void setup_frequency( CLI::App& app )
         "For example sam/bam/cream or (m)pileup files otherwise produce an output row "
         "for each position in the input."
     )->group( "Settings" );
+    options->omit_ref_alt_bases.option = sub->add_flag(
+        "--omit-ref-and-alt-bases",
+        options->omit_ref_alt_bases.value,
+        "If set, do not write the columns containing the reference and alternative bases. "
+        "This can be useful when the input is obtained from a source that does not contain "
+        "those anyway. In that case, we internally assign them to 'A' and 'G', respectively, "
+        "which usually is not correct, and hence should be omitted from the output."
+    )->group( "Settings" );
+    options->omit_alt_bases.option = sub->add_flag(
+        "--omit-alt-bases",
+        options->omit_alt_bases.value,
+        "If set, do not write the column containing the alternative bases. "
+        "This can be useful when the input is obtained from a source that does not contain "
+        "them anyway. In that case, we internally assign the alternative base to be the "
+        "transition base of the reference ('A' <-> 'G' and 'C' <-> 'T'), "
+        "which usually is not correct, and hence should be omitted from the output. "
+        "Note: To at least set the reference bases, "
+        "consider providing the `--reference-genome-file` option."
+    )->group( "Settings" );
+    options->omit_ref_alt_bases.option->excludes( options->omit_alt_bases.option );
+    options->omit_alt_bases.option->excludes( options->omit_ref_alt_bases.option );
 
     // Add table output options.
     options->table_output.add_separator_char_opt_to_app( sub );
@@ -169,9 +190,17 @@ void run_frequency( FrequencyOptions const& options )
 
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
+    auto const write_ref_bases = ! options.omit_ref_alt_bases.value;
+    auto const write_alt_bases = ! options.omit_ref_alt_bases.value && ! options.omit_alt_bases.value;
 
     // Write the fixed part of the csv header line.
-    freq_ofs << "CHROM" << sep_char << "POS" << sep_char << "REF" << sep_char << "ALT";
+    freq_ofs << "CHROM" << sep_char << "POS";
+    if( write_ref_bases ) {
+        freq_ofs << sep_char << "REF";
+    }
+    if( write_alt_bases ) {
+        freq_ofs << sep_char << "ALT";
+    }
     bool write_anything = false;
 
     // Make the header fields for the samples.
@@ -213,8 +242,10 @@ void run_frequency( FrequencyOptions const& options )
 
     // Let's help the user a bit.
     if( ! write_anything ) {
-        LOG_WARN << "Warning: All count and frequency output columns are deselected; "
-                 << "the output will hence only contain the columns CHROM, POS, REF, ALT.";
+        throw CLI::ValidationError(
+            "Error: All count and frequency output columns are deselected; "
+            "the output will hence not contain any actual frequency or count data."
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -228,15 +259,15 @@ void run_frequency( FrequencyOptions const& options )
     size_t line_cnt = 0;
     size_t skip_cnt = 0;
     size_t tot_off_cnt = 0;
-    for( auto const& freq_it : options.variant_input.get_iterator() ) {
+    for( auto const& variant : options.variant_input.get_iterator() ) {
         ++line_cnt;
 
         // User output, so that we can see that something is happing.
         // It only outputs each chromosome once, even if they are not sorted.
         // That's probably okay for now. Might add code to issue a warning later when not sorted.
-        if( chr_names.count( freq_it.chromosome ) == 0 ) {
-            chr_names.insert( freq_it.chromosome );
-            // LOG_MSG << "At chromosome " << freq_it.chromosome;
+        if( chr_names.count( variant.chromosome ) == 0 ) {
+            chr_names.insert( variant.chromosome );
+            // LOG_MSG << "At chromosome " << variant.chromosome;
         }
 
         // If we want to omit invariant sites from the output, we need to do a prior check
@@ -246,9 +277,9 @@ void run_frequency( FrequencyOptions const& options )
             size_t ref_cnt = 0;
             size_t alt_cnt = 0;
             size_t tot_cnt = 0;
-            for( auto const& sample : freq_it.samples ) {
-                ref_cnt += get_base_count( sample, freq_it.reference_base );
-                alt_cnt += get_base_count( sample, freq_it.alternative_base );
+            for( auto const& sample : variant.samples ) {
+                ref_cnt += get_base_count( sample, variant.reference_base );
+                alt_cnt += get_base_count( sample, variant.alternative_base );
                 tot_cnt += total_base_count_sum( sample );
             }
             if( 2 * ( ref_cnt + alt_cnt ) < tot_cnt ) {
@@ -263,10 +294,14 @@ void run_frequency( FrequencyOptions const& options )
         }
 
         // Write fixed columns
-        freq_ofs << freq_it.chromosome;
-        freq_ofs << sep_char << freq_it.position;
-        freq_ofs << sep_char << freq_it.reference_base;
-        freq_ofs << sep_char << freq_it.alternative_base;
+        freq_ofs << variant.chromosome;
+        freq_ofs << sep_char << variant.position;
+        if( write_ref_bases ) {
+            freq_ofs << sep_char << variant.reference_base;
+        }
+        if( write_alt_bases ) {
+            freq_ofs << sep_char << variant.alternative_base;
+        }
 
         // Keep track of totals
         size_t total_ref_cnt = 0;
@@ -274,11 +309,11 @@ void run_frequency( FrequencyOptions const& options )
         size_t total_cnt_sum = 0;
 
         // Per sample columns processing
-        for( auto const& sample : freq_it.samples ) {
+        for( auto const& sample : variant.samples ) {
 
             // Get raw counts
-            auto const ref_cnt = get_base_count( sample, freq_it.reference_base );
-            auto const alt_cnt = get_base_count( sample, freq_it.alternative_base );
+            auto const ref_cnt = get_base_count( sample, variant.reference_base );
+            auto const alt_cnt = get_base_count( sample, variant.alternative_base );
             auto const cnt_sum = ref_cnt + alt_cnt;
             total_ref_cnt += ref_cnt;
             total_alt_cnt += alt_cnt;
@@ -347,7 +382,7 @@ void run_frequency( FrequencyOptions const& options )
         // Report this only if it happened in more thatn 1% of the cases.
         LOG_WARN << "There were " << tot_off_cnt << " positions where the sum of the reference "
                  << "and alternative base counts were less than have of the total counts at "
-                 << "the position. That is, the two remainding nucleotide counts were more in "
+                 << "the position. That is, the two remaining nucleotide counts were more in "
                  << "sum than the two that we used here. This likely indicates some data error, "
                  << "such as a mismatch of the reference base. Please check your data.";
     }
