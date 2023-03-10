@@ -27,7 +27,7 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/functions/functions.hpp"
-#include "genesis/population/functions/structure.hpp"
+#include "genesis/population/functions/fst_pool_functions.hpp"
 #include "genesis/utils/containers/transform_iterator.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
