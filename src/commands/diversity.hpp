@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ public:
 
     // Using defaults from PoPollation, see Variance-sliding.pl
     CliOption<std::string> measure = "all";
-    CliOption<size_t> min_allele_count = 2;
+    CliOption<size_t> min_count = 2;
     CliOption<size_t> min_coverage = 4;
     CliOption<size_t> max_coverage = 1000000;
     CliOption<double> min_coverage_fraction = 0.6;

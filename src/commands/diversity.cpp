@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,9 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/diversity.hpp"
+#include "genesis/population/functions/diversity_pool_calculator.hpp"
+#include "genesis/population/functions/diversity_pool_functions.hpp"
+#include "genesis/population/functions/filter_transform.hpp"
 #include "genesis/population/functions/functions.hpp"
 #include "genesis/population/window/functions.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -77,10 +79,11 @@ void setup_diversity( CLI::App& app )
     );
 
     // Minimum allele count
-    options->min_allele_count.option = sub->add_option(
+    options->min_count.option = sub->add_option(
         "--min-allele-count",
-        options->min_allele_count.value,
-        "Minimum allele count of the minor allele. Used for the identification of SNPs."
+        options->min_count.value,
+        "Minimum allele count needed for a base count (`ACGT`) to be considered. Bases below this "
+        "count are filtered out. Used for the identification of SNPs."
     )->group( "Settings" );
 
     // Minimum coverage
@@ -99,7 +102,7 @@ void setup_diversity( CLI::App& app )
         "or equal to this threshold, otherwise no SNP will be called."
     )->group( "Settings" );
 
-    // TODO reactivate
+    // TODO reactivate, but per sample, instead of for all populations
 
     // Minimum coverage fraction
     // options->min_coverage_fraction.option = sub->add_option(
@@ -220,19 +223,34 @@ void run_diversity( DiversityOptions const& options )
 
     // Get the pool sizes.
     auto const pool_sizes = options.poolsizes.get_pool_sizes( sample_names );
+    internal_check(
+        pool_sizes.size() == sample_names.size(),
+        "Inconsistent number of pool sizes and samples."
+    );
 
-    // Prepare pool settings for each sample. We need to copy the options over to our settings class,
-    // as the pool size is different for each sample.
-    // Bit cumbersome, but makes the internal handling easier...
-    // Some are commented out, as they are currently not used by any diversity computation.
-    auto pool_settings = std::vector<PoolDiversitySettings>( sample_names.size() );
+    // Prepare pool settings for each sample.
+    DiversityPoolSettings pool_settings;
+    pool_settings.min_count             = options.min_count.value;
+    pool_settings.min_coverage          = options.min_coverage.value;
+    pool_settings.max_coverage          = options.max_coverage.value;
+    pool_settings.with_popoolation_bugs = options.with_popoolation_bugs.value;
+    std::vector<DiversityPoolCalculator> sample_diversity_calculators;
     for( size_t i = 0; i < sample_names.size(); ++i ) {
-        pool_settings[i].poolsize              = pool_sizes[i];
-        pool_settings[i].min_allele_count      = options.min_allele_count.value;
-        pool_settings[i].min_coverage          = options.min_coverage.value;
-        pool_settings[i].max_coverage          = options.max_coverage.value;
-        pool_settings[i].with_popoolation_bugs = options.with_popoolation_bugs.value;
+        sample_diversity_calculators.emplace_back(
+            pool_settings, pool_sizes[i]
+        );
+        sample_diversity_calculators.back().enable_theta_pi( compute_theta_pi );
+        sample_diversity_calculators.back().enable_theta_watterson( compute_theta_wa );
+        sample_diversity_calculators.back().enable_tajima_d( compute_tajima_d );
     }
+    std::vector<BaseCountsFilterStats> sample_filter_stats{ sample_names.size() };
+
+    // Prepare the base counts filter.
+    BaseCountsFilter filter;
+    filter.min_count    = options.min_count.value;
+    filter.min_coverage = options.min_coverage.value;
+    filter.max_coverage = options.max_coverage.value;
+    filter.only_snps = true;
 
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
@@ -326,30 +344,42 @@ void run_diversity( DiversityOptions const& options )
 
     auto coverage_fraction_ = [](
         VariantWindow const& window,
-        PoolDiversityResults const& results
+        BaseCountsFilterStats const& stats
+        // DiversityPoolCalculator::Result const& results
     ) {
-        // Compute cov frac.
-        auto const coverage = static_cast<double>( results.coverage_count );
+        // (void) results;
+
+        auto const coverage = static_cast<double>( stats.passed + stats.not_snp );
         auto const window_width = static_cast<double>( window.width() );
         return coverage / window_width;
+
+        // Compute cov frac.
+        // auto const coverage = static_cast<double>( results.coverage_count );
+        // auto const window_width = static_cast<double>( window.width() );
+        // return coverage / window_width;
     };
 
     // The popoolation table formats use the same format, so let's make one function to rule them all!
-    // We take the PoolDiversityResults here for the general values, and then the actual data
-    // value again, so that we don't have to switch to get it.
+    // We take the DiversityPoolCalculator::Result here for the general values, and then the actual
+    // data value again, so that we don't have to switch to get it.
     // Format: "2R	19500	0	0.000	na" or "A	1500	101	1.000	1.920886709" for example.
     auto write_popoolation_line_ = [ &coverage_fraction_ ](
         std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
         VariantWindow const& window,
-        PoolDiversityResults const& results,
+        BaseCountsFilterStats const& stats,
+        DiversityPoolCalculator::Result const& results,
         double value
     ) {
-        auto const coverage_fraction = coverage_fraction_( window, results );
+        auto const coverage_fraction = coverage_fraction_( window, stats );
+        internal_check(
+            stats.passed == results.processed_count,
+            "stats.passed != results.processed_count"
+        );
 
         // Write fixed columns.
         (*ofs) << window.chromosome();
         (*ofs) << "\t" << anchor_position( window, WindowAnchorType::kIntervalMidpoint );
-        (*ofs) << "\t" << results.snp_count;
+        (*ofs) << "\t" << results.processed_count;
         (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << coverage_fraction;
         if( std::isfinite( value ) ) {
             (*ofs) << "\t" << std::fixed << std::setprecision( 9 ) << value;
@@ -363,6 +393,9 @@ void run_diversity( DiversityOptions const& options )
     //     Main Loop
     // -------------------------------------------------------------------------
 
+    // TODO the complete setup below is an interim design, which we will need to update
+    // to fit with the new window view iterator design. it is left in an ugly state right now.
+
     // A bit of user output to keep 'em happy. Chromsomes, windows, positions.
     size_t chr_cnt = 0;
     size_t win_cnt = 0;
@@ -374,17 +407,13 @@ void run_diversity( DiversityOptions const& options )
     auto window_it = options.window.get_variant_window_iterator(
         options.variant_input.get_iterator()
     );
-    auto sample_divs = std::vector<PoolDiversityResults>( sample_names.size() );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
         ++win_cnt;
         pos_cnt += window.size();
 
-        // Some user output to report progress.
-        if( cur_it.is_first_window() ) {
-            LOG_MSG << "At chromosome " << window.chromosome();
-            ++chr_cnt;
-        }
+        // Some user output to report progress. Chromosome info is already done in the main one.
+        // TODO move this to the window iterator.
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"
                  << window.first_position() << "-"
@@ -395,43 +424,65 @@ void run_diversity( DiversityOptions const& options )
         //     continue;
         // }
 
-        // Compute diversity in parallel over samples.
-        #pragma omp parallel for
-        for( size_t i = 0; i < sample_names.size(); ++i ) {
+        // Reset all calculator accumulators to zero for this window.
+        for( size_t i = 0; i < sample_diversity_calculators.size(); ++i ) {
+            sample_diversity_calculators[i].reset();
+            reset( sample_filter_stats[i] );
+        }
 
-            // Select sample i within the current window.
-            auto range = make_transform_range(
-                [i]( VariantWindow::Entry const& entry ) -> BaseCounts const& {
-                    internal_check(
-                        i < entry.data.samples.size(),
-                        "Inconsistent number of samples in input file."
-                    );
-                    return entry.data.samples[i];
-                },
-                window.begin(), window.end()
+        // Compute diversity over samples.
+        // #pragma omp parallel for
+        for( auto const& variant : window ) {
+            internal_check(
+                variant.data.samples.size() == sample_names.size(),
+                "Inconsistent number of samples in input file."
             );
 
             // TODO refine the below to apply the filtering beforehand,
-            // instead of repeated in that convenience function pool_diversity_measures()
+            // instead of making copies... :-(
 
-            // Compute diversity measures for the sample. We always compute all measures,
-            // even if not all of them will be written afterwards. It's fast enough anyway,
-            // and most of the compute time is spent in parsing, so that's okay and easier.
-            sample_divs[i] = pool_diversity_measures( pool_settings[i], range.begin(), range.end() );
+            // Parallelize computation if there is more than one element.
+            if( sample_names.size() > 1 ) {
+                global_options.thread_pool()->parallel_for(
+                    0, sample_names.size(),
+                    [&]( size_t i ){
+                        // Currently, we need to do some filtering here...
+                        auto copy = variant.data.samples[i];
+                        if( filter_base_counts( copy, filter, sample_filter_stats[i] )) {
+                            sample_diversity_calculators[i].process( copy );
+                        }
+                    }
+                );
+            } else if( sample_names.size() == 1 ) {
+                auto copy = variant.data.samples[0];
+                if( filter_base_counts( copy, filter, sample_filter_stats[0] )) {
+                    sample_diversity_calculators[0].process( copy );
+                }
+            }
+
+            // for( size_t i = 0; i < sample_names.size(); ++i ) {
+            //     sample_divs[i] = pool_diversity_measures(
+            //         pool_sizes[i], pool_settings, range.begin(), range.end()
+            //     );
+            // }
         }
 
         // Write the data, depending on the format.
         if( options.popoolation_format.value ) {
 
             // Write to all individual files for each sample and each value.
-            for( size_t i = 0; i < sample_divs.size(); ++i ) {
+            for( size_t i = 0; i < sample_names.size(); ++i ) {
+                auto const& div_calc = sample_diversity_calculators[i];
+                auto const div_calc_result = div_calc.get_result( window.width() );
+
                 // Theta Pi
                 if( compute_theta_pi ) {
                     write_popoolation_line_(
                         popoolation_theta_pi_ofss[i],
                         window,
-                        sample_divs[i],
-                        sample_divs[i].theta_pi_relative
+                        sample_filter_stats[i],
+                        div_calc_result,
+                        div_calc_result.theta_pi_relative
                     );
                 }
 
@@ -440,8 +491,9 @@ void run_diversity( DiversityOptions const& options )
                     write_popoolation_line_(
                         popoolation_theta_wa_ofss[i],
                         window,
-                        sample_divs[i],
-                        sample_divs[i].theta_watterson_relative
+                        sample_filter_stats[i],
+                        div_calc_result,
+                        div_calc_result.theta_watterson_relative
                     );
                 }
 
@@ -450,8 +502,9 @@ void run_diversity( DiversityOptions const& options )
                     write_popoolation_line_(
                         popoolation_tajima_d_ofss[i],
                         window,
-                        sample_divs[i],
-                        sample_divs[i].tajima_d
+                        sample_filter_stats[i],
+                        div_calc_result,
+                        div_calc_result.tajima_d
                     );
                 }
             }
@@ -464,27 +517,33 @@ void run_diversity( DiversityOptions const& options )
             (*table_ofs) << sep_char << window.last_position();
 
             // Write the per-pair diversity values in the correct order.
-            for( auto const& sample_div : sample_divs ) {
-                auto const coverage_fraction = coverage_fraction_( window, sample_div );
+            for( size_t i = 0; i < sample_names.size(); ++i ) {
+                auto const& div_calc = sample_diversity_calculators[i];
+                // auto const div_calc_result = div_calc.get_result( window.width() );
+                auto const coverage_fraction = coverage_fraction_(
+                    window, sample_filter_stats[i]
+                );
+                auto const coverage = sample_filter_stats[i].passed + sample_filter_stats[i].not_snp;
+                auto const div_calc_result = div_calc.get_result( coverage );
 
                 // Meta info per sample
-                // (*table_ofs) << sep_char << sample_div.variant_count;
-                // (*table_ofs) << sep_char << sample_div.coverage_count;
-                (*table_ofs) << sep_char << sample_div.snp_count;
+                // (*table_ofs) << sep_char << div_calc.variant_count;
+                // (*table_ofs) << sep_char << div_calc.coverage_count;
+                (*table_ofs) << sep_char << div_calc_result.processed_count;
                 (*table_ofs) << sep_char << std::fixed << std::setprecision( 3 )
                              << coverage_fraction;
 
                 // Values
                 if( compute_theta_pi ) {
-                    write_table_field_( sample_div.theta_pi_absolute );
-                    write_table_field_( sample_div.theta_pi_relative );
+                    write_table_field_( div_calc_result.theta_pi_absolute );
+                    write_table_field_( div_calc_result.theta_pi_relative );
                 }
                 if( compute_theta_wa ) {
-                    write_table_field_( sample_div.theta_watterson_absolute );
-                    write_table_field_( sample_div.theta_watterson_relative );
+                    write_table_field_( div_calc_result.theta_watterson_absolute );
+                    write_table_field_( div_calc_result.theta_watterson_relative );
                 }
                 if( compute_tajima_d ) {
-                    write_table_field_( sample_div.tajima_d );
+                    write_table_field_( div_calc_result.tajima_d );
                 }
             }
             (*table_ofs) << "\n";
