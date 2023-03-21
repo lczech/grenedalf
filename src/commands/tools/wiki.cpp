@@ -33,6 +33,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 // =================================================================================================
@@ -184,15 +185,17 @@ void add_markdown_content( WikiOptions const& options, std::string const& md_fil
 //     Make Options Table
 // -------------------------------------------------------------------------
 
-void make_options_table( CLI::App const& command, std::ostream& os )
+void make_options_table( WikiOptions const& wiki_options, CLI::App const& command, std::ostream& os )
 {
     // Get the options that are part of this command.
     auto const options = command.get_options();
 
-    // map from group name to table contents.
+    // map from group name to table contents, with the tuple
+    // (1) group name, (2) contents, (3) is any option required
+    using OptGroup = std::tuple<std::string, std::string, bool>;
     // we use a vec to keep order.
     // std::map<std::string, std::string> opt_helps;
-    std::vector<std::pair<std::string, std::string>> opt_helps;
+    std::vector<OptGroup> opt_helps;
 
     // Add lines for each group.
     for( auto const& opt : options ) {
@@ -218,7 +221,7 @@ void make_options_table( CLI::App const& command, std::ostream& os )
         // }
         // if( ! opt->help_aftername().empty() ) {
         //     // print stuff without leading space.
-        //     tmp_os << " `" << opt->help_aftername().substr( 1 ) << "`<br>";
+        //     tmp_os << " `" << opt->help_aftername().substr( 1 ) << "`<br />";
         // }
         //
         // auto descr = opt->get_description();
@@ -227,12 +230,11 @@ void make_options_table( CLI::App const& command, std::ostream& os )
         // // tmp_os << "| " << opt->get_description() << " |\n";
 
         // Add content to the group help.
-        tmp_os << "<tr><td><code>" << opt->get_name() << "</code></td>";
-        tmp_os << "<td>";
-        if( opt->get_required() ) {
-            tmp_os << "<strong>Required.</strong>";
-        }
+        // tmp_os << "<tr><td><code>" << opt->get_name() << "</code></td>";
+        // tmp_os << "<td>";
+        tmp_os << "<dt><code>" << opt->get_name() << "</code></dt>";
 
+        // Get option type, special flags and validator strings.
         auto formatter = dynamic_cast<CLI::Formatter const*>( command.get_formatter().get() );
         auto opt_str = formatter->make_option_opts( opt );
         opt_str = genesis::utils::replace_all(
@@ -258,32 +260,43 @@ void make_options_table( CLI::App const& command, std::ostream& os )
         }
 
         // Now print to the output.
+        tmp_os << "<dd>";
         if( ! opt_str.empty() ) {
-            tmp_os << " <code>" << genesis::utils::trim( opt_str ) << "</code><br>";
+            tmp_os << "<code>" << genesis::utils::trim( opt_str ) << "</code><br />";
         }
+        // tmp_os << "</dt>\n";
 
         // Add description. Replace backticks by html code elements here, as markdown
         // does not replace them automatically within html environments.
+        // tmp_os << "<dd>";
+        if( opt->get_required() ) {
+            tmp_os << "<strong>Required.</strong> ";
+        }
         auto descr = opt->get_description();
         if( descr.substr( 0, 10 ) == "Required. " ) {
             descr = descr.substr( 10 );
         }
-        tmp_os << " " << codify_markdown( descr ) << "</td></tr>\n";
+        tmp_os << codify_markdown( descr ) << "</dd>\n";
+        // tmp_os << " " << codify_markdown( descr ) << "</td></tr>\n";
         // tmp_os << " " << opt->get_description() << " |\n";
         // tmp_os << "| " << opt->get_description() << " |\n";
 
         // Add content to the group help.
         // first check if the group was already used, and if not add it.
-        auto get_group_content = [&]( std::string const& name ) -> std::string& {
+        auto get_group = [&]( std::string const& name ) -> OptGroup& {
             for( auto& elem : opt_helps ) {
-                if( elem.first == name ) {
-                    return elem.second;
+                if( std::get<0>(elem) == name ) {
+                    return elem;
                 }
             }
-            opt_helps.push_back({ name, "" });
-            return opt_helps.back().second;
+            opt_helps.push_back({ name, "", false });
+            return opt_helps.back();
         };
-        get_group_content( opt->get_group() ) += tmp_os.str();
+        auto& opt_group = get_group( opt->get_group() );
+        std::get<1>( opt_group ) += tmp_os.str();
+        if( opt->get_required() ) {
+            std::get<2>( opt_group ) = true;
+        }
         // opt_helps[ opt->get_group() ] += tmp_os.str();
     }
 
@@ -298,19 +311,41 @@ void make_options_table( CLI::App const& command, std::ostream& os )
     // }
 
     // Print the groups and their tables
-    os << "<table>\n";
-    bool done_first_group = false;
+    // os << "<table>\n";
+    // bool done_first_group = false;
+    // for( auto const& gr : opt_helps ) {
+    //     if( done_first_group ) {
+    //         os << "<tr height=30px></tr>\n";
+    //     }
+    //     os << "<thead><tr><th colspan=\"2\" align=\"left\">" << gr.first << "</th></tr></thead>\n";
+    //     os << "<tbody>\n";
+    //     os << gr.second;
+    //     os << "</tbody>\n";
+    //     done_first_group = true;
+    // }
+    // os << "</table>\n\n";
+
+    // Print description lists
     for( auto const& gr : opt_helps ) {
-        if( done_first_group ) {
-            os << "<tr height=30px></tr>\n";
+        // os << "## " << gr.first << "\n\n";
+        // os << "<dl>\n";
+        // os << gr.second;
+        // os << "</dl>\n\n";
+
+        if( wiki_options.use_details ) {
+            os << "<details" << ( std::get<2>(gr) ? " open" : "" ) << ">\n";
+            os << "<summary>" << std::get<0>(gr) << "</summary>\n";
+            os << "<dl>\n";
+            os << std::get<1>(gr);
+            os << "</dl>\n";
+            os << "</details>\n\n";
+        } else {
+            os << "## " << std::get<0>(gr) << "\n\n";
+            os << "<dl>\n";
+            os << std::get<1>(gr);
+            os << "</dl>\n\n";
         }
-        os << "<thead><tr><th colspan=\"2\" align=\"left\">" << gr.first << "</th></tr></thead>\n";
-        os << "<tbody>\n";
-        os << gr.second;
-        os << "</tbody>\n";
-        done_first_group = true;
     }
-    os << "</table>\n\n";
 }
 
 // -------------------------------------------------------------------------
@@ -336,7 +371,7 @@ void make_subcommands_table(
 //     Make Wiki Page
 // -------------------------------------------------------------------------
 
-void make_wiki_command_page( WikiOptions const& options, CLI::App const& command )
+void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& command )
 {
     using namespace genesis::utils;
 
@@ -348,7 +383,7 @@ void make_wiki_command_page( WikiOptions const& options, CLI::App const& command
 
     // Open out file stream.
     std::string const out_file
-        = dir_normalize_path( options.out_dir )
+        = dir_normalize_path( wiki_options.out_dir )
         + "Subcommand:-" + command.get_name() + ".md"
     ;
     if( ! file_is_readable( out_file )) {
@@ -373,11 +408,49 @@ void make_wiki_command_page( WikiOptions const& options, CLI::App const& command
         }
     }
 
+    // Write styles. --> Nope, not accepted by GitHub wiki...
+    // os << "<style>\n";
+    // os << "code { white-space: nowrap; }\n";
+    // os << "dt {\n";
+    // os << "    font-weight: normal;\n";
+    // os << "    font-style: normal;\n";
+    // // os << "    margin-top: 8px;\n";
+    // // os << "    margin-bottom: 8px;\n";
+    // os << "}\n";
+    // // os << "dd {\n";
+    // // os << "    margin-left: 18px;\n";
+    // // os << "}\n";
+    // if( wiki_options.use_details ) {
+    //     os << "details > summary {\n";
+    //     os << "    font-size: 1.5em;\n";
+    //     os << "    font-weight: bold;\n";
+    //     os << "    line-height: 1.2;\n";
+    //     os << "    margin-top: 1em;\n";
+    //     os << "    margin-bottom: 16px;\n";
+    //     // os << "    border-bottom: 1px solid #aaa;\n";
+    //     os << "}\n";
+    // }
+    // os << "</style>\n\n";
+
     // Write command header.
     os << command.get_description() << "\n\n";
     os << "Usage: `" << usage;
     if( has_options ) {
-        os << " [options]";
+        bool has_required_options = false;
+        for( auto const& opt : command.get_options() ) {
+            if( opt->get_required() ) {
+                os << " " << opt->get_name();
+                if( opt->get_type_size() != 0 && ! opt->get_type_name().empty() ) {
+                    os << " " << split( opt->get_type_name(), ":" )[0];
+                }
+                has_required_options = true;
+            }
+        }
+        if( has_required_options ) {
+            os << " [other options]";
+        } else {
+            os << " [options]";
+        }
     }
     if( ! subcomms.empty() ) {
         if( command.get_require_subcommand_min() > 0 ) {
@@ -390,23 +463,23 @@ void make_wiki_command_page( WikiOptions const& options, CLI::App const& command
 
     // Print the options of the command.
     if( has_options ) {
-        os << "## Options\n\n";
-        make_options_table( command, os );
+        os << "# Options\n\n";
+        make_options_table( wiki_options, command, os );
     }
 
     // Print the subcommands of this command.
     if( ! subcomms.empty() ) {
-        os << "## Subommands\n\n";
+        os << "# Subommands\n\n";
         make_subcommands_table( subcomms, os );
     }
 
     // Add markdown file content.
-    add_markdown_content( options, command.get_name(), os );
+    add_markdown_content( wiki_options, command.get_name(), os );
 
     // If there is a citation list for this command, add it in a nice format.
     if( citation_list.count( &command ) > 0 ) {
         os << "\n";
-        os << "## Citation\n\n";
+        os << "# Citation\n\n";
         os << "When using this method, please do not forget to cite\n\n";
         os << cite_markdown( citation_list[ &command ], true, false );
     }

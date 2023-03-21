@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,7 +93,7 @@ void setup_fst( CLI::App& app )
     options->method.option = sub->add_option(
         "--method",
         options->method.value,
-        "F_ST method to use for the computation, either our novel unbiased statistic "
+        "F_ST method to use for the computation, either our unbiased statistic "
         "(in two variants, following the definition of Nei, and the definition of Hudson et al), "
         "the statistic by Kofler et al of PoPoolation2, or the asymptotically unbiased "
         "estimator of Karlsson et al (which is also implemented in PoPoolation2)."

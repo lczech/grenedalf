@@ -38,6 +38,8 @@ public:
 
     std::string md_dir  = "doc/md/";
     std::string out_dir = "../grenedalf.wiki/";
+    bool use_details = false;
+
     CLI::App*   app;
 
 };
