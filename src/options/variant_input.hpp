@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputOptions();
+    VariantInputOptions() = default;
     ~VariantInputOptions() = default;
 
     VariantInputOptions( VariantInputOptions const& other ) = default;
@@ -226,10 +226,6 @@ private:
 
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
-
-    // While running, we also want to print where the input is currently at.
-    // For that, we need to know when we change chromosome, so let's store the current one.
-    mutable std::string current_chr_;
 
     // Also load the reference genome, if provided.
     mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;

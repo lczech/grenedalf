@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,29 +62,6 @@ std::vector<
     { "union",        genesis::population::VariantParallelInputIterator::ContributionType::kCarrying },
     { "intersection", genesis::population::VariantParallelInputIterator::ContributionType::kFollowing }
 };
-
-// =================================================================================================
-//      Constructor and Rule of Five
-// =================================================================================================
-
-VariantInputOptions::VariantInputOptions()
-{
-    // We always print out where the input is at, at the moment. This is added first to the
-    // filters/transformations, so that it's always executed first, even if positions are filtered
-    // out by a later filter. That makes sure that we always get some progress update,
-    // which is probably more useful for the user than waiting too long without any.
-    // Note though that region filters are applied per input file, and so might have already removed
-    // chromosomes, so that they won't be printed here.
-    combined_filters_and_transforms_.push_back(
-        [this]( Variant& variant ){
-            if( this->current_chr_ != variant.chromosome ) {
-                this->current_chr_ = variant.chromosome;
-                LOG_MSG << "At chromosome " << variant.chromosome;
-            }
-            return true;
-        }
-    );
-}
 
 // =================================================================================================
 //      CLI Setup Functions
@@ -377,7 +354,7 @@ void VariantInputOptions::prepare_data_single_file_() const
     // the hundreds or more, and hence lead to slowdown due to blocking issues, or even problems
     // on clusters that monitor CPU usage. Well, not for a single file, but still, better to
     // use the global pool. This is more relevant for multiple files, see below.
-    iterator_.thread_pool( genesis::utils::Options::get().global_thread_pool() );
+    iterator_.thread_pool( global_options.thread_pool() );
 
     // Set the buffer block size of the iterator, for multi-threaded processing speed.
     // Needs to be tested - might give more or less advantage depending on setting.
@@ -468,7 +445,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
 
         // Following the reasoning from above: we need to use the global thread pool,
         // as otherwise reading hundreds of files will spawn too many threads, which is not good.
-        input.thread_pool( genesis::utils::Options::get().global_thread_pool() );
+        input.thread_pool( global_options.thread_pool() );
 
         // Also set the buffer block size of the iterator, using the second buffer size option
         // that is used for the inner iterators of parallel input.
@@ -488,7 +465,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
 
     // We also need to set the thread pool of the parallel input iterator itself,
     // for the same reasons as described above.
-    iterator_.thread_pool( genesis::utils::Options::get().global_thread_pool() );
+    iterator_.thread_pool( global_options.thread_pool() );
 
     // Set the buffer block size of the iterator, for multi-threaded speed.
     // We only buffer the final parallel iterator, and not its individual sources,
@@ -515,7 +492,7 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_iterator_(
 
     // Add the genome region list as a filter.
     if( region_filter_.get_region_filter() ) {
-        iterator.add_filter( filter_by_region( region_filter_.get_region_filter() ));
+        iterator.add_filter( make_filter_by_region( region_filter_.get_region_filter() ));
     }
 
     // Add the addtional filters and transformations that might have been set by the commands.
@@ -542,4 +519,21 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     for( auto const& func : combined_filters_and_transforms_ ) {
         iterator.add_transform_filter( func );
     }
+
+    // In addition to the transforms and filters, we here also add a visitor function.
+    // We always print out where the input is at, at the moment. That makes sure that we always
+    // get some progress update, which is probably more useful for the user than waiting too long
+    // without any.
+    // Note though that region filters are applied per input file, and so might have already removed
+    // chromosomes, so that they won't be printed here. We use lambda capture by value to create
+    // a copy of current_chr that is kept in the lambda, and updated there. We are not in C++14 yet.
+    std::string current_chr;
+    iterator.add_visitor(
+        [current_chr]( Variant const& variant ) mutable {
+            if( current_chr != variant.chromosome ) {
+                LOG_MSG << "At chromosome " << variant.chromosome;
+                current_chr = variant.chromosome;
+            }
+        }
+    );
 }

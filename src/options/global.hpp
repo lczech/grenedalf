@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@
 #include "tools/version.hpp"
 
 #include "genesis/utils/core/logging.hpp"
+#include "genesis/utils/core/options.hpp"
+#include "genesis/utils/core/thread_pool.hpp"
 
 #include <string>
 #include <vector>
@@ -82,7 +84,22 @@ public:
     //     Getters
     // -------------------------------------------------------------------------
 
+    /**
+     * @brief Get a nicely formatted (one space between each argv) string of the provided
+     * command line options.
+     */
     std::string command_line() const;
+
+    /**
+     * @brief Get the global thread pool to use for computations.
+     *
+     * Simply forwards to genesis::utils::Options::global_thread_pool(),
+     * but provided here for convenience and in case that we later need to change the pool.
+     */
+    std::shared_ptr<genesis::utils::ThreadPool> thread_pool() const
+    {
+        return genesis::utils::Options::get().global_thread_pool();
+    }
 
     // -------------------------------------------------------------------------
     //     Option Members

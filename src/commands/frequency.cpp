@@ -281,7 +281,7 @@ void run_frequency( FrequencyOptions const& options )
             for( auto const& sample : variant.samples ) {
                 ref_cnt += get_base_count( sample, variant.reference_base );
                 alt_cnt += get_base_count( sample, variant.alternative_base );
-                tot_cnt += total_base_count_sum( sample );
+                tot_cnt += nucleotide_sum( sample );
             }
             if( 2 * ( ref_cnt + alt_cnt ) < tot_cnt ) {
                 // If the ref and alt counts make up less than half of the total counts,
