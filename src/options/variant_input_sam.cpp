@@ -94,7 +94,7 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
     sam_split_by_rg_.option->needs( file_input_.option() );
 
     // Flags include all
-    sam_flags_include_all_.option = sub->add_flag(
+    sam_flags_include_all_.option = sub->add_option(
         "--sam-flags-include-all",
         sam_flags_include_all_.value,
         "Only use reads with all bits in the given value present in the FLAG field of the read. "
@@ -111,7 +111,7 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
     sam_flags_include_all_.option->needs( file_input_.option() );
 
     // Flags include any
-    sam_flags_include_any_.option = sub->add_flag(
+    sam_flags_include_any_.option = sub->add_option(
         "--sam-flags-include-any",
         sam_flags_include_any_.value,
         "Only use reads with any bits set in the given value present in the FLAG field of the read. "
@@ -122,7 +122,7 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
     sam_flags_include_any_.option->needs( file_input_.option() );
 
     // Flags exclude all
-    sam_flags_exclude_all_.option = sub->add_flag(
+    sam_flags_exclude_all_.option = sub->add_option(
         "--sam-flags-exclude-all",
         sam_flags_exclude_all_.value,
         "Do not use reads with all bits set in the given value present in the FLAG field of the read. "
@@ -133,7 +133,7 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
     sam_flags_exclude_all_.option->needs( file_input_.option() );
 
     // Flags exclude any
-    sam_flags_exclude_any_.option = sub->add_flag(
+    sam_flags_exclude_any_.option = sub->add_option(
         "--sam-flags-exclude-any",
         sam_flags_exclude_any_.value,
         "Do not use reads with any bits set in the given value present in the FLAG field of the read. "

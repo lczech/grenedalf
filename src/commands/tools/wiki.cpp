@@ -242,6 +242,9 @@ void make_options_table( WikiOptions const& wiki_options, CLI::App const& comman
             command.get_formatter()->get_label("REQUIRED"),
             ""
         );
+        if( opt->get_type_name().empty() ) {
+            opt_str = "FLAG " + opt_str;
+        }
 
         // Little special case: --threads defaults to the number of cores on the current system
         // where this wiki command is being run. Make this nicer.

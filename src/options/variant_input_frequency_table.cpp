@@ -105,7 +105,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     std::string const& group
 ) {
     // Chromosome column
-    usr_chr_name_.option = sub->add_flag(
+    usr_chr_name_.option = sub->add_option(
         "--frequency-table-chr-column",
         usr_chr_name_.value,
         "Specify the name of the chromosome column in the header, case sensitive. "
@@ -118,7 +118,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_chr_name_.option->needs( file_input_.option() );
 
     // Position column
-    usr_pos_name_.option = sub->add_flag(
+    usr_pos_name_.option = sub->add_option(
         "--frequency-table-pos-column",
         usr_pos_name_.value,
         "Specify the name of the position column in the header, case sensitive. "
@@ -128,7 +128,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_pos_name_.option->needs( file_input_.option() );
 
     // Reference base column
-    usr_ref_name_.option = sub->add_flag(
+    usr_ref_name_.option = sub->add_option(
         "--frequency-table-ref-base-column",
         usr_ref_name_.value,
         "Specify the name of the reference base column in the header, case sensitive. "
@@ -139,7 +139,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_ref_name_.option->needs( file_input_.option() );
 
     // Alternative base column
-    usr_alt_name_.option = sub->add_flag(
+    usr_alt_name_.option = sub->add_option(
         "--frequency-table-alt-base-column",
         usr_alt_name_.value,
         "Specify the name of the alternative base column in the header, case sensitive. "
@@ -150,7 +150,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_alt_name_.option->needs( file_input_.option() );
 
     // Sample reference count column
-    usr_smp_ref_name_.option = sub->add_flag(
+    usr_smp_ref_name_.option = sub->add_option(
         "--frequency-table-sample-ref-count-column",
         usr_smp_ref_name_.value,
         "Specify the exact prefix or suffix of the per-sample reference count columns in the "
@@ -165,7 +165,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_smp_ref_name_.option->needs( file_input_.option() );
 
     // Sample alternative count column
-    usr_smp_alt_name_.option = sub->add_flag(
+    usr_smp_alt_name_.option = sub->add_option(
         "--frequency-table-sample-alt-count-column",
         usr_smp_alt_name_.value,
         "Specify the exact prefix or suffix of the per-sample alternative count columns in the "
@@ -180,7 +180,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_smp_alt_name_.option->needs( file_input_.option() );
 
     // Sample frequency column
-    usr_smp_frq_name_.option = sub->add_flag(
+    usr_smp_frq_name_.option = sub->add_option(
         "--frequency-table-sample-freq-column",
         usr_smp_frq_name_.value,
         "Specify the exact prefix or suffix of the per-sample frequency columns in the "
@@ -197,7 +197,7 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_smp_frq_name_.option->needs( file_input_.option() );
 
     // Sample coverage column
-    usr_smp_cov_name_.option = sub->add_flag(
+    usr_smp_cov_name_.option = sub->add_option(
         "--frequency-table-sample-cov-column",
         usr_smp_cov_name_.value,
         "Specify the exact prefix or suffix of the per-sample coverage (i.e., depth) columns "
