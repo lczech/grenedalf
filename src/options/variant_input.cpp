@@ -102,7 +102,7 @@ void VariantInputOptions::add_variant_input_opts_to_app(
         multi_file_loci_set_.value,
         "When multiple input files are provided, select whether the union of all their loci is "
         "used, or their intersection. For their union, input files that do not have data at a "
-        "particular locus are considered to have zero counts at every base at that locus. "
+        "particular locus are considered to have zero coverage at that locus. "
         "Note that we allow to use multiple input files even with different file types."
     );
     multi_file_loci_set_.option->group( group );
