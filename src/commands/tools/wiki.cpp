@@ -279,6 +279,7 @@ void make_options_table( WikiOptions const& wiki_options, CLI::App const& comman
         if( descr.substr( 0, 10 ) == "Required. " ) {
             descr = descr.substr( 10 );
         }
+        descr = genesis::utils::replace_all( descr, "\n", "<br />" );
         tmp_os << codify_markdown( descr ) << "</dd>\n";
         // tmp_os << " " << codify_markdown( descr ) << "</td></tr>\n";
         // tmp_os << " " << opt->get_description() << " |\n";

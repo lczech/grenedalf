@@ -58,22 +58,22 @@ void WindowOptions::add_window_opts_to_app(
         // We need a bit of string trickery to use the ternary operator here...
         std::string() +
         "Type of window to use. Depending on the type, additional options might need to be provided. "
-        "(1) `sliding`: Typical sliding window over intervals of fixed length (in bases) "
+        "\n(1) `sliding`: Typical sliding window over intervals of fixed length (in bases) "
         "along the genome. "
-        "(2) `queue`: Sliding window, but instead of using a fixed length of bases along the genome, "
+        "\n(2) `queue`: Sliding window, but instead of using a fixed length of bases along the genome, "
         "it uses a fixed number of positions of the input data. Typically used for windowing over "
         "variant positions such as (biallelic) SNPs, and useful for example when SNPs are sparse "
         "in the genome. "
-        "(3) `single`: Treat each position of the input data as an individual window of size 1. "
+        "\n(3) `single`: Treat each position of the input data as an individual window of size 1. "
         "This is typically used to process single SNPs, and equivalent to `sliding` or `queue` "
         "with a width/count of 1. "
-        "(4) `regions`: Windows corresponding to some regions of interest, such as genes. "
+        "\n(4) `regions`: Windows corresponding to some regions of interest, such as genes. "
         "The regions need to be provided, and can be overlapping or nested as needed. " +
         (
             include_window_view_types_
             ? std::string() +
-            "(5) `chromosomes`: Each window covers a whole chromosome. "
-            "(6) `genome`: The whole genome is treated as a single window."
+            "\n(5) `chromosomes`: Each window covers a whole chromosome. "
+            "\n(6) `genome`: The whole genome is treated as a single window."
             : std::string()
         )
     );

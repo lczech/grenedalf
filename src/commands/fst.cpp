@@ -72,7 +72,7 @@ void setup_fst( CLI::App& app )
     auto options = std::make_shared<FstOptions>();
     auto sub = app.add_subcommand(
         "fst",
-        "Compute F_ST in windows or at individual positions along the genome."
+        "Compute FST in windows or at individual positions along the genome."
     );
 
     // -------------------------------------------------------------------------
@@ -89,11 +89,11 @@ void setup_fst( CLI::App& app )
     //     Settings
     // -------------------------------------------------------------------------
 
-    // Settings: F_ST Method
+    // Settings: FST Method
     options->method.option = sub->add_option(
         "--method",
         options->method.value,
-        "F_ST method to use for the computation, either our unbiased statistic "
+        "FST method to use for the computation, either the unbiased pool-sequencing statistic "
         "(in two variants, following the definition of Nei, and the definition of Hudson et al), "
         "the statistic by Kofler et al of PoPoolation2, or the asymptotically unbiased "
         "estimator of Karlsson et al (which is also implemented in PoPoolation2)."
@@ -109,12 +109,13 @@ void setup_fst( CLI::App& app )
 
     // TODO need settings for min/max coverage etc. see prototype implementations!
 
+    // TODO need to check if this is still needed when filtering for snps...
     // Settings: Omit Empty Windows
     options->omit_na_windows.option = sub->add_flag(
         "--omit-na-windows",
         options->omit_na_windows.value,
         "Do not output windows where all values are n/a (e.g., without any SNPs). This is "
-        "particularly relevant when choosing `--window-width 1` (or other small window sizes), "
+        "particularly relevant with small window sizes (or individual positions), "
         "in order to not produce output for invariant positions in the genome."
     );
     options->omit_na_windows.option->group( "Settings" );
@@ -123,8 +124,8 @@ void setup_fst( CLI::App& app )
     options->comparand.option = sub->add_option(
         "--comparand",
         options->comparand.value,
-        "By default, F_ST between all pairs of samples (that are not filtered) is computed. "
-        "If this option is given a sample name however, only the pairwise F_ST between that "
+        "By default, FST between all pairs of samples (that are not filtered) is computed. "
+        "If this option is given a sample name however, only the pairwise FST between that "
         "sample and all others (that are not filtered) is computed."
     );
     options->comparand.option->group( "Settings" );
@@ -134,7 +135,7 @@ void setup_fst( CLI::App& app )
         "--second-comparand",
         options->second_comparand.value,
         "If in addition to `--comparand`, this option is also given a (second) sample name, only "
-        "F_ST between those two samples is computed."
+        "FST between those two samples is computed."
     );
     options->second_comparand.option->group( "Settings" );
     options->second_comparand.option->needs( options->comparand.option );
@@ -143,9 +144,9 @@ void setup_fst( CLI::App& app )
     options->comparand_list.option = sub->add_option(
         "--comparand-list",
         options->comparand_list.value,
-        "By default, F_ST between all pairs of samples is computed. If this option is given a file "
+        "By default, FST between all pairs of samples is computed. If this option is given a file "
         "containing comma- or tab-separated pairs of sample names (one pair per line) however, "
-        "only these pairwise F_ST values are computed."
+        "only these pairwise FST values are computed."
     );
     options->comparand_list.option->group( "Settings" );
     options->comparand_list.option->check( CLI::ExistingFile );
@@ -200,7 +201,7 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
         return static_cast<size_t>( it - sample_names.begin() );
     };
 
-    // Get all pairs of samples for which we want to compute F_ST.
+    // Get all pairs of samples for which we want to compute FST.
     std::vector<std::pair<size_t, size_t>> sample_pairs;
     if( *options.comparand.option ) {
         if( *options.second_comparand.option ) {
@@ -266,12 +267,10 @@ void run_fst( FstOptions const& options )
 
     // Use an enum for the method, which is faster to check in the main loop than doing
     // string comparisons all the time. We could use a bool here, but let's be prepared for
-    // any additional future F_ST methods.
-    auto const method = get_enum_map_value(
-        fst_method_map, options.method.value
-    );
+    // any additional future FST methods.
+    auto const method = get_enum_map_value( fst_method_map, options.method.value );
 
-    // Get indices of all pairs of samples for which we want to compute F_ST.
+    // Get indices of all pairs of samples for which we want to compute FST.
     auto const sample_pairs = get_sample_pairs_( options );
 
     // Get all sample indices that we are actually interested in.
@@ -299,7 +298,7 @@ void run_fst( FstOptions const& options )
         LOG_WARN << "No pairs of samples selected, which will produce empty output. Stopping now.";
         return;
     }
-    LOG_MSG << "Computing F_ST between " << sample_pairs.size()
+    LOG_MSG << "Computing FST between " << sample_pairs.size()
             << " pair" << ( sample_pairs.size() > 1 ? "s" : "" ) << " of samples.";
 
     // Get the separator char to use for table entries.
@@ -327,7 +326,7 @@ void run_fst( FstOptions const& options )
     //     Main Loop
     // -------------------------------------------------------------------------
 
-    // Iterate the file and compute per-window F_ST.
+    // Iterate the file and compute per-window FST.
     size_t chr_cnt = 0;
     size_t win_cnt = 0;
     size_t pos_cnt = 0;
@@ -342,10 +341,10 @@ void run_fst( FstOptions const& options )
         pos_cnt += window.size();
 
         // Some user output to report progress.
-        if( cur_it.is_first_window() ) {
-            LOG_MSG << "At chromosome " << window.chromosome();
-            ++chr_cnt;
-        }
+        // if( cur_it.is_first_window() ) {
+        //     LOG_MSG << "At chromosome " << window.chromosome();
+        //     ++chr_cnt;
+        // }
 
         // Skip empty windows if the user wants to.
         if( window.empty() && options.omit_na_windows.value ) {
@@ -353,13 +352,8 @@ void run_fst( FstOptions const& options )
             continue;
         }
 
-        LOG_MSG2 << "    At window "
-                 << window.chromosome() << ":"
-                 << window.first_position() << "-"
-                 << window.last_position();
-
-        // Compute F_ST in parallel over the different pairs of samples.
-        #pragma omp parallel for
+        // Compute FST in parallel over the different pairs of samples.
+        // #pragma omp parallel for
         for( size_t i = 0; i < sample_pairs.size(); ++i ) {
             auto const index_a = sample_pairs[i].first;
             auto const index_b = sample_pairs[i].second;
@@ -424,7 +418,7 @@ void run_fst( FstOptions const& options )
                     break;
                 }
                 default: {
-                    throw std::domain_error( "Internal error: Invalid F_ST method." );
+                    throw std::domain_error( "Internal error: Invalid FST method." );
                 }
             }
         }
@@ -446,7 +440,7 @@ void run_fst( FstOptions const& options )
             (*fst_ofs) << sep_char << window.last_position();
             (*fst_ofs) << sep_char << window.entry_count();
 
-            // Write the per-pair F_ST values in the correct order.
+            // Write the per-pair FST values in the correct order.
             for( auto const& fst : window_fst ) {
                 if( std::isfinite( fst ) ) {
                     (*fst_ofs) << sep_char << fst;
@@ -462,6 +456,6 @@ void run_fst( FstOptions const& options )
     LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
             << " with " << pos_cnt << " total position" << ( pos_cnt != 1 ? "s" : "" )
             << " in " << win_cnt << " window" << ( win_cnt != 1 ? "s" : "" )
-            << " with F_ST values, and skipped " << nan_cnt << " window"
-            << ( nan_cnt != 1 ? "s" : "" ) << " without any F_ST values.";
+            << " with FST values, and skipped " << nan_cnt << " window"
+            << ( nan_cnt != 1 ? "s" : "" ) << " without any FST values.";
 }

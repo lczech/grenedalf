@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,12 +46,12 @@ void PoolsizesOptions::add_poolsizes_opt_to_app(
         "--pool-sizes",
         poolsizes.value,
         "Pool sizes for all samples that are used (not filtered out). Either "
-        "(1) a single pool size that is used for all samples, "
-        "(2) a comma- or tab-separated list of pool sizes in the same order as the samples in the "
+        "\n(1) a single pool size that is used for all samples, "
+        "\n(2) a comma- or tab-separated list of pool sizes in the same order as the samples in the "
         "input file (including samples that will be filtered out), "
-        "(3) a path to a file with one pool size per line, in the same order as the samples in the "
+        "\n(3) a path to a file with one pool size per line, in the same order as the samples in the "
         "input file (that is, same as (2), but in a file instead of on the command line), or "
-        "(4) a path to a file that contains a comma- or tab-separated list of sample names and "
+        "\n(4) a path to a file that contains a comma- or tab-separated list of sample names and "
         "pool sizes, with one name/size pair per line, in any order of lines."
     );
     poolsizes.option->group( group );
