@@ -62,7 +62,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         "Genomic region to filter for, in the format \"chr\" (for whole chromosomes), "
         "\"chr:position\", \"chr:start-end\", or \"chr:start..end\". "
         "Positions are 1-based and inclusive (closed intervals). "
-        "The option can be provided multiple times, see also `--filter-region-set`."
+        "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_.option->group( group );
 
@@ -74,7 +74,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         "either in the format \"chr\" (for whole chromosomes), \"chr:position\", \"chr:start-end\", "
         "\"chr:start..end\", or tab- or space-delimited \"chr position\" or \"chr start end\". "
         "Positions are 1-based and inclusive (closed intervals). "
-        "The option can be provided multiple times, see also `--filter-region-set`."
+        "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_list_.option->check( CLI::ExistingFile );
     filter_region_list_.option->group( group );
@@ -87,7 +87,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         "as well as start and end information per line, and ignores everything else in the file. "
         "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position; "
         "simply using columns extracted from other file formats (such as vcf or gff) will not work. "
-        "The option can be provided multiple times, see also `--filter-region-set`."
+        "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_bed_.option->check( CLI::ExistingFile );
     filter_region_bed_.option->group( group );
@@ -98,7 +98,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         filter_region_gff_.value,
         "Genomic regions to filter for, as a GFF2/GFF3/GTF file. This only uses the chromosome, "
         "as well as start and end information per line, and ignores everything else in the file. "
-        "The option can be provided multiple times, see also `--filter-region-set`."
+        "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_gff_.option->check( CLI::ExistingFile );
     filter_region_gff_.option->group( group );
@@ -107,9 +107,9 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
     filter_region_bim_.option = sub->add_option(
         "--filter-region-map-bim",
         filter_region_bim_.value,
-        "Genomic regions to filter for, as a MAP or BIM file as used in PLINK. This only "
+        "Genomic positions to filter for, as a MAP or BIM file as used in PLINK. This only "
         "uses the chromosome and coordinate per line, and ignores everything else in the file. "
-        "The option can be provided multiple times, see also `--filter-region-set`."
+        "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_bim_.option->check( CLI::ExistingFile );
     filter_region_bim_.option->group( group );
@@ -118,9 +118,9 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
     filter_region_vcf_.option = sub->add_option(
         "--filter-region-vcf",
         filter_region_vcf_.value,
-        "Genomic regions to filter for, as a VCF/BCF file (such as a known-variants file). This "
+        "Genomic positions to filter for, as a VCF/BCF file (such as a known-variants file). This "
         "only uses the chromosome and position per line, and ignores everything else in the file. "
-        "The option can be provided multiple times, see also `--filter-region-set`."
+        "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_vcf_.option->check( CLI::ExistingFile );
     filter_region_vcf_.option->group( group );

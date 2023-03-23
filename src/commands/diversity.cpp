@@ -58,7 +58,7 @@ void setup_diversity( CLI::App& app )
     options->variant_input.add_variant_input_opts_to_app( sub );
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
-    options->window.add_window_opts_to_app( sub );
+    options->window.add_window_opts_to_app( sub, false );
 
     // -------------------------------------------------------------------------
     //     Settings
