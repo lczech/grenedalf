@@ -275,20 +275,21 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
     check_options_();
 
     // Get the window types that are available as Window Iterators.
+    std::unique_ptr<VariantWindowIterator> result;
     if( window_type_.value == "sliding" ) {
-        return genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
+        result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
             get_variant_window_iterator_sliding_( input )
         );
     } else  if( window_type_.value == "queue" ) {
-        return genesis::utils::make_unique<VariantSlidingEntriesWindowIterator>(
+        result = genesis::utils::make_unique<VariantSlidingEntriesWindowIterator>(
             get_variant_window_iterator_queue_( input )
         );
     } else if( window_type_.value == "single" ) {
-        return genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
+        result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
             get_variant_window_iterator_single_( input )
         );
     } else if( window_type_.value == "regions" ) {
-        return genesis::utils::make_unique<VariantRegionWindowIterator>(
+        result = genesis::utils::make_unique<VariantRegionWindowIterator>(
             get_variant_window_iterator_regions_( input )
         );
     } else {
@@ -299,10 +300,17 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
             "Invalid window type '" + window_type_.value + "'."
         );
     }
+    assert( result );
 
-    // Cannot happen - just here for compiler satisfaction.
-    assert( false );
-    return nullptr;
+    // Add logging to the iterator, and return it.
+    using VariantWindowType = genesis::population::Window<genesis::population::Variant>;
+    result->add_visitor([]( VariantWindowType const& window ){
+        LOG_MSG2 << "    At window "
+                 << window.chromosome() << ":"
+                 << window.first_position() << "-"
+                 << window.last_position();
+    });
+    return result;
 }
 
 // -------------------------------------------------------------------------
@@ -323,36 +331,37 @@ std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_vie
     // Longer switch between all supported window types.
     // For the ones that yield Window Iterators, we additionally need to wrap them,
     // so that they become Window View iterators instead.
+    std::unique_ptr<VariantWindowViewIterator> result;
     if( window_type_.value == "sliding" ) {
-        return genesis::utils::make_unique<WindowViewIterator>(
+        result = genesis::utils::make_unique<WindowViewIterator>(
             make_window_view_iterator(
                 get_variant_window_iterator_sliding_( input )
             )
         );
     } else if( window_type_.value == "queue" ) {
-        return genesis::utils::make_unique<WindowViewIterator>(
+        result = genesis::utils::make_unique<WindowViewIterator>(
             make_window_view_iterator(
                 get_variant_window_iterator_queue_( input )
             )
         );
     } else if( window_type_.value == "single" ) {
-        return genesis::utils::make_unique<WindowViewIterator>(
+        result = genesis::utils::make_unique<WindowViewIterator>(
             make_window_view_iterator(
                 get_variant_window_iterator_single_( input )
             )
         );
     } else if( window_type_.value == "regions" ) {
-        return genesis::utils::make_unique<WindowViewIterator>(
+        result = genesis::utils::make_unique<WindowViewIterator>(
             make_window_view_iterator(
                 get_variant_window_iterator_regions_( input )
             )
         );
     } else if( window_type_.value == "chromosomes" ) {
-        return genesis::utils::make_unique<ChromosomeIterator>(
+        result = genesis::utils::make_unique<ChromosomeIterator>(
             get_variant_window_view_iterator_chromosomes_( input )
         );
     } else if( window_type_.value == "genome" ) {
-        return genesis::utils::make_unique<ChromosomeIterator>(
+        result = genesis::utils::make_unique<ChromosomeIterator>(
             get_variant_window_view_iterator_genome_( input )
         );
     } else {
@@ -361,10 +370,17 @@ std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_vie
             "Invalid window type '" + window_type_.value + "'."
         );
     }
+    assert( result );
 
-    // Cannot happen - just here for compiler satisfaction.
-    assert( false );
-    return nullptr;
+    // Add logging to the iterator, and return it.
+    using VariantWindowViewType = genesis::population::WindowView<genesis::population::Variant>;
+    result->add_visitor([]( VariantWindowViewType const& window ){
+        LOG_MSG2 << "    At window "
+                 << window.chromosome() << ":"
+                 << window.first_position() << "-"
+                 << window.last_position();
+    });
+    return result;
 }
 
 // =================================================================================================
