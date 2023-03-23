@@ -28,6 +28,10 @@
 
 #include "genesis/population/functions/functions.hpp"
 #include "genesis/population/functions/fst_pool_functions.hpp"
+#include "genesis/population/functions/fst_pool_karlsson.hpp"
+#include "genesis/population/functions/fst_pool_kofler.hpp"
+#include "genesis/population/functions/fst_pool_unbiased.hpp"
+#include "genesis/population/functions/fst_pool.hpp"
 #include "genesis/utils/containers/transform_iterator.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
@@ -58,8 +62,8 @@ enum class FstMethod
 std::vector<std::pair<std::string, FstMethod>> const fst_method_map = {
     { "unbiased-nei",    FstMethod::kUnbiasedNei },
     { "unbiased-hudson", FstMethod::kUnbiasedHudson },
-    { "kofler",        FstMethod::kKofler },
-    { "karlsson",      FstMethod::kKarlsson }
+    { "kofler",          FstMethod::kKofler },
+    { "karlsson",        FstMethod::kKarlsson }
 };
 
 // =================================================================================================
@@ -83,7 +87,7 @@ void setup_fst( CLI::App& app )
     options->variant_input.add_variant_input_opts_to_app( sub );
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
-    options->window.add_window_opts_to_app( sub, false );
+    options->window.add_window_opts_to_app( sub, true );
 
     // -------------------------------------------------------------------------
     //     Settings
@@ -248,6 +252,41 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
     return sample_pairs;
 }
 
+/**
+ * @brief Helper, copied from genesis, but amended to allow extra args for constructing the Calculator.
+ *
+ * Need to back-port into genesis later.
+ */
+template<class Calculator, typename... Args>
+inline genesis::population::FstPoolProcessor make_fst_pool_processor_(
+    std::vector<size_t> const& pool_sizes,
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs,
+    Args... args
+) {
+    using namespace genesis::population;
+
+    FstPoolProcessor result;
+    for( auto const& p : sample_pairs ) {
+        if( p.first >= pool_sizes.size() || p.second >= pool_sizes.size() ) {
+            throw std::invalid_argument(
+                "Invalid sample indices for computing FST Pool Kofler: " +
+                std::to_string( pool_sizes.size() ) +
+                " pool sizes provided, but asked to use indices " +
+                std::to_string( p.first ) + " and " + std::to_string( p.second )
+            );
+        }
+        result.add_calculator(
+            p.first, p.second,
+            ::genesis::utils::make_unique<Calculator>(
+                pool_sizes[p.first],
+                pool_sizes[p.second],
+                args...
+            )
+        );
+    }
+    return result;
+}
+
 // =================================================================================================
 //      Run
 // =================================================================================================
@@ -256,7 +295,7 @@ void run_fst( FstOptions const& options )
 {
     using namespace genesis::population;
     using namespace genesis::utils;
-    using VariantWindow = Window<genesis::population::Variant>;
+    // using VariantWindow = Window<genesis::population::Variant>;
 
     // Output preparation.
     options.file_output.check_output_files_nonexistence( "fst", "csv" );
@@ -266,8 +305,7 @@ void run_fst( FstOptions const& options )
     // -------------------------------------------------------------------------
 
     // Use an enum for the method, which is faster to check in the main loop than doing
-    // string comparisons all the time. We could use a bool here, but let's be prepared for
-    // any additional future FST methods.
+    // string comparisons all the time.
     auto const method = get_enum_map_value( fst_method_map, options.method.value );
 
     // Get indices of all pairs of samples for which we want to compute FST.
@@ -292,7 +330,7 @@ void run_fst( FstOptions const& options )
     auto const pool_sizes = (
         needs_pool_sizes
         ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
-        : std::vector<size_t>{}
+        : std::vector<size_t>( sample_names.size() )
     );
     if( sample_pairs.empty() ) {
         LOG_WARN << "No pairs of samples selected, which will produce empty output. Stopping now.";
@@ -303,6 +341,38 @@ void run_fst( FstOptions const& options )
 
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
+
+    // Make the processor.
+    FstPoolProcessor processor;
+    switch( method ) {
+        case FstMethod::kUnbiasedNei: {
+            processor = make_fst_pool_processor_<FstPoolCalculatorUnbiased>(
+                pool_sizes, sample_pairs, FstPoolCalculatorUnbiased::Estimator::kNei
+            );
+            break;
+        }
+        case FstMethod::kUnbiasedHudson: {
+            processor = make_fst_pool_processor_<FstPoolCalculatorUnbiased>(
+                pool_sizes, sample_pairs, FstPoolCalculatorUnbiased::Estimator::kHudson
+            );
+            break;
+        }
+        case FstMethod::kKofler: {
+            processor = make_fst_pool_processor_<FstPoolCalculatorKofler>(
+                pool_sizes, sample_pairs
+            );
+            break;
+        }
+        case FstMethod::kKarlsson: {
+            processor = make_fst_pool_processor_<FstPoolCalculatorKarlsson>(
+                pool_sizes, sample_pairs
+            );
+            break;
+        }
+        default: {
+            throw std::domain_error( "Internal error: Invalid FST method." );
+        }
+    }
 
     // -------------------------------------------------------------------------
     //     Table Header
@@ -332,103 +402,40 @@ void run_fst( FstOptions const& options )
     size_t pos_cnt = 0;
     size_t nan_cnt = 0;
 
-    auto window_it = options.window.get_variant_window_iterator(
+    auto window_it = options.window.get_variant_window_view_iterator(
         options.variant_input.get_iterator()
     );
     auto window_fst = std::vector<double>( sample_pairs.size() );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
-        pos_cnt += window.size();
 
-        // Some user output to report progress.
-        // if( cur_it.is_first_window() ) {
-        //     LOG_MSG << "At chromosome " << window.chromosome();
-        //     ++chr_cnt;
-        // }
+        // Reset all calculator accumulators to zero for this window.
+        processor.reset();
 
-        // Skip empty windows if the user wants to.
-        if( window.empty() && options.omit_na_windows.value ) {
-            ++nan_cnt;
-            continue;
-        }
-
-        // Compute FST in parallel over the different pairs of samples.
+        // Compute diversity over samples.
         // #pragma omp parallel for
-        for( size_t i = 0; i < sample_pairs.size(); ++i ) {
-            auto const index_a = sample_pairs[i].first;
-            auto const index_b = sample_pairs[i].second;
-
-            // The window contains entries from all samples in the input file, but our fst function
-            // expects iterators over two ranges of BaseCounts for which it computes fst.
-            // Hence, we here select the respective entries from the window BaseCounts vector.
-            // We use a range transformer that selects the respective entry from the Variant,
-            // and returns by reference, so that we avoid expensive copies here.
-            auto range_a = make_transform_range(
-                [index_a]( VariantWindow::Entry const& entry ) -> BaseCounts const& {
-                    internal_check(
-                        index_a < entry.data.samples.size(),
-                        "Inconsistent number of samples in input file."
-                    );
-                    return entry.data.samples[index_a];
-                },
-                window.begin(), window.end()
-            );
-            auto range_b = make_transform_range(
-                [index_b]( VariantWindow::Entry const& entry ) -> BaseCounts const& {
-                    internal_check(
-                        index_b < entry.data.samples.size(),
-                        "Inconsistent number of samples in input file."
-                    );
-                    return entry.data.samples[index_b];
-                },
-                window.begin(), window.end()
+        size_t entry_count = 0;
+        for( auto const& variant : window ) {
+            internal_check(
+                variant.samples.size() == sample_names.size(),
+                "Inconsistent number of samples in input file."
             );
 
-            // Run the computation.
-            switch( method ) {
-                case FstMethod::kUnbiasedNei: {
-                    window_fst[i] = f_st_pool_unbiased(
-                        pool_sizes[index_a], pool_sizes[index_b],
-                        range_a.begin(), range_a.end(),
-                        range_b.begin(), range_b.end()
-                    ).first;
-                    break;
-                }
-                case FstMethod::kUnbiasedHudson: {
-                    window_fst[i] = f_st_pool_unbiased(
-                        pool_sizes[index_a], pool_sizes[index_b],
-                        range_a.begin(), range_a.end(),
-                        range_b.begin(), range_b.end()
-                    ).second;
-                    break;
-                }
-                case FstMethod::kKofler: {
-                    window_fst[i] = f_st_pool_kofler(
-                        pool_sizes[index_a], pool_sizes[index_b],
-                        range_a.begin(), range_a.end(),
-                        range_b.begin(), range_b.end()
-                    );
-                    break;
-                }
-                case FstMethod::kKarlsson: {
-                    window_fst[i] = f_st_pool_karlsson(
-                        range_a.begin(), range_a.end(),
-                        range_b.begin(), range_b.end()
-                    );
-                    break;
-                }
-                default: {
-                    throw std::domain_error( "Internal error: Invalid FST method." );
-                }
-            }
+            processor.process( variant );
+            ++pos_cnt;
+            ++entry_count;
         }
+        auto const& window_fst = processor.get_result();
 
         // Write the values, unless all of them are nan, then we might skip.
+        // Skip empty windows if the user wants to.
         if(
-            options.omit_na_windows.value &&
-            std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
-                return std::isfinite( v );
-            })
+            options.omit_na_windows.value && (
+                entry_count == 0 ||
+                std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
+                    return std::isfinite( v );
+                })
+            )
         ) {
             ++nan_cnt;
         } else {
@@ -438,7 +445,7 @@ void run_fst( FstOptions const& options )
             (*fst_ofs) << window.chromosome();
             (*fst_ofs) << sep_char << window.first_position();
             (*fst_ofs) << sep_char << window.last_position();
-            (*fst_ofs) << sep_char << window.entry_count();
+            (*fst_ofs) << sep_char << entry_count;
 
             // Write the per-pair FST values in the correct order.
             for( auto const& fst : window_fst ) {

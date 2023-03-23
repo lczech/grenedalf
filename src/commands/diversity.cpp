@@ -58,7 +58,7 @@ void setup_diversity( CLI::App& app )
     options->variant_input.add_variant_input_opts_to_app( sub );
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
-    options->window.add_window_opts_to_app( sub, false );
+    options->window.add_window_opts_to_app( sub, true );
 
     // -------------------------------------------------------------------------
     //     Settings
@@ -173,7 +173,7 @@ void run_diversity( DiversityOptions const& options )
 {
     using namespace genesis::population;
     using namespace genesis::utils;
-    using VariantWindow = Window<genesis::population::Variant>;
+    using VariantWindowView = WindowView<genesis::population::Variant>;
 
     // Get all samples names from the input file.
     auto const& sample_names = options.variant_input.sample_names();
@@ -343,7 +343,7 @@ void run_diversity( DiversityOptions const& options )
     };
 
     auto coverage_fraction_ = [](
-        VariantWindow const& window,
+        VariantWindowView const& window,
         BaseCountsFilterStats const& stats
         // DiversityPoolCalculator::Result const& results
     ) {
@@ -365,7 +365,7 @@ void run_diversity( DiversityOptions const& options )
     // Format: "2R	19500	0	0.000	na" or "A	1500	101	1.000	1.920886709" for example.
     auto write_popoolation_line_ = [ &coverage_fraction_ ](
         std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
-        VariantWindow const& window,
+        VariantWindowView const& window,
         BaseCountsFilterStats const& stats,
         DiversityPoolCalculator::Result const& results,
         double value
@@ -404,20 +404,12 @@ void run_diversity( DiversityOptions const& options )
     // Iterate the file and compute per-window diversitye measures.
     // We run the samples in parallel, storing their results before writing to the output file.
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
-    auto window_it = options.window.get_variant_window_iterator(
+    auto window_it = options.window.get_variant_window_view_iterator(
         options.variant_input.get_iterator()
     );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
         ++win_cnt;
-        pos_cnt += window.size();
-
-        // Some user output to report progress. Chromosome info is already done in the main one.
-        // TODO move this to the window iterator.
-        LOG_MSG2 << "    At window "
-                 << window.chromosome() << ":"
-                 << window.first_position() << "-"
-                 << window.last_position();
 
         // Skip empty windows if the user wants to.
         // if( window.empty() && options.omit_empty_windows.value ) {
@@ -433,8 +425,9 @@ void run_diversity( DiversityOptions const& options )
         // Compute diversity over samples.
         // #pragma omp parallel for
         for( auto const& variant : window ) {
+            ++pos_cnt;
             internal_check(
-                variant.data.samples.size() == sample_names.size(),
+                variant.samples.size() == sample_names.size(),
                 "Inconsistent number of samples in input file."
             );
 
@@ -447,14 +440,14 @@ void run_diversity( DiversityOptions const& options )
                     0, sample_names.size(),
                     [&]( size_t i ){
                         // Currently, we need to do some filtering here...
-                        auto copy = variant.data.samples[i];
+                        auto copy = variant.samples[i];
                         if( filter_base_counts( copy, filter, sample_filter_stats[i] )) {
                             sample_diversity_calculators[i].process( copy );
                         }
                     }
                 );
             } else if( sample_names.size() == 1 ) {
-                auto copy = variant.data.samples[0];
+                auto copy = variant.samples[0];
                 if( filter_base_counts( copy, filter, sample_filter_stats[0] )) {
                     sample_diversity_calculators[0].process( copy );
                 }

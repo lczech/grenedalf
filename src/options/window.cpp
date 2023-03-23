@@ -325,6 +325,14 @@ std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_vie
         genesis::population::VariantInputIterator::Iterator
     >;
 
+    // Safety check. If this is set, we've made a mistake in a command setup,
+    // by not adding both the Window and Window View iterators, but requesting them here.
+    if( ! include_window_view_types_ ) {
+        throw std::domain_error(
+            "Internal error: Window View Iterators are not available."
+        );
+    }
+
     // Check that no extra options were provided.
     check_options_();
 
