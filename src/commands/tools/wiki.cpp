@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 #include "tools/references.hpp"
+#include "tools/version.hpp"
 
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -167,14 +168,18 @@ std::vector<CLI::App const*> get_all_subcommands( CLI::App const* app )
 /**
  * @brief Add the contents of a file to a stream.
  */
-void add_markdown_content( WikiOptions const& options, std::string const& md_file, std::ostream& os )
-{
+void add_markdown_content(
+    WikiOptions const& options, std::string const& md_file, std::ostream& os, bool add_header = false
+) {
     using namespace genesis::utils;
 
     // Add markdown file content.
     std::string const fn = dir_normalize_path( options.md_dir ) + md_file + ".md";
     if( file_is_readable( fn ) ) {
         std::ifstream mds( fn );
+        if( add_header ) {
+            os << "# Description\n\n";
+        }
         os << mds.rdbuf();
     } else {
         LOG_MSG << " - No documentation markdown found: " << md_file;
@@ -405,10 +410,13 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
 
     // We do not count the help option, so we need to manually check if there are any others.
     bool has_options = false;
+    bool has_required_options = false;
     for( auto const& opt : command.get_options() ) {
         if( opt->get_name() != "-h,--help" && opt->get_name() != "--help" ) {
             has_options = true;
-            break;
+        }
+        if( opt->get_required() ) {
+            has_required_options = true;
         }
     }
 
@@ -437,24 +445,10 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
     // os << "</style>\n\n";
 
     // Write command header.
-    os << command.get_description() << "\n\n";
-    os << "Usage: `" << usage;
+    os << "**Synopsis:** " << command.get_description() << "\n\n";
+    os << "**Usage:** `" << usage;
     if( has_options ) {
-        bool has_required_options = false;
-        for( auto const& opt : command.get_options() ) {
-            if( opt->get_required() ) {
-                os << " " << opt->get_name();
-                if( opt->get_type_size() != 0 && ! opt->get_type_name().empty() ) {
-                    os << " " << split( opt->get_type_name(), ":" )[0];
-                }
-                has_required_options = true;
-            }
-        }
-        if( has_required_options ) {
-            os << " [other options]";
-        } else {
-            os << " [options]";
-        }
+        os << " [options]";
     }
     if( ! subcomms.empty() ) {
         if( command.get_require_subcommand_min() > 0 ) {
@@ -464,6 +458,19 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
         }
     }
     os << "`\n\n";
+    if( has_required_options ) {
+        os << "**Required options:**\n\n";
+        for( auto const& opt : command.get_options() ) {
+            if( opt->get_required() ) {
+                os << "  * `" << opt->get_name() << "`\n";
+            }
+        }
+        os << "\n";
+    }
+    os << "Documentation for grenedalf " << grenedalf_version() << "\n\n";
+
+    // Add markdown file content.
+    add_markdown_content( wiki_options, command.get_name(), os, true );
 
     // Print the options of the command.
     if( has_options ) {
@@ -476,9 +483,6 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
         os << "# Subommands\n\n";
         make_subcommands_table( subcomms, os );
     }
-
-    // Add markdown file content.
-    add_markdown_content( wiki_options, command.get_name(), os );
 
     // If there is a citation list for this command, add it in a nice format.
     if( citation_list.count( &command ) > 0 ) {
