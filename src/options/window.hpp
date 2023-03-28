@@ -149,8 +149,6 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
-public:
-
     /**
      * @brief Get a Window iterator over Variants, using the @p input to get its data from.
      *
@@ -163,7 +161,7 @@ public:
      * iterators into the same, namely into WindowViewIterator.
      */
     std::unique_ptr<VariantWindowIterator> get_variant_window_iterator(
-        genesis::population::VariantInputIterator& input
+        VariantInputOptions const& variant_input
     ) const;
 
     /**
@@ -172,8 +170,28 @@ public:
      * This is meant to be called with the get_iterator() function of the VariantInputOptions class.
      */
     std::unique_ptr<VariantWindowViewIterator> get_variant_window_view_iterator(
-        genesis::population::VariantInputIterator& input
+        VariantInputOptions const& variant_input
     ) const;
+
+    // -------------------------------------------------------------------------
+    //     Reporting Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief Get the number of windows that have been processed in total.
+     */
+    size_t get_num_windows() const
+    {
+        return num_windows_;
+    }
+
+    /**
+     * @brief Print a report of the number of processed windows.
+     *
+     * This includes the information offered by VariantInputOptions::print_report(),
+     * so that if a command uses windows, only this one here needs to be called.
+     */
+    void print_report() const;
 
     // -------------------------------------------------------------------------
     //     Internal Members
@@ -213,6 +231,10 @@ private:
 
 private:
 
+    // -------------------------------------
+    //     CLI Options
+    // -------------------------------------
+
     // Window type selection
     bool include_window_view_types_ = false;
     CliOption<std::string> window_type_ = "sliding";
@@ -233,6 +255,13 @@ private:
     CliOption<std::vector<std::string>> region_bim_ ;
     CliOption<std::vector<std::string>> region_vcf_ ;
     CliOption<bool> region_skip_empty_ = false;
+
+    // -------------------------------------
+    //     Run Data
+    // -------------------------------------
+
+    mutable size_t num_windows_ = 0;
+    mutable VariantInputOptions const* variant_input_ = nullptr;
 
 };
 

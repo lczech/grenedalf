@@ -396,20 +396,12 @@ void run_diversity( DiversityOptions const& options )
     // TODO the complete setup below is an interim design, which we will need to update
     // to fit with the new window view iterator design. it is left in an ugly state right now.
 
-    // A bit of user output to keep 'em happy. Chromsomes, windows, positions.
-    size_t chr_cnt = 0;
-    size_t win_cnt = 0;
-    size_t pos_cnt = 0;
-
     // Iterate the file and compute per-window diversitye measures.
     // We run the samples in parallel, storing their results before writing to the output file.
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
-    auto window_it = options.window.get_variant_window_view_iterator(
-        options.variant_input.get_iterator()
-    );
+    auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
-        ++win_cnt;
 
         // Skip empty windows if the user wants to.
         // if( window.empty() && options.omit_empty_windows.value ) {
@@ -425,7 +417,6 @@ void run_diversity( DiversityOptions const& options )
         // Compute diversity over samples.
         // #pragma omp parallel for
         for( auto const& variant : window ) {
-            ++pos_cnt;
             internal_check(
                 variant.samples.size() == sample_names.size(),
                 "Inconsistent number of samples in input file."
@@ -543,7 +534,6 @@ void run_diversity( DiversityOptions const& options )
         }
     }
 
-    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
-            << " with " << pos_cnt << " total position" << ( pos_cnt != 1 ? "s" : "" )
-            << " in " << win_cnt << " window" << ( win_cnt != 1 ? "s" : "" );
+    // Final user output.
+    options.window.print_report();
 }

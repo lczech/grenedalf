@@ -150,6 +150,31 @@ public:
     }
 
     // -------------------------------------------------------------------------
+    //     Reporting Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief Get the number of chromosomes that have been processed in total.
+     */
+    size_t get_num_chromosomes() const
+    {
+        return num_chromosomes_;
+    }
+
+    /**
+     * @brief Get the number of positions that have been processed in total.
+     */
+    size_t get_num_positions() const
+    {
+        return num_positions_;
+    }
+
+    /**
+     * @brief Print a report of the number of processed windows.
+     */
+    void print_report() const;
+
+    // -------------------------------------------------------------------------
     //     Internal Helpers
     // -------------------------------------------------------------------------
 
@@ -173,11 +198,11 @@ private:
         VariantInputIterator& iterator
     ) const;
 
-private:
-
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
+
+private:
 
     // -------------------------------------
     //     CLI Options
@@ -229,6 +254,10 @@ private:
 
     // Also load the reference genome, if provided.
     mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;
+
+    // Counts, for reporting
+    mutable size_t num_chromosomes_ = 0;
+    mutable size_t num_positions_ = 0;
 
 };
 

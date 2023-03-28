@@ -363,14 +363,10 @@ void run_fst( FstOptions const& options )
     // -------------------------------------------------------------------------
 
     // Iterate the file and compute per-window FST.
-    size_t chr_cnt = 0;
     size_t win_cnt = 0;
-    size_t pos_cnt = 0;
     size_t nan_cnt = 0;
 
-    auto window_it = options.window.get_variant_window_view_iterator(
-        options.variant_input.get_iterator()
-    );
+    auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
     auto window_fst = std::vector<double>( sample_pairs.size() );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
@@ -389,7 +385,6 @@ void run_fst( FstOptions const& options )
 
             // TODO add thread pool? might need to be implemented in the processor itself.
             processor.process( variant );
-            ++pos_cnt;
             ++entry_count;
         }
         auto const& window_fst = processor.get_result();
@@ -425,11 +420,14 @@ void run_fst( FstOptions const& options )
             (*fst_ofs) << "\n";
         }
     }
+    if( win_cnt + nan_cnt != options.window.get_num_windows() ) {
+        throw std::domain_error(
+            "Internal error: Number of windows is inconsistent."
+        );
+    }
 
     // Final user output.
-    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
-            << " with " << pos_cnt << " total position" << ( pos_cnt != 1 ? "s" : "" )
-            << " in " << win_cnt << " window" << ( win_cnt != 1 ? "s" : "" )
-            << " with FST values, and skipped " << nan_cnt << " window"
+    options.window.print_report();
+    LOG_MSG << "Thereof, skipped " << nan_cnt << " window"
             << ( nan_cnt != 1 ? "s" : "" ) << " without any FST values.";
 }

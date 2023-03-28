@@ -187,6 +187,19 @@ void VariantInputOptions::add_combined_filter_and_transforms(
 }
 
 // =================================================================================================
+//      Reporting Functions
+// =================================================================================================
+
+void VariantInputOptions::print_report() const
+{
+    // If phrasing here is changed, it should also be changed in WindowOptions::print_report()
+    auto const chr_cnt = num_chromosomes_;
+    auto const pos_cnt = num_positions_;
+    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
+            << " with " << pos_cnt << " (non-filtered) position" << ( pos_cnt != 1 ? "s" : "" ) << ".";
+}
+
+// =================================================================================================
 //      Iterator Setup
 // =================================================================================================
 
@@ -529,10 +542,12 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     // a copy of current_chr that is kept in the lambda, and updated there. We are not in C++14 yet.
     std::string current_chr;
     iterator.add_visitor(
-        [current_chr]( Variant const& variant ) mutable {
+        [ current_chr, this ]( Variant const& variant ) mutable {
+            ++num_positions_;
             if( current_chr != variant.chromosome ) {
                 LOG_MSG << "At chromosome " << variant.chromosome;
                 current_chr = variant.chromosome;
+                ++num_chromosomes_;
             }
         }
     );
