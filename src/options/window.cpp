@@ -507,6 +507,8 @@ WindowOptions::get_variant_window_iterator_single_(
     return genesis::population::make_default_sliding_interval_window_iterator(
         input.begin(), input.end(), 1, 1
     );
+
+    // TODO change this to not use a sliding window, but just a view based on the stream!
 }
 
 // -------------------------------------------------------------------------

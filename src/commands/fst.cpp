@@ -97,10 +97,11 @@ void setup_fst( CLI::App& app )
     options->method.option = sub->add_option(
         "--method",
         options->method.value,
-        "FST method to use for the computation, either the unbiased pool-sequencing statistic "
-        "(in two variants, following the definition of Nei, and the definition of Hudson et al), "
-        "the statistic by Kofler et al of PoPoolation2, or the asymptotically unbiased "
-        "estimator of Karlsson et al (which is also implemented in PoPoolation2)."
+        "FST method to use for the computation.\n(1) The unbiased pool-sequencing statistic "
+        "(in two variants, following the definition of Nei, and the definition of Hudson et al),"
+        "\n(2) the statistic by Kofler et al of PoPoolation2, or \n(3) the asymptotically unbiased "
+        "estimator of Karlsson et al (which is also implemented in PoPoolation2). "
+        "\nAll except for the Karlsson method also require `--pool-sizes` to be provided."
     );
     options->method.option->group( "Settings" );
     options->method.option->required();
@@ -252,41 +253,6 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
     return sample_pairs;
 }
 
-/**
- * @brief Helper, copied from genesis, but amended to allow extra args for constructing the Calculator.
- *
- * Need to back-port into genesis later.
- */
-template<class Calculator, typename... Args>
-inline genesis::population::FstPoolProcessor make_fst_pool_processor_(
-    std::vector<size_t> const& pool_sizes,
-    std::vector<std::pair<size_t, size_t>> const& sample_pairs,
-    Args... args
-) {
-    using namespace genesis::population;
-
-    FstPoolProcessor result;
-    for( auto const& p : sample_pairs ) {
-        if( p.first >= pool_sizes.size() || p.second >= pool_sizes.size() ) {
-            throw std::invalid_argument(
-                "Invalid sample indices for computing FST Pool Kofler: " +
-                std::to_string( pool_sizes.size() ) +
-                " pool sizes provided, but asked to use indices " +
-                std::to_string( p.first ) + " and " + std::to_string( p.second )
-            );
-        }
-        result.add_calculator(
-            p.first, p.second,
-            ::genesis::utils::make_unique<Calculator>(
-                pool_sizes[p.first],
-                pool_sizes[p.second],
-                args...
-            )
-        );
-    }
-    return result;
-}
-
 // =================================================================================================
 //      Run
 // =================================================================================================
@@ -346,26 +312,26 @@ void run_fst( FstOptions const& options )
     FstPoolProcessor processor;
     switch( method ) {
         case FstMethod::kUnbiasedNei: {
-            processor = make_fst_pool_processor_<FstPoolCalculatorUnbiased>(
-                pool_sizes, sample_pairs, FstPoolCalculatorUnbiased::Estimator::kNei
+            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
+                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kNei
             );
             break;
         }
         case FstMethod::kUnbiasedHudson: {
-            processor = make_fst_pool_processor_<FstPoolCalculatorUnbiased>(
-                pool_sizes, sample_pairs, FstPoolCalculatorUnbiased::Estimator::kHudson
+            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
+                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kHudson
             );
             break;
         }
         case FstMethod::kKofler: {
-            processor = make_fst_pool_processor_<FstPoolCalculatorKofler>(
-                pool_sizes, sample_pairs
+            processor = make_fst_pool_processor<FstPoolCalculatorKofler>(
+                sample_pairs, pool_sizes
             );
             break;
         }
         case FstMethod::kKarlsson: {
-            processor = make_fst_pool_processor_<FstPoolCalculatorKarlsson>(
-                pool_sizes, sample_pairs
+            processor = make_fst_pool_processor<FstPoolCalculatorKarlsson>(
+                sample_pairs, pool_sizes
             );
             break;
         }
@@ -421,6 +387,7 @@ void run_fst( FstOptions const& options )
                 "Inconsistent number of samples in input file."
             );
 
+            // TODO add thread pool? might need to be implemented in the processor itself.
             processor.process( variant );
             ++pos_cnt;
             ++entry_count;
