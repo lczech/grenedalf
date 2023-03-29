@@ -33,9 +33,9 @@
 #include <iostream>
 #include <stdexcept>
 
-#ifdef GENESIS_OPENMP
-#   include <omp.h>
-#endif
+// #ifdef GENESIS_OPENMP
+// #   include <omp.h>
+// #endif
 
 // =================================================================================================
 //      Setup Functions

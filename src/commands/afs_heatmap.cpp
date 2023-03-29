@@ -39,9 +39,9 @@
 #include <stdexcept>
 #include <utility>
 
-#ifdef GENESIS_OPENMP
-#   include <omp.h>
-#endif
+// #ifdef GENESIS_OPENMP
+// #   include <omp.h>
+// #endif
 
 // =================================================================================================
 //      Enum Mapping
@@ -467,7 +467,7 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
         spectrum.values.emplace_back( options.resolution.value, 0.0 );
         auto& spectrum_column = spectrum.values.back();
 
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for( size_t i = 0; i < window.size(); ++i ) {
 
             // Compute the frequency at this position, taking all settings into account.
@@ -495,7 +495,7 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
             assert( index < spectrum_column.size() );
 
             // Atomic increment for double values.
-            #pragma omp atomic
+            // #pragma omp atomic
             spectrum_column[ index ] += 1.0;
         }
 

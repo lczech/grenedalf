@@ -43,9 +43,9 @@
 #include <utility>
 #include <vector>
 
-#ifdef GENESIS_OPENMP
-#   include <omp.h>
-#endif
+// #ifdef GENESIS_OPENMP
+// #   include <omp.h>
+// #endif
 
 // =================================================================================================
 //      Enum Mapping
