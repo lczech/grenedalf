@@ -43,10 +43,6 @@
 #include <utility>
 #include <vector>
 
-// #ifdef GENESIS_OPENMP
-// #   include <omp.h>
-// #endif
-
 // =================================================================================================
 //      Enum Mapping
 // =================================================================================================
@@ -188,6 +184,10 @@ void setup_fst( CLI::App& app )
 //      Helper Functions
 // =================================================================================================
 
+// -------------------------------------------------------------------------
+//     get_sample_pairs_
+// -------------------------------------------------------------------------
+
 std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& options )
 {
     using namespace genesis::utils;
@@ -253,6 +253,44 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
     return sample_pairs;
 }
 
+// -------------------------------------------------------------------------
+//     get_fst_pool_processor_
+// -------------------------------------------------------------------------
+
+genesis::population::FstPoolProcessor get_fst_pool_processor_(
+    FstMethod method,
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs,
+    std::vector<size_t> const& pool_sizes
+) {
+    using namespace genesis::population;
+
+    switch( method ) {
+        case FstMethod::kUnbiasedNei: {
+            return make_fst_pool_processor<FstPoolCalculatorUnbiased>(
+                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kNei
+            );
+        }
+        case FstMethod::kUnbiasedHudson: {
+            return make_fst_pool_processor<FstPoolCalculatorUnbiased>(
+                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kHudson
+            );
+        }
+        case FstMethod::kKofler: {
+            return make_fst_pool_processor<FstPoolCalculatorKofler>(
+                sample_pairs, pool_sizes
+            );
+        }
+        case FstMethod::kKarlsson: {
+            return make_fst_pool_processor<FstPoolCalculatorKarlsson>(
+                sample_pairs, pool_sizes
+            );
+        }
+        default: {
+            throw std::domain_error( "Internal error: Invalid FST method." );
+        }
+    }
+}
+
 // =================================================================================================
 //      Run
 // =================================================================================================
@@ -309,36 +347,7 @@ void run_fst( FstOptions const& options )
     auto const sep_char = options.table_output.get_separator_char();
 
     // Make the processor.
-    FstPoolProcessor processor;
-    switch( method ) {
-        case FstMethod::kUnbiasedNei: {
-            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kNei
-            );
-            break;
-        }
-        case FstMethod::kUnbiasedHudson: {
-            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kHudson
-            );
-            break;
-        }
-        case FstMethod::kKofler: {
-            processor = make_fst_pool_processor<FstPoolCalculatorKofler>(
-                sample_pairs, pool_sizes
-            );
-            break;
-        }
-        case FstMethod::kKarlsson: {
-            processor = make_fst_pool_processor<FstPoolCalculatorKarlsson>(
-                sample_pairs, pool_sizes
-            );
-            break;
-        }
-        default: {
-            throw std::domain_error( "Internal error: Invalid FST method." );
-        }
-    }
+    FstPoolProcessor processor = get_fst_pool_processor_( method, sample_pairs, pool_sizes );
 
     // -------------------------------------------------------------------------
     //     Table Header
@@ -363,11 +372,10 @@ void run_fst( FstOptions const& options )
     // -------------------------------------------------------------------------
 
     // Iterate the file and compute per-window FST.
-    size_t win_cnt = 0;
+    size_t use_cnt = 0;
     size_t nan_cnt = 0;
 
     auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
-    auto window_fst = std::vector<double>( sample_pairs.size() );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
 
@@ -401,7 +409,7 @@ void run_fst( FstOptions const& options )
         ) {
             ++nan_cnt;
         } else {
-            ++win_cnt;
+            ++use_cnt;
 
             // Write fixed columns.
             (*fst_ofs) << window.chromosome();
@@ -420,7 +428,7 @@ void run_fst( FstOptions const& options )
             (*fst_ofs) << "\n";
         }
     }
-    if( win_cnt + nan_cnt != options.window.get_num_windows() ) {
+    if( use_cnt + nan_cnt != options.window.get_num_windows() ) {
         throw std::domain_error(
             "Internal error: Number of windows is inconsistent."
         );
@@ -428,6 +436,8 @@ void run_fst( FstOptions const& options )
 
     // Final user output.
     options.window.print_report();
-    LOG_MSG << "Thereof, skipped " << nan_cnt << " window"
-            << ( nan_cnt != 1 ? "s" : "" ) << " without any FST values.";
+    if( nan_cnt > 0 ) {
+        LOG_MSG << "Thereof, skipped " << nan_cnt << " window"
+                << ( nan_cnt != 1 ? "s" : "" ) << " without any FST values.";
+    }
 }
