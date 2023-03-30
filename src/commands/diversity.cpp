@@ -59,10 +59,23 @@ void setup_diversity( CLI::App& app )
     //     Input
     // -------------------------------------------------------------------------
 
-    // Required input of some frequency format, and settings for the sliding window.
+    // Required input of some count/frequency file format.
     options->variant_input.add_variant_input_opts_to_app( sub );
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
+
+    // Individual settings for numerical filtering.
+    // We do not add the SNP filters here as user options, as we want to do our own filtering later
+    // on, so that we can keep track of covered invariant sites for the relative theta computation.
+    // We also do not add total filters here, as diversity is computed per-sample.
+    options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
+    options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
+
+    // We always need the min count option, and it cannot be 0.
+    options->filter_numerical.sample_min_count.option->required();
+    options->filter_numerical.sample_min_count.option->check( CLI::PositiveNumber );
+
+    // Settings for the windowing.
     options->window.add_window_opts_to_app( sub, true );
 
     // -------------------------------------------------------------------------
@@ -83,29 +96,34 @@ void setup_diversity( CLI::App& app )
         CLI::IsMember({ "all", "theta-pi", "theta-watterson", "tajimas-d" }, CLI::ignore_case )
     );
 
-    // Minimum allele count
-    options->min_count.option = sub->add_option(
-        "--min-allele-count",
-        options->min_count.value,
-        "Minimum allele count needed for a base count (`ACGT`) to be considered. Bases below this "
-        "count are filtered out. Used for the identification of SNPs."
-    )->group( "Settings" );
+    // Below options are deactivated, as we use the more standardized numerical filters instead now.
+    // However, we currently to not apply them in the input stream, as we want to keep track
+    // of invariant positions, so that for file formats that contain data for all variants,
+    // we can accurately compute the relative Theta values.
 
-    // Minimum coverage
-    options->min_coverage.option = sub->add_option(
-        "--min-coverage",
-        options->min_coverage.value,
-        "Minimum coverage of a site. Sites with a lower coverage will not be considered "
-        "for SNP identification and coverage estimation."
-    )->group( "Settings" );
-
-    // Maximum coverage
-    options->max_coverage.option = sub->add_option(
-        "--max-coverage",
-        options->max_coverage.value,
-        "Maximum coverage used for SNP identification. Coverage in ALL populations has to be lower "
-        "or equal to this threshold, otherwise no SNP will be called."
-    )->group( "Settings" );
+    // // Minimum allele count
+    // options->min_count.option = sub->add_option(
+    //     "--min-allele-count",
+    //     options->min_count.value,
+    //     "Minimum allele count needed for a base count (`ACGT`) to be considered. Bases below this "
+    //     "count are filtered out. Used for the identification of SNPs."
+    // )->group( "Settings" );
+    //
+    // // Minimum coverage
+    // options->min_coverage.option = sub->add_option(
+    //     "--min-coverage",
+    //     options->min_coverage.value,
+    //     "Minimum coverage of a site. Sites with a lower coverage will not be considered "
+    //     "for SNP identification and coverage estimation."
+    // )->group( "Settings" );
+    //
+    // // Maximum coverage
+    // options->max_coverage.option = sub->add_option(
+    //     "--max-coverage",
+    //     options->max_coverage.value,
+    //     "Maximum coverage used for SNP identification. Coverage in ALL populations has to be lower "
+    //     "or equal to this threshold, otherwise no SNP will be called."
+    // )->group( "Settings" );
 
     // TODO reactivate, but per sample, instead of for all populations
 
@@ -218,11 +236,39 @@ DiversityOutputData prepare_output_output_data_(
     output_data.compute_theta_pi = ( measure == "all" || measure == "theta-pi" );
     output_data.compute_theta_wa = ( measure == "all" || measure == "theta-watterson" );
     output_data.compute_tajima_d = ( measure == "all" || measure == "tajimas-d" );
-    assert( output_data.compute_theta_pi || output_data.compute_theta_wa || output_data.compute_tajima_d );
+    assert(
+        output_data.compute_theta_pi ||
+        output_data.compute_theta_wa ||
+        output_data.compute_tajima_d
+    );
 
     // Get the separator char to use for table entries.
     output_data.sep_char = options.table_output.get_separator_char();
     output_data.na_entry = options.table_output.get_na_entry();
+
+    // -----------------------------------
+    //     Settings checks
+    // -----------------------------------
+
+    if( output_data.compute_tajima_d ) {
+        if( options.filter_numerical.sample_min_count.value != 2 ) {
+            throw CLI::ValidationError(
+                options.filter_numerical.sample_min_count.option->get_name(),
+                "The pool-seq corrected computation of Tajima's D requires the minimum allele count "
+                "to be exactly 2, according to Kofler et al. In case 2 is insufficient, "
+                "we recommend to subsample the reads to a smaller coverage. "
+                "Alternatively, deactivate the compuation of Tajima's D."
+            );
+        }
+        if( options.filter_numerical.sample_min_coverage.value == 0 ) {
+            throw CLI::ValidationError(
+                options.filter_numerical.sample_min_coverage.option->get_name(),
+                "The pool-seq corrected computation of Tajima's D "
+                "requires the minimum coverage to be set to a value greater than 0. "
+                "Alternatively, deactivate the compuation of Tajima's D."
+            );
+        }
+    }
 
     // -----------------------------------
     //     Output file checks
@@ -332,15 +378,17 @@ DiversityOutputData prepare_output_output_data_(
  */
 std::vector<genesis::population::DiversityPoolCalculator> get_diversity_calculators_(
     DiversityOptions const& options,
+    BaseCountsFilter const& filter,
     std::vector<std::string> const& sample_names,
     std::vector<size_t> const& pool_sizes,
     DiversityOutputData const& output_data
 ) {
     // Prepare pool settings for each sample.
+    // We here re-use the numerical filter settings as provided by the user.
     DiversityPoolSettings pool_settings;
-    pool_settings.min_count             = options.min_count.value;
-    pool_settings.min_coverage          = options.min_coverage.value;
-    pool_settings.max_coverage          = options.max_coverage.value;
+    pool_settings.min_count             = filter.min_count;
+    pool_settings.min_coverage          = filter.min_coverage;
+    pool_settings.max_coverage          = filter.max_coverage;
     pool_settings.with_popoolation_bugs = options.with_popoolation_bugs.value;
     std::vector<DiversityPoolCalculator> sample_diversity_calculators;
     for( size_t i = 0; i < sample_names.size(); ++i ) {
@@ -551,6 +599,24 @@ void run_diversity( DiversityOptions const& options )
                  << "obtained from PoPoolation.";
     }
 
+    // Add a filter for just SNPs, per sample. Invariant sites don't change the absolute diversity.
+    // Right now, we however use the invariant sites to compute relative Theta, and so we do not
+    // want to filter them out beforehand. This is instead done in the actual processing,
+    // sample by sample. Bit slower, but not by much.
+    // BaseCountsFilter snp_filter;
+    // snp_filter.only_snps = true;
+    // options.variant_input.add_combined_filter_and_transforms(
+    //     [snp_filter]( genesis::population::Variant& variant ){
+    //         return genesis::population::filter_base_counts( variant, snp_filter );
+    //     }
+    // );
+
+    // Prepare the base counts filter. We default the snps filter,
+    // and then override everything else with the user provided values.
+    BaseCountsFilter filter;
+    filter.only_snps = true;
+    filter = options.filter_numerical.get_sample_filter( filter ).first;
+
     // Get all samples names from the input file.
     auto const& sample_names = options.variant_input.sample_names();
 
@@ -566,16 +632,9 @@ void run_diversity( DiversityOptions const& options )
 
     // Prepare pool settings for each sample.
     auto sample_diversity_calculators = get_diversity_calculators_(
-        options, sample_names, pool_sizes, output_data
+        options, filter, sample_names, pool_sizes, output_data
     );
     std::vector<BaseCountsFilterStats> sample_filter_stats{ sample_names.size() };
-
-    // Prepare the base counts filter.
-    BaseCountsFilter filter;
-    filter.min_count    = options.min_count.value;
-    filter.min_coverage = options.min_coverage.value;
-    filter.max_coverage = options.max_coverage.value;
-    filter.only_snps = true;
 
     // -------------------------------------------------------------------------
     //     Main Loop
@@ -586,7 +645,7 @@ void run_diversity( DiversityOptions const& options )
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
     auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
-        auto const& window = *cur_it;
+        auto& window = *cur_it;
 
         // Reset all calculator accumulators to zero for this window.
         for( size_t i = 0; i < sample_diversity_calculators.size(); ++i ) {
@@ -596,14 +655,14 @@ void run_diversity( DiversityOptions const& options )
 
         // Compute diversity over samples.
         // #pragma omp parallel for
-        for( auto const& variant : window ) {
+        for( auto& variant : window ) {
             internal_check(
                 variant.samples.size() == sample_names.size(),
                 "Inconsistent number of samples in input file."
             );
 
-            // TODO refine the below to apply the filtering beforehand,
-            // instead of making copies... :-(
+            // TODO refine the below to apply the filtering beforehand?!
+            // that would make computing relative theta more tricky though.
 
             // Parallelize computation if there is more than one element.
             if( sample_names.size() > 1 ) {
@@ -611,16 +670,14 @@ void run_diversity( DiversityOptions const& options )
                     0, sample_names.size(),
                     [&]( size_t i ){
                         // Currently, we need to do some filtering here...
-                        auto copy = variant.samples[i];
-                        if( filter_base_counts( copy, filter, sample_filter_stats[i] )) {
-                            sample_diversity_calculators[i].process( copy );
+                        if( filter_base_counts( variant.samples[i], filter, sample_filter_stats[i] )) {
+                            sample_diversity_calculators[i].process( variant.samples[i] );
                         }
                     }
                 );
             } else if( sample_names.size() == 1 ) {
-                auto copy = variant.samples[0];
-                if( filter_base_counts( copy, filter, sample_filter_stats[0] )) {
-                    sample_diversity_calculators[0].process( copy );
+                if( filter_base_counts( variant.samples[0], filter, sample_filter_stats[0] )) {
+                    sample_diversity_calculators[0].process( variant.samples[0] );
                 }
             }
         }
@@ -634,4 +691,5 @@ void run_diversity( DiversityOptions const& options )
 
     // Final user output.
     options.window.print_report();
+    options.filter_numerical.print_report();
 }

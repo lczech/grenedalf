@@ -79,10 +79,20 @@ void setup_fst( CLI::App& app )
     //     Input
     // -------------------------------------------------------------------------
 
-    // Required input of some frequency format, and settings for the sliding window.
+    // Required input of some count/frequency file format.
     options->variant_input.add_variant_input_opts_to_app( sub );
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
+
+    // Individual settings for numerical filtering.
+    // We do not add the SNP filters here as user options, as we always filter out invariant
+    // (non-SNP) sites below anyway. They do not contribute to the FST computation.
+    options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
+    options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_coverage_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_freq_filter_opts_to_app( sub );
+
+    // Settings for the windowing.
     options->window.add_window_opts_to_app( sub, true );
 
     // -------------------------------------------------------------------------
@@ -308,6 +318,21 @@ void run_fst( FstOptions const& options )
     //     Preparation
     // -------------------------------------------------------------------------
 
+    // Before accessing the variant input, we need to add the filters to it.
+    // We use a variant filter that always filters out non-SNP positions here.
+    // There might still be pairs of samples between which a position is invariant,
+    // but that's okay, as that will be caught by the statistic anyway.
+    // We many use this pre-filter here for speed gains,
+    // to get rid of invariants before they even get to the FST computation functions.
+    options.variant_input.add_combined_filter_and_transforms(
+        options.filter_numerical.make_sample_filter()
+    );
+    genesis::population::VariantFilter total_filter;
+    total_filter.only_snps = true;
+    options.variant_input.add_combined_filter_and_transforms(
+        options.filter_numerical.make_total_filter( total_filter )
+    );
+
     // Use an enum for the method, which is faster to check in the main loop than doing
     // string comparisons all the time.
     auto const method = get_enum_map_value( fst_method_map, options.method.value );
@@ -440,4 +465,5 @@ void run_fst( FstOptions const& options )
         LOG_MSG << "Thereof, skipped " << nan_cnt << " window"
                 << ( nan_cnt != 1 ? "s" : "" ) << " without any FST values.";
     }
+    options.filter_numerical.print_report();
 }

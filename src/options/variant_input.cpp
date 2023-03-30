@@ -170,6 +170,14 @@ void VariantInputOptions::add_individual_filter_and_transforms(
             "after input source iteration has already been started."
         );
     }
+
+    // Do not add a filter if the function is empty.
+    // This can happen with the numerical filters - if the user did not provide any filter options,
+    // we do not need to add it to the input iterator here.
+    if( !func ) {
+        return;
+    }
+
     individual_filters_and_transforms_.push_back( func );
 }
 
@@ -183,6 +191,14 @@ void VariantInputOptions::add_combined_filter_and_transforms(
             "after input source iteration has already been started."
         );
     }
+
+    // Do not add a filter if the function is empty.
+    // This can happen with the numerical filters - if the user did not provide any filter options,
+    // we do not need to add it to the input iterator here.
+    if( !func ) {
+        return;
+    }
+
     combined_filters_and_transforms_.push_back( func );
 }
 

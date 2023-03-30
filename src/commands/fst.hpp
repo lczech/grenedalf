@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include "options/file_output.hpp"
 #include "options/poolsizes.hpp"
 #include "options/table_output.hpp"
+#include "options/variant_filter_numerical.hpp"
 #include "options/variant_input.hpp"
 #include "options/window.hpp"
 #include "tools/cli_option.hpp"
@@ -44,16 +45,20 @@ class FstOptions
 {
 public:
 
-    VariantInputOptions variant_input;
-    WindowOptions       window;
-    PoolsizesOptions    poolsizes;
+    // Input options
+    VariantInputOptions           variant_input;
+    VariantFilterNumericalOptions filter_numerical;
+    WindowOptions                 window;
+    PoolsizesOptions              poolsizes;
 
+    // Specific settings
     CliOption<std::string> method = "";
     CliOption<bool>        omit_na_windows = false;
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";
     CliOption<std::string> comparand_list = "";
 
+    // Output options
     TableOutputOptions table_output;
     FileOutputOptions  file_output;
 

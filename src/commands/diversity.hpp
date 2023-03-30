@@ -29,6 +29,7 @@
 #include "options/file_output.hpp"
 #include "options/poolsizes.hpp"
 #include "options/table_output.hpp"
+#include "options/variant_filter_numerical.hpp"
 #include "options/variant_input.hpp"
 #include "options/window.hpp"
 #include "tools/cli_option.hpp"
@@ -44,22 +45,24 @@ class DiversityOptions
 {
 public:
 
-    // Data input
-    VariantInputOptions variant_input;
-    WindowOptions       window;
-    PoolsizesOptions    poolsizes;
+    // Input options
+    VariantInputOptions           variant_input;
+    VariantFilterNumericalOptions filter_numerical;
+    WindowOptions                 window;
+    PoolsizesOptions              poolsizes;
 
     // Using defaults from PoPollation, see Variance-sliding.pl
     CliOption<std::string> measure = "all";
-    CliOption<size_t> min_count = 2;
-    CliOption<size_t> min_coverage = 4;
-    CliOption<size_t> max_coverage = 1000000;
-    CliOption<double> min_coverage_fraction = 0.6;
+    // CliOption<size_t> min_count = 2;
+    // CliOption<size_t> min_coverage = 4;
+    // CliOption<size_t> max_coverage = 1000000;
+    // CliOption<double> min_coverage_fraction = 0.6;
 
     // Compatibility
     CliOption<bool> with_popoolation_bugs = false;
     CliOption<bool> popoolation_format = false;
 
+    // Output options
     TableOutputOptions table_output;
     FileOutputOptions  file_output;
 

@@ -82,6 +82,20 @@ public:
     //     CLI Setup Functions
     // -------------------------------------------------------------------------
 
+    /**
+     * @brief Add all typical options to the @p sub app that we want for reading any file formats
+     * with variant data.
+     *
+     * We here allow to add sample name filtering and region filtering, but not the numerical filters,
+     * as those usually need to be tuned a bit more towards the particular command being run.
+     * They hence (as of now) need to be added to each command individually, and then their
+     * filters can be added here via add_individual_filter_and_transforms() and
+     * add_combined_filter_and_transforms() to run them on the input data.
+     * Note though that not all commands want that: For example, as of now, the way we implemented
+     * the filters, data is "lost" for downstream once filtered out here. However, statistics
+     * such as diversity need to keep track of invariant sites for computing relative Theta values,
+     * and so the filters cannot readily be applied beforehand.
+     */
     void add_variant_input_opts_to_app(
         CLI::App* sub,
         bool with_sample_name_opts = true,
