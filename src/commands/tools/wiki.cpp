@@ -470,7 +470,7 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
     os << "Documentation for grenedalf " << grenedalf_version() << "\n\n";
 
     // Add markdown file content.
-    add_markdown_content( wiki_options, command.get_name(), os, true );
+    add_markdown_content( wiki_options, command.get_name(), os );
 
     // Print the options of the command.
     if( has_options ) {
