@@ -674,7 +674,7 @@ void run_diversity( DiversityOptions const& options )
                             sample_diversity_calculators[i].process( variant.samples[i] );
                         }
                     }
-                );
+                ).wait();
             } else if( sample_names.size() == 1 ) {
                 if( filter_base_counts( variant.samples[0], filter, sample_filter_stats[0] )) {
                     sample_diversity_calculators[0].process( variant.samples[0] );
