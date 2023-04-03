@@ -664,22 +664,30 @@ void run_diversity( DiversityOptions const& options )
             // TODO refine the below to apply the filtering beforehand?!
             // that would make computing relative theta more tricky though.
 
-            // Parallelize computation if there is more than one element.
-            if( sample_names.size() > 1 ) {
-                global_options.thread_pool()->parallel_for(
-                    0, sample_names.size(),
-                    [&]( size_t i ){
-                        // Currently, we need to do some filtering here...
-                        if( filter_base_counts( variant.samples[i], filter, sample_filter_stats[i] )) {
-                            sample_diversity_calculators[i].process( variant.samples[i] );
-                        }
-                    }
-                ).wait();
-            } else if( sample_names.size() == 1 ) {
-                if( filter_base_counts( variant.samples[0], filter, sample_filter_stats[0] )) {
-                    sample_diversity_calculators[0].process( variant.samples[0] );
+            // Compute diversity for each sample.
+            for( size_t i = 0; i < sample_names.size(); ++i ) {
+                if( filter_base_counts( variant.samples[i], filter, sample_filter_stats[i] )) {
+                    sample_diversity_calculators[i].process( variant.samples[i] );
                 }
             }
+
+            // It does not help here to parallelize, at least with the current layout...
+            // We lose too much to the synchronization overhead.
+            // if( sample_names.size() > 1 ) {
+            //     global_options.thread_pool()->parallel_for(
+            //         0, sample_names.size(),
+            //         [&]( size_t i ){
+            //             // Currently, we need to do some filtering here...
+            //             if( filter_base_counts( variant.samples[i], filter, sample_filter_stats[i] )) {
+            //                 sample_diversity_calculators[i].process( variant.samples[i] );
+            //             }
+            //         }
+            //     ).wait();
+            // } else if( sample_names.size() == 1 ) {
+            //     if( filter_base_counts( variant.samples[0], filter, sample_filter_stats[0] )) {
+            //         sample_diversity_calculators[0].process( variant.samples[0] );
+            //     }
+            // }
         }
 
         // Write the output to files.
