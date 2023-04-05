@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ void setup_simulate( CLI::App& app )
     options->format.option = sub->add_option(
         "--format",
         options->format.value,
-        "Select the output file format, either (m)pileup, or PoPollation2 sync."
+        "Select the output file format, either (m)pileup, or PoPoolation2 sync."
     );
     options->format.option->group( "Settings" );
     options->format.option->transform(

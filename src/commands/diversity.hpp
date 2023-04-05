@@ -51,7 +51,7 @@ public:
     WindowOptions                 window;
     PoolsizesOptions              poolsizes;
 
-    // Using defaults from PoPollation, see Variance-sliding.pl
+    // Using defaults from PoPoolation, see Variance-sliding.pl
     CliOption<std::string> measure = "all";
     // CliOption<size_t> min_count = 2;
     // CliOption<size_t> min_coverage = 4;
