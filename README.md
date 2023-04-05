@@ -16,16 +16,49 @@ Features
 
 grenedalf is a collection of commands for working with population genetic data,
 in particular from pool sequencing.
-Its main focus are statistical analyses such as Tajima's D and Fst, following the approaches of
-[PoPoolation](https://sourceforge.net/projects/popoolation/) and
-[PoPoolation2](https://sourceforge.net/projects/popoolation2/).
+Its main focus are statistical analyses such as Tajima's D and Fst.
+The statistics follow the approaches of [PoPoolation](https://sourceforge.net/projects/popoolation/)
+and [PoPoolation2](https://sourceforge.net/projects/popoolation2/),
+as well as [poolfstat](https://cran.r-project.org/web/packages/poolfstat/index.html)
+and [npstat](https://github.com/lucaferretti/npstat). However, compared to those, grenedalf
+is significantly more scalable, more user friendly, and offers more settings and input file formats.
 
-**Remark:** grenedalf is quite young and in activate development. The interface will change frequently in the near future. Until we publish a release version, everything is considered to be in beta status. [Feedback](https://github.com/lczech/grenedalf/issues) on functionality, interface, and features is highly appreciated!
+**Remark:** grenedalf is quite young and in activate development. The interface will change frequently
+in the near future. Everything is considered to be in beta status.
+[Feedback](https://github.com/lczech/grenedalf/issues) on functionality, interface, and features
+is highly appreciated!
 
 Setup
 -------------------
 
-To run grenedalf on your machine, simply get it, and build it:
+Build system requirements:
+
+  * [Make](https://www.gnu.org/software/make/), [autotools](https://en.wikipedia.org/wiki/GNU_Autotools)
+    (i.e., `autoconf` and `automake`), and [CMake](https://cmake.org/) 3.1 or higher.
+  * A fairly up-to-date C++11 compiler, e.g.,
+    [clang++ 5](http://clang.llvm.org/) or [GCC 7](https://gcc.gnu.org/), or higher<br />
+    (older versions may work as well, but we do not test them any more).
+  * There are some further compression library requirements, such as `libz`, `libbz2`, `liblzma`,
+    and `libdeflate`, needed for compressed file support by [htslib](https://www.htslib.org/),
+    which we internally use for `sam`/`bam`/`cram` and `VCF` reading.
+    Usually, they should already be available on Unix/Linux/MacOS systems though.
+    We include them below anyway, just in case.
+
+To install these, run:
+
+  * On MacOS with [homebrew](https://brew.sh/):
+    ~~~.sh
+    brew install make cmake autoconf automake libdeflate coreutils
+    ~~~
+  * On Ubuntu and other Debian systems:
+    ~~~.sh
+    apt-get install build-essential cmake autoconf automake zlib1g-dev libbz2-dev liblzma-dev libtinfo5
+    ~~~
+
+This works in our [CI tests](https://github.com/lczech/grenedalf/actions);
+if it does not work for you, please open an [issue](https://github.com/lczech/grenedalf/issues).
+
+Then, to build grenedalf on your machine, run:
 
 ~~~.sh
 git clone --recursive https://github.com/lczech/grenedalf.git
@@ -34,16 +67,10 @@ make
 ~~~
 
 You can also use the green "Code" button above or
-[click here](https://github.com/lczech/grenedalf/archive/master.zip) to download the source as a zip
-archive. Unpack, and call `make` in the main directory to build everything.
+[click here](https://github.com/lczech/grenedalf/archive/master.zip) to download the source
+as a zip. Unpack, and call `make` in the main directory to build everything.
 
-Requirements:
-
- *  [Make](https://www.gnu.org/software/make/) and [CMake](https://cmake.org/) 3.1 or higher.
- *  A fairly up-to-date C++11 compiler, e.g.,
-    [clang++ 3.6](http://clang.llvm.org/) or [GCC 4.9](https://gcc.gnu.org/), or higher.
-
-After building, the executable is stored in the `bin` directory, and used as follows.
+After building, the executable is stored in the `bin` directory, and used as below.
 
 Usage and Documentation
 -------------------
