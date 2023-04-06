@@ -318,10 +318,14 @@ void run_fst( FstOptions const& options )
     //     Preparation
     // -------------------------------------------------------------------------
 
+    // Use an enum for the method, which is faster to check in the main loop than doing
+    // string comparisons all the time.
+    auto const method = get_enum_map_value( fst_method_map, options.method.value );
+
     // Before accessing the variant input, we need to add the filters to it.
     // We use a variant filter that always filters out non-SNP positions here.
     // There might still be pairs of samples between which a position is invariant,
-    // but that's okay, as that will be caught by the statistic anyway.
+    // but that's okay, as that will be caught by the fst computation anyway.
     // We many use this pre-filter here for speed gains,
     // to get rid of invariants before they even get to the FST computation functions.
     options.variant_input.add_combined_filter_and_transforms(
@@ -329,13 +333,12 @@ void run_fst( FstOptions const& options )
     );
     genesis::population::VariantFilter total_filter;
     total_filter.only_snps = true;
+    if( method == FstMethod::kKarlsson ) {
+        total_filter.only_biallelic_snps = true;
+    }
     options.variant_input.add_combined_filter_and_transforms(
         options.filter_numerical.make_total_filter( total_filter )
     );
-
-    // Use an enum for the method, which is faster to check in the main loop than doing
-    // string comparisons all the time.
-    auto const method = get_enum_map_value( fst_method_map, options.method.value );
 
     // Get indices of all pairs of samples for which we want to compute FST.
     auto const sample_pairs = get_sample_pairs_( options );
