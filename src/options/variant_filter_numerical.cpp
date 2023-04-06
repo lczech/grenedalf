@@ -51,9 +51,9 @@ void VariantFilterNumericalOptions::add_sample_filter_opts_to_app(
     std::string const& group
 ) {
     // Add all three types of sample filters.
-    add_sample_count_filter_opts_to_app(    sub, group );
-    add_sample_coverage_filter_opts_to_app( sub, group );
-    add_sample_snp_filter_opts_to_app(      sub, group );
+    add_sample_count_filter_opts_to_app(    sub, true, true, group );
+    add_sample_coverage_filter_opts_to_app( sub, true, true, group );
+    add_sample_snp_filter_opts_to_app(      sub, true, true, group );
 
     // TODO include?!
     // CliOption<bool> sample_tolerate_deletions  = false;
@@ -62,85 +62,105 @@ void VariantFilterNumericalOptions::add_sample_filter_opts_to_app(
 
 void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
     CLI::App* sub,
+    bool add_sample_min_count,
+    bool add_sample_max_count,
     std::string const& group
 ) {
     // Add option for base/allele min count.
-    sample_min_count.option = sub->add_option(
-        "--filter-sample-min-count",
-        sample_min_count.value,
-        "Minimum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
-        "Counts below that are set to zero, and hence ignored as an allele/variant. "
-        "For example, singleton read sequencing errors can be filtered out this way."
-    );
-    sample_min_count.option->group( group );
+    if( add_sample_min_count ) {
+        sample_min_count.option = sub->add_option(
+            "--filter-sample-min-count",
+            sample_min_count.value,
+            "Minimum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
+            "Counts below that are set to zero, and hence ignored as an allele/variant. "
+            "For example, singleton read sequencing errors can be filtered out this way."
+        );
+        sample_min_count.option->group( group );
+    }
 
     // Add option for base/allele max count.
-    sample_max_count.option = sub->add_option(
-        "--filter-sample-max-count",
-        sample_max_count.value,
-        "Maximum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
-        "Counts abpve that are set to zero, and hence ignored as an allele/variant. "
-        "For example, spuriously high read counts can be filtered out this way."
-    );
-    sample_max_count.option->group( group );
+    if( add_sample_max_count ) {
+        sample_max_count.option = sub->add_option(
+            "--filter-sample-max-count",
+            sample_max_count.value,
+            "Maximum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
+            "Counts abpve that are set to zero, and hence ignored as an allele/variant. "
+            "For example, spuriously high read counts can be filtered out this way."
+        );
+        sample_max_count.option->group( group );
+    }
 }
 
 void VariantFilterNumericalOptions::add_sample_coverage_filter_opts_to_app(
     CLI::App* sub,
+    bool add_sample_min_coverage,
+    bool add_sample_max_coverage,
     std::string const& group
 ) {
     // Add option for min coverage.
-    sample_min_coverage.option = sub->add_option(
-        "--filter-sample-min-coverage",
-        sample_min_coverage.value,
-        "Minimum coverage expected for a position in a sample to be considered covered. "
-        "If the sum of nucleotide counts (in `ACGT`) at a given position in a sample "
-        "is less than the provided value, the sample is ignored at this position."
-    );
-    sample_min_coverage.option->group( group );
+    if( add_sample_min_coverage ) {
+        sample_min_coverage.option = sub->add_option(
+            "--filter-sample-min-coverage",
+            sample_min_coverage.value,
+            "Minimum coverage expected for a position in a sample to be considered covered. "
+            "If the sum of nucleotide counts (in `ACGT`) at a given position in a sample "
+            "is less than the provided value, the sample is ignored at this position."
+        );
+        sample_min_coverage.option->group( group );
+    }
 
     // Add option for max coverage.
-    sample_max_coverage.option = sub->add_option(
-        "--filter-sample-max-coverage",
-        sample_max_coverage.value,
-        "Maximum coverage expected for a position in a sample to be considered covered. "
-        "If the sum of nucleotide counts (in `ACGT`) at a given position in a sample "
-        "is greater than the provided value, the sample is ignored at this position. "
-        "This can for example be used to filter spuriously high coverage positions."
-    );
-    sample_max_coverage.option->group( group );
+    if( add_sample_max_coverage ) {
+        sample_max_coverage.option = sub->add_option(
+            "--filter-sample-max-coverage",
+            sample_max_coverage.value,
+            "Maximum coverage expected for a position in a sample to be considered covered. "
+            "If the sum of nucleotide counts (in `ACGT`) at a given position in a sample "
+            "is greater than the provided value, the sample is ignored at this position. "
+            "This can for example be used to filter spuriously high coverage positions."
+        );
+        sample_max_coverage.option->group( group );
+    }
 }
 
 void VariantFilterNumericalOptions::add_sample_snp_filter_opts_to_app(
     CLI::App* sub,
+    bool add_sample_only_snps,
+    bool add_sample_only_biallelic_snps,
     std::string const& group
 ) {
     // Add flag for SNPs only.
-    sample_only_snps.option = sub->add_flag(
-        "--filter-sample-only-snps",
-        sample_only_snps.value,
-        "Filter out any positions in a sample that do not have two or more alleles "
-        "(i.e., that are invariant). "
-        "That is, after applying `" + sample_min_count.option->get_name() + "` and `" +
-        sample_max_count.option->get_name() + "`, if less than two counts (in `ACGT`) are "
-        "non-zero, the position is not considered a SNP for the sample, and ignored."
-    );
-    sample_only_snps.option->group( group );
+    if( add_sample_only_snps ) {
+        sample_only_snps.option = sub->add_flag(
+            "--filter-sample-only-snps",
+            sample_only_snps.value,
+            "Filter out any positions in a sample that do not have two or more alleles "
+            "(i.e., that are invariant). "
+            "That is, after applying `" + sample_min_count.option->get_name() + "` and `" +
+            sample_max_count.option->get_name() + "`, if less than two counts (in `ACGT`) are "
+            "non-zero, the position is not considered a SNP for the sample, and ignored."
+        );
+        sample_only_snps.option->group( group );
+    }
 
     // Add flag for biallelic SNPs only.
-    sample_only_biallelic_snps.option = sub->add_flag(
-        "--filter-sample-only-biallelic-snps",
-        sample_only_biallelic_snps.value,
-        "Filter out any positions in a sample that do not have exactly two alleles. "
-        "That is, after applying `" + sample_min_count.option->get_name() + "` and `" +
-        sample_max_count.option->get_name() + "`, if not exactly two counts (in `ACGT`) are "
-        "non-zero, the position is not considered a biallelic SNP for the sample, and ignored."
-    );
-    sample_only_biallelic_snps.option->group( group );
+    if( add_sample_only_biallelic_snps ) {
+        sample_only_biallelic_snps.option = sub->add_flag(
+            "--filter-sample-only-biallelic-snps",
+            sample_only_biallelic_snps.value,
+            "Filter out any positions in a sample that do not have exactly two alleles. "
+            "That is, after applying `" + sample_min_count.option->get_name() + "` and `" +
+            sample_max_count.option->get_name() + "`, if not exactly two counts (in `ACGT`) are "
+            "non-zero, the position is not considered a biallelic SNP for the sample, and ignored."
+        );
+        sample_only_biallelic_snps.option->group( group );
+    }
 
     // Can only want SNPs or biallelic SNPs.
-    sample_only_snps.option->excludes( sample_only_biallelic_snps.option );
-    sample_only_biallelic_snps.option->excludes( sample_only_snps.option );
+    if( add_sample_only_snps && add_sample_only_biallelic_snps ) {
+        sample_only_snps.option->excludes( sample_only_biallelic_snps.option );
+        sample_only_biallelic_snps.option->excludes( sample_only_snps.option );
+    }
 }
 
 // ========================================================
@@ -152,66 +172,80 @@ void VariantFilterNumericalOptions::add_total_filter_opts_to_app(
     std::string const& group
 ) {
     // Add all three types of sample filters.
-    add_total_coverage_filter_opts_to_app( sub, group );
-    add_total_snp_filter_opts_to_app( sub, group );
-    add_total_freq_filter_opts_to_app( sub, group );
+    add_total_coverage_filter_opts_to_app( sub, true, true, group );
+    add_total_snp_filter_opts_to_app(      sub, true, true, group );
+    add_total_freq_filter_opts_to_app(     sub, group );
 }
 
 void VariantFilterNumericalOptions::add_total_coverage_filter_opts_to_app(
     CLI::App* sub,
+    bool add_total_min_coverage,
+    bool add_total_max_coverage,
     std::string const& group
 ) {
     // Add option for min coverage.
-    total_min_coverage.option = sub->add_option(
-        "--filter-total-min-coverage",
-        total_min_coverage.value,
-        "Minimum coverage expected for a position in total to be considered covered. "
-        "If the sum of nucleotide counts (in `ACGT`) at a given position in total "
-        "(across all samples) is less than the provided value, the position is ignored."
-    );
-    total_min_coverage.option->group( group );
+    if( add_total_min_coverage ) {
+        total_min_coverage.option = sub->add_option(
+            "--filter-total-min-coverage",
+            total_min_coverage.value,
+            "Minimum coverage expected for a position in total to be considered covered. "
+            "If the sum of nucleotide counts (in `ACGT`) at a given position in total "
+            "(across all samples) is less than the provided value, the position is ignored."
+        );
+        total_min_coverage.option->group( group );
+    }
 
     // Add option for max coverage.
-    total_max_coverage.option = sub->add_option(
-        "--filter-total-max-coverage",
-        total_max_coverage.value,
-        "Maximum coverage expected for a position in total to be considered covered. "
-        "If the sum of nucleotide counts (in `ACGT`) at a given position in total "
-        "(across all samples) is greater than the provided value, the position is ignored. "
-        "This can for example be used to filter spuriously high coverage positions."
-    );
-    total_max_coverage.option->group( group );
+    if( add_total_max_coverage ) {
+        total_max_coverage.option = sub->add_option(
+            "--filter-total-max-coverage",
+            total_max_coverage.value,
+            "Maximum coverage expected for a position in total to be considered covered. "
+            "If the sum of nucleotide counts (in `ACGT`) at a given position in total "
+            "(across all samples) is greater than the provided value, the position is ignored. "
+            "This can for example be used to filter spuriously high coverage positions."
+        );
+        total_max_coverage.option->group( group );
+    }
 }
 
 void VariantFilterNumericalOptions::add_total_snp_filter_opts_to_app(
     CLI::App* sub,
+    bool add_total_only_snps,
+    bool add_total_only_biallelic_snps,
     std::string const& group
 ) {
     // Add flag for SNPs only.
-    total_only_snps.option = sub->add_flag(
-        "--filter-total-only-snps",
-        total_only_snps.value,
-        "Filter out any positions that do not have two or more alleles (i.e., that are invariant) "
-        "across all samples. "
-        "That is, after applying all previous filters, if less than two counts (in `ACGT`) are "
-        "non-zero in total across all samples, the position is not considered a SNP, and ignored."
-    );
-    total_only_snps.option->group( group );
+    if( add_total_only_snps ) {
+        total_only_snps.option = sub->add_flag(
+            "--filter-total-only-snps",
+            total_only_snps.value,
+            "Filter out any positions that do not have two or more alleles (i.e., that are invariant) "
+            "across all samples. "
+            "That is, after applying all previous filters, if less than two counts (in `ACGT`) are "
+            "non-zero in total across all samples, the position is not considered a SNP, and ignored."
+        );
+        total_only_snps.option->group( group );
+    }
 
     // Add flag for biallelic SNPs only.
-    total_only_biallelic_snps.option = sub->add_flag(
-        "--filter-total-only-biallelic-snps",
-        total_only_biallelic_snps.value,
-        "Filter out any positions that do not have exactly two alleles across all samples. "
-        "That is, after applying all previous filters, if not exactly two counts (in `ACGT`) are "
-        "non-zero in total across all samples, the position is not considered a biallelic SNP, "
-        "and ignored."
-    );
-    total_only_biallelic_snps.option->group( group );
+    if( add_total_only_biallelic_snps ) {
+        total_only_biallelic_snps.option = sub->add_flag(
+            "--filter-total-only-biallelic-snps",
+            total_only_biallelic_snps.value,
+            "Filter out any positions that do not have exactly two alleles across all samples. "
+            "That is, after applying all previous filters, if not exactly two counts (in `ACGT`) are "
+            "non-zero in total across all samples, the position is not considered a biallelic SNP, "
+            "and ignored."
+        );
+        total_only_biallelic_snps.option->group( group );
+    }
 
     // Can only want SNPs or biallelic SNPs.
-    total_only_snps.option->excludes( total_only_biallelic_snps.option );
-    total_only_biallelic_snps.option->excludes( total_only_snps.option );
+    if( add_total_only_snps && add_total_only_biallelic_snps ) {
+        total_only_snps.option->excludes( total_only_biallelic_snps.option );
+        total_only_biallelic_snps.option->excludes( total_only_snps.option );
+    }
 }
 
 void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(

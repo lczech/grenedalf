@@ -80,16 +80,22 @@ public:
 
     void add_sample_count_filter_opts_to_app(
         CLI::App* sub,
+        bool add_sample_min_count = true,
+        bool add_sample_max_count = true,
         std::string const& group = "Numerical Filters"
     );
 
     void add_sample_coverage_filter_opts_to_app(
         CLI::App* sub,
+        bool add_sample_min_coverage = true,
+        bool add_sample_max_coverage = true,
         std::string const& group = "Numerical Filters"
     );
 
     void add_sample_snp_filter_opts_to_app(
         CLI::App* sub,
+        bool add_sample_only_snps = true,
+        bool add_sample_only_biallelic_snps = true,
         std::string const& group = "Numerical Filters"
     );
 
@@ -104,11 +110,15 @@ public:
 
     void add_total_coverage_filter_opts_to_app(
         CLI::App* sub,
+        bool add_total_min_coverage = true,
+        bool add_total_max_coverage = true,
         std::string const& group = "Numerical Filters"
     );
 
     void add_total_snp_filter_opts_to_app(
         CLI::App* sub,
+        bool add_total_only_snps = true,
+        bool add_total_only_biallelic_snps = true,
         std::string const& group = "Numerical Filters"
     );
 

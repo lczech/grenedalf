@@ -85,12 +85,22 @@ void setup_fst( CLI::App& app )
     // options->variant_input.add_region_filter_opts_to_app( sub );
 
     // Individual settings for numerical filtering.
-    // We do not add the SNP filters here as user options, as we always filter out invariant
+    // We do not add the only-SNP filter here as a user option, as we always filter out invariant
     // (non-SNP) sites below anyway. They do not contribute to the FST computation.
     options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
     options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
     options->filter_numerical.add_total_coverage_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_snp_filter_opts_to_app( sub, false, true );
     options->filter_numerical.add_total_freq_filter_opts_to_app( sub );
+
+    // We amend the existing biallelic SNP filter option description here.
+    auto& tobs = options->filter_numerical.total_only_biallelic_snps.option;
+    tobs->description(
+        tobs->get_description() + "\nBy default, we already filter out invariant sites, so that "
+        "only SNPs remain. With this option however, this is further reduced to only biallelic "
+        "(pure) SNPs. Note that with `--method karlsson`, we implicitly also activate to filter "
+        "for biallelic SNPs only, as the method requires it."
+    );
 
     // Settings for the windowing.
     options->window.add_window_opts_to_app( sub, true );
