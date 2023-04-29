@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "options/variant_input_sample_names.hpp"
 #include "tools/misc.hpp"
 
+#include "genesis/population/formats/simple_pileup_common.hpp"
 #include "genesis/population/formats/simple_pileup_input_iterator.hpp"
 #include "genesis/population/formats/simple_pileup_reader.hpp"
 #include "genesis/sequence/functions/quality.hpp"
@@ -106,6 +107,29 @@ VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::get_i
     VariantInputSampleNamesOptions const& sample_names_options
 ) const {
     using namespace genesis::population;
+    using namespace genesis::sequence;
+
+    // Get the encoding set by the user.
+    auto const user_enc = guess_quality_encoding_from_name(
+        pileup_quality_encoding_.value
+    );
+
+    // Check that the quality encoding is correct.
+    // We run in a try block, as this might fail if the first lines do not contain any data...
+    try {
+        size_t const max_guess_lines = 100;
+        auto const guess_enc = guess_pileup_quality_encoding(
+            genesis::utils::from_file( filename ), max_guess_lines
+        );
+        if( ! compatible_quality_encodings( guess_enc, user_enc )) {
+            LOG_WARN << pileup_quality_encoding_.option->get_name() << " set to "
+                     << quality_encoding_name( user_enc, true ) << ", but input file \""
+                     << filename << "\" seems to use " << quality_encoding_name( guess_enc, true )
+                     << " instead, based on the quality codes found in the first " << max_guess_lines
+                     << " lines of the file. Will continue now, but you should verify that the "
+                     << "correct quality encoding is being used.";
+        }
+    } catch(...) {}
 
     // We can use the sample filter settings to obtain a list of indices of samples
     // that we want to restrict the reading to. If no filter is given, that list is empty.
@@ -114,9 +138,7 @@ VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::get_i
 
     // Prepare the base Reader with settings as needed.
     auto reader = SimplePileupReader();
-    reader.quality_encoding(
-        genesis::sequence::guess_quality_encoding_from_name( pileup_quality_encoding_.value )
-    );
+    reader.quality_encoding( user_enc );
     reader.min_base_quality( pileup_min_base_qual_.value );
 
     // Make an iterator.
