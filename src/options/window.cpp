@@ -256,6 +256,32 @@ void WindowOptions::add_window_opts_to_app(
 // =================================================================================================
 
 // -------------------------------------------------------------------------
+//     window_type
+// -------------------------------------------------------------------------
+
+WindowOptions::WindowType WindowOptions::window_type() const
+{
+    if( window_type_.value == "sliding" ) {
+        return WindowType::kSliding;
+    } else if( window_type_.value == "queue" ) {
+        return WindowType::kQueue;
+    } else if( window_type_.value == "single" ) {
+        return WindowType::kSingle;
+    } else if( window_type_.value == "regions" ) {
+        return WindowType::kRegions;
+    } else if( window_type_.value == "chromosomes" ) {
+        return WindowType::kChromosomes;
+    } else if( window_type_.value == "genome" ) {
+        return WindowType::kGenome;
+    } else {
+        throw CLI::ValidationError(
+            window_type_.option->get_name(),
+            "Invalid window type '" + window_type_.value + "'."
+        );
+    }
+}
+
+// -------------------------------------------------------------------------
 //     get_variant_window_iterator
 // -------------------------------------------------------------------------
 
@@ -281,29 +307,39 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
 
     // Get the window types that are available as Window Iterators.
     std::unique_ptr<VariantWindowIterator> result;
-    if( window_type_.value == "sliding" ) {
-        result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
-            get_variant_window_iterator_sliding_( input_iterator )
-        );
-    } else  if( window_type_.value == "queue" ) {
-        result = genesis::utils::make_unique<VariantSlidingEntriesWindowIterator>(
-            get_variant_window_iterator_queue_( input_iterator )
-        );
-    } else if( window_type_.value == "single" ) {
-        result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
-            get_variant_window_iterator_single_( input_iterator )
-        );
-    } else if( window_type_.value == "regions" ) {
-        result = genesis::utils::make_unique<VariantRegionWindowIterator>(
-            get_variant_window_iterator_regions_( input_iterator )
-        );
-    } else {
-        // This would also catch the chromosome and genome types, but they should already be caught
-        // by the CLI11 validation IsMember check anyway.
-        throw CLI::ValidationError(
-            window_type_.option->get_name(),
-            "Invalid window type '" + window_type_.value + "'."
-        );
+    switch( window_type() ) {
+        case WindowType::kSliding: {
+            result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
+                get_variant_window_iterator_sliding_( input_iterator )
+            );
+            break;
+        }
+        case WindowType::kQueue: {
+            result = genesis::utils::make_unique<VariantSlidingEntriesWindowIterator>(
+                get_variant_window_iterator_queue_( input_iterator )
+            );
+            break;
+        }
+        case WindowType::kSingle: {
+            result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
+                get_variant_window_iterator_single_( input_iterator )
+            );
+            break;
+        }
+        case WindowType::kRegions: {
+            result = genesis::utils::make_unique<VariantRegionWindowIterator>(
+                get_variant_window_iterator_regions_( input_iterator )
+            );
+            break;
+        }
+        default: {
+            // This would also catch the chromosome and genome types,
+            // but they should already be caught by the CLI11 validation IsMember check anyway.
+            throw CLI::ValidationError(
+                window_type_.option->get_name(),
+                "Invalid window type '" + window_type_.value + "'."
+            );
+        }
     }
     assert( result );
 
@@ -350,43 +386,57 @@ std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_vie
     // For the ones that yield Window Iterators, we additionally need to wrap them,
     // so that they become Window View iterators instead.
     std::unique_ptr<VariantWindowViewIterator> result;
-    if( window_type_.value == "sliding" ) {
-        result = genesis::utils::make_unique<WindowViewIterator>(
-            make_window_view_iterator(
-                get_variant_window_iterator_sliding_( input_iterator )
-            )
-        );
-    } else if( window_type_.value == "queue" ) {
-        result = genesis::utils::make_unique<WindowViewIterator>(
-            make_window_view_iterator(
-                get_variant_window_iterator_queue_( input_iterator )
-            )
-        );
-    } else if( window_type_.value == "single" ) {
-        result = genesis::utils::make_unique<WindowViewIterator>(
-            make_window_view_iterator(
-                get_variant_window_iterator_single_( input_iterator )
-            )
-        );
-    } else if( window_type_.value == "regions" ) {
-        result = genesis::utils::make_unique<WindowViewIterator>(
-            make_window_view_iterator(
-                get_variant_window_iterator_regions_( input_iterator )
-            )
-        );
-    } else if( window_type_.value == "chromosomes" ) {
-        result = genesis::utils::make_unique<ChromosomeIterator>(
-            get_variant_window_view_iterator_chromosomes_( input_iterator )
-        );
-    } else if( window_type_.value == "genome" ) {
-        result = genesis::utils::make_unique<ChromosomeIterator>(
-            get_variant_window_view_iterator_genome_( input_iterator )
-        );
-    } else {
-        throw CLI::ValidationError(
-            window_type_.option->get_name(),
-            "Invalid window type '" + window_type_.value + "'."
-        );
+    switch( window_type() ) {
+        case WindowType::kSliding: {
+            result = genesis::utils::make_unique<WindowViewIterator>(
+                make_window_view_iterator(
+                    get_variant_window_iterator_sliding_( input_iterator )
+                )
+            );
+            break;
+        }
+        case WindowType::kQueue: {
+            result = genesis::utils::make_unique<WindowViewIterator>(
+                make_window_view_iterator(
+                    get_variant_window_iterator_queue_( input_iterator )
+                )
+            );
+            break;
+        }
+        case WindowType::kSingle: {
+            result = genesis::utils::make_unique<WindowViewIterator>(
+                make_window_view_iterator(
+                    get_variant_window_iterator_single_( input_iterator )
+                )
+            );
+            break;
+        }
+        case WindowType::kRegions: {
+            result = genesis::utils::make_unique<WindowViewIterator>(
+                make_window_view_iterator(
+                    get_variant_window_iterator_regions_( input_iterator )
+                )
+            );
+            break;
+        }
+        case WindowType::kChromosomes: {
+            result = genesis::utils::make_unique<ChromosomeIterator>(
+                get_variant_window_view_iterator_chromosomes_( input_iterator )
+            );
+            break;
+        }
+        case WindowType::kGenome: {
+            result = genesis::utils::make_unique<ChromosomeIterator>(
+                get_variant_window_view_iterator_genome_( input_iterator )
+            );
+            break;
+        }
+        default: {
+            throw CLI::ValidationError(
+                window_type_.option->get_name(),
+                "Invalid window type '" + window_type_.value + "'."
+            );
+        }
     }
     assert( result );
 

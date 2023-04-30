@@ -83,6 +83,16 @@ public:
     //     Typedefs and Enums
     // -------------------------------------------------------------------------
 
+    enum class WindowType
+    {
+        kSliding,
+        kQueue,
+        kSingle,
+        kRegions,
+        kChromosomes,
+        kGenome
+    };
+
     // Same as the above global typedefs, just to have them here as well.
     using VariantWindowIterator = genesis::population::VariantWindowIterator;
     using VariantWindowViewIterator = genesis::population::VariantWindowViewIterator;
@@ -148,6 +158,11 @@ public:
     // -------------------------------------------------------------------------
     //     Run Functions
     // -------------------------------------------------------------------------
+
+    /**
+     * @brief Get the type of window that the user selected.
+     */
+    WindowType window_type() const;
 
     /**
      * @brief Get a Window iterator over Variants, using the @p input to get its data from.

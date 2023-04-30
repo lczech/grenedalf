@@ -26,13 +26,17 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/functions.hpp"
 #include "genesis/population/functions/fst_pool_functions.hpp"
 #include "genesis/population/functions/fst_pool_karlsson.hpp"
 #include "genesis/population/functions/fst_pool_kofler.hpp"
 #include "genesis/population/functions/fst_pool_unbiased.hpp"
 #include "genesis/population/functions/fst_pool.hpp"
+#include "genesis/population/functions/functions.hpp"
+#include "genesis/utils/containers/matrix.hpp"
+#include "genesis/utils/containers/matrix/operators.hpp"
+#include "genesis/utils/containers/matrix/writer.hpp"
 #include "genesis/utils/containers/transform_iterator.hpp"
+#include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -40,6 +44,7 @@
 #include <algorithm>
 #include <cassert>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -270,6 +275,19 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
             }
         }
     }
+
+    // Check for duplicates.
+    std::vector<std::pair<size_t, size_t>> dups;
+    for( auto const& pair : sample_pairs ) {
+        auto const rev_pair = std::pair<size_t, size_t>( pair.second, pair.first );
+        if( contains( dups, pair ) || contains( dups, rev_pair )) {
+            LOG_WARN << "Sample pairing for sample \"" << sample_names[pair.first]
+                     << "\" and sample \"" << sample_names[pair.second]
+                     << "\" is provided more than once.";
+        }
+        dups.push_back( pair );
+    }
+
     return sample_pairs;
 }
 
@@ -278,11 +296,39 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
 // -------------------------------------------------------------------------
 
 genesis::population::FstPoolProcessor get_fst_pool_processor_(
+    FstOptions const& options,
     FstMethod method,
-    std::vector<std::pair<size_t, size_t>> const& sample_pairs,
-    std::vector<size_t> const& pool_sizes
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
     using namespace genesis::population;
+
+    // Get all sample indices that we are actually interested in.
+    // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
+    auto const& sample_names = options.variant_input.sample_names();
+    auto used_samples = std::vector<bool>( sample_names.size(), false );
+    for( auto const& sp : sample_pairs ) {
+        used_samples[ sp.first ]  = true;
+        used_samples[ sp.second ] = true;
+    }
+    assert( used_samples.size() == sample_names.size() );
+
+    // Get the pool sizes for all samples that we are interested in.
+    auto const needs_pool_sizes = (
+        method == FstMethod::kUnbiasedNei ||
+        method == FstMethod::kUnbiasedHudson ||
+        method == FstMethod::kKofler
+    );
+    auto const pool_sizes = (
+        needs_pool_sizes
+        ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
+        : std::vector<size_t>( sample_names.size() )
+    );
+
+    // For our unbiased and for Kofler, check that we got the right number of pool sizes.
+    internal_check(
+        ! needs_pool_sizes || pool_sizes.size() == sample_names.size(),
+        "Inconsistent number of samples and number of pool sizes."
+    );
 
     switch( method ) {
         case FstMethod::kUnbiasedNei: {
@@ -311,6 +357,65 @@ genesis::population::FstPoolProcessor get_fst_pool_processor_(
     }
 }
 
+// -------------------------------------------------------------------------
+//     print_fst_list_
+// -------------------------------------------------------------------------
+
+void print_fst_list_(
+    FstOptions const& options,
+    std::vector<double> const& window_fst,
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs
+) {
+    using namespace genesis::utils;
+
+    // Get basic options.
+    auto const& sample_names = options.variant_input.sample_names();
+    auto const sep_char = options.table_output.get_separator_char();
+
+    // For whole genome FST, we fill a list with all pairs.
+    std::shared_ptr<BaseOutputTarget> fst_list_ofs;
+    fst_list_ofs = options.file_output.get_output_target( "fst-list", "csv" );
+    (*fst_list_ofs) << "first" << sep_char << "second" << sep_char << "FST\n";
+    assert( sample_pairs.size() == window_fst.size() );
+
+    // Write all pairs.
+    for( size_t i = 0; i < sample_pairs.size(); ++i ) {
+        auto const& pair = sample_pairs[i];
+        (*fst_list_ofs) << sample_names[pair.first] << sep_char << sample_names[pair.second];
+        (*fst_list_ofs) << sep_char << window_fst[i] << "\n";
+    }
+}
+
+// -------------------------------------------------------------------------
+//     print_fst_matrix_
+// -------------------------------------------------------------------------
+
+void print_fst_matrix_(
+    FstOptions const& options,
+    std::vector<double> const& window_fst,
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs
+) {
+    using namespace genesis::utils;
+
+    // Get basic options.
+    auto const& sample_names = options.variant_input.sample_names();
+    auto const sep_char = options.table_output.get_separator_char();
+
+    // Make a matrix with all the entries, so that we can easily print them.
+    auto mat = Matrix<double>( sample_names.size(), sample_names.size(), 0.0 );
+    for( size_t i = 0; i < sample_pairs.size(); ++i ) {
+        auto const& pair = sample_pairs[i];
+        mat( pair.first, pair.second ) = window_fst[i];
+        mat( pair.second, pair.first ) = window_fst[i];
+    }
+
+    // For whole genome all-to-all FST, we fill a matrix with all samples.
+    std::shared_ptr<BaseOutputTarget> fst_matrix_ofs;
+    fst_matrix_ofs = options.file_output.get_output_target( "fst-matrix", "csv" );
+    auto writer = MatrixWriter<double>( std::string( 1, sep_char ));
+    writer.write( mat, fst_matrix_ofs, sample_names, sample_names, "sample" );
+}
+
 // =================================================================================================
 //      Run
 // =================================================================================================
@@ -321,8 +426,20 @@ void run_fst( FstOptions const& options )
     using namespace genesis::utils;
     // using VariantWindow = Window<genesis::population::Variant>;
 
-    // Output preparation.
+    // Basic output file check
     options.file_output.check_output_files_nonexistence( "fst", "csv" );
+
+    // Also check the additional files, if we are going to produce them.
+    bool const is_whole_genome = ( options.window.window_type() == WindowOptions::WindowType::kGenome );
+    bool const is_all_to_all = ( ! *options.comparand.option) && ( ! *options.comparand_list.option );
+    if( is_whole_genome ) {
+        options.file_output.check_output_files_nonexistence( "fst-list", "csv" );
+
+        // If we run an all-to-all FST computation, we also want to output a matrix.
+        if( is_all_to_all ) {
+            options.file_output.check_output_files_nonexistence( "fst-matrix", "csv" );
+        }
+    }
 
     // -------------------------------------------------------------------------
     //     Preparation
@@ -351,29 +468,8 @@ void run_fst( FstOptions const& options )
     );
 
     // Get indices of all pairs of samples for which we want to compute FST.
-    auto const sample_pairs = get_sample_pairs_( options );
-
-    // Get all sample indices that we are actually interested in.
-    // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
     auto const& sample_names = options.variant_input.sample_names();
-    auto used_samples = std::vector<bool>( sample_names.size(), false );
-    for( auto const& sp : sample_pairs ) {
-        used_samples[ sp.first ]  = true;
-        used_samples[ sp.second ] = true;
-    }
-    assert( used_samples.size() == sample_names.size() );
-
-    // Get the pool sizes for all samples that we are interested in.
-    auto const needs_pool_sizes = (
-        method == FstMethod::kUnbiasedNei ||
-        method == FstMethod::kUnbiasedHudson ||
-        method == FstMethod::kKofler
-    );
-    auto const pool_sizes = (
-        needs_pool_sizes
-        ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
-        : std::vector<size_t>( sample_names.size() )
-    );
+    auto const sample_pairs = get_sample_pairs_( options );
     if( sample_pairs.empty() ) {
         LOG_WARN << "No pairs of samples selected, which will produce empty output. Stopping now.";
         return;
@@ -381,29 +477,29 @@ void run_fst( FstOptions const& options )
     LOG_MSG << "Computing FST between " << sample_pairs.size()
             << " pair" << ( sample_pairs.size() > 1 ? "s" : "" ) << " of samples.";
 
+    // If we do all-to-all, we expect a triangular matrix size of entries.
+    internal_check(
+        ! is_all_to_all || sample_pairs.size() == triangular_size( sample_names.size() ),
+        "Expeting all-to-all FST to create a trinangular number of sample pairs."
+    );
+
+    // Make the processor.
+    FstPoolProcessor processor = get_fst_pool_processor_( options, method, sample_pairs );
+
+    // -------------------------------------------------------------------------
+    //     Prepare Tables, Print Headers
+    // -------------------------------------------------------------------------
+
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
 
-    // Make the processor.
-    FstPoolProcessor processor = get_fst_pool_processor_( method, sample_pairs, pool_sizes );
-
-    // -------------------------------------------------------------------------
-    //     Table Header
-    // -------------------------------------------------------------------------
-
     // Prepare output file and write header line with all pairs of samples.
     auto fst_ofs = options.file_output.get_output_target( "fst", "csv" );
-    (*fst_ofs) << "CHROM" << sep_char << "START" << sep_char << "END" << sep_char << "SNPS";
+    (*fst_ofs) << "chrom" << sep_char << "start" << sep_char << "end" << sep_char << "snps";
     for( auto const& pair : sample_pairs ) {
         (*fst_ofs) << sep_char << sample_names[pair.first] << "." << sample_names[pair.second];
     }
     (*fst_ofs) << "\n";
-
-    // For our unbiased and for Kofler, check that we got the right number of pool sizes.
-    internal_check(
-        ! needs_pool_sizes || pool_sizes.size() == sample_names.size(),
-        "Inconsistent number of samples and number of pool sizes."
-    );
 
     // -------------------------------------------------------------------------
     //     Main Loop
@@ -434,6 +530,10 @@ void run_fst( FstOptions const& options )
             ++entry_count;
         }
         auto const& window_fst = processor.get_result();
+        internal_check(
+            window_fst.size() == sample_pairs.size(),
+            "Inconsistent size of window fst values and sample pairs."
+        );
 
         // Write the values, unless all of them are nan, then we might skip.
         // Skip empty windows if the user wants to.
@@ -465,12 +565,23 @@ void run_fst( FstOptions const& options )
             }
             (*fst_ofs) << "\n";
         }
+
+        // For whole genome, and then also for all-to-all, we produce special tables on top.
+        if( is_whole_genome ) {
+            internal_check(
+                options.window.get_num_windows() == 1,
+                "More than one window for whole genome"
+            );
+            print_fst_list_( options, window_fst, sample_pairs );
+            if( is_all_to_all ) {
+                print_fst_matrix_( options, window_fst, sample_pairs );
+            }
+        }
     }
-    if( use_cnt + nan_cnt != options.window.get_num_windows() ) {
-        throw std::domain_error(
-            "Internal error: Number of windows is inconsistent."
-        );
-    }
+    internal_check(
+        use_cnt + nan_cnt == options.window.get_num_windows(),
+        "Number of windows is inconsistent."
+    );
 
     // Final user output.
     options.window.print_report();

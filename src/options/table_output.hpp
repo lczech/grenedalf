@@ -95,7 +95,7 @@ private:
     // FileOutputOptions  file_output_;
 
     CliOption<std::string> separator_char_ = "comma";
-    CliOption<std::string> na_entry_ = "NA";
+    CliOption<std::string> na_entry_ = "nan";
 
     mutable char separator_char_value_ = 0;
 
