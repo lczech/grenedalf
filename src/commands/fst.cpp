@@ -178,6 +178,18 @@ void setup_fst( CLI::App& app )
     options->comparand_list.option->excludes( options->comparand.option );
     options->comparand_list.option->excludes( options->second_comparand.option );
 
+    // Setting: threading_threshold
+    options->threading_threshold.option = sub->add_option(
+        "--threading-threshold",
+        options->threading_threshold.value,
+        "When only computing FST beween a few pairs of samples, doing so in individual threads "
+        "usually incurs a substantial overhead due to thread synchronozation. Hence, we only want "
+        "to use threads for the FST computation if many pairs of samples are being computed. "
+        "This setting determiens the number of sample pairs at which threads are used for FST. "
+        "(Note that we still always use threads for input file parsing.)"
+    );
+    options->threading_threshold.option->group( "" );
+
     // -------------------------------------------------------------------------
     //     Output
     // -------------------------------------------------------------------------
@@ -367,31 +379,42 @@ genesis::population::FstPoolProcessor get_fst_pool_processor_(
         "Inconsistent number of samples and number of pool sizes."
     );
 
+    // Make the type of processor that we need for the provided method.
+    FstPoolProcessor processor;
     switch( method ) {
         case FstMethod::kUnbiasedNei: {
-            return make_fst_pool_processor<FstPoolCalculatorUnbiased>(
+            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
                 sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kNei
             );
+            break;
         }
         case FstMethod::kUnbiasedHudson: {
-            return make_fst_pool_processor<FstPoolCalculatorUnbiased>(
+            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
                 sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kHudson
             );
+            break;
         }
         case FstMethod::kKofler: {
-            return make_fst_pool_processor<FstPoolCalculatorKofler>(
+            processor = make_fst_pool_processor<FstPoolCalculatorKofler>(
                 sample_pairs, pool_sizes
             );
+            break;
         }
         case FstMethod::kKarlsson: {
-            return make_fst_pool_processor<FstPoolCalculatorKarlsson>(
+            processor = make_fst_pool_processor<FstPoolCalculatorKarlsson>(
                 sample_pairs, pool_sizes
             );
+            break;
         }
         default: {
             throw std::domain_error( "Internal error: Invalid FST method." );
         }
     }
+
+    // Set the threading options as provided by the (currently hidden) setting.
+    processor.thread_pool( global_options.thread_pool() );
+    processor.threading_threshold( options.threading_threshold.value );
+    return processor;
 }
 
 // -------------------------------------------------------------------------

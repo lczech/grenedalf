@@ -27,8 +27,8 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/functions/functions.hpp"
-#include "genesis/population/functions/genome_heatmap.hpp"
-#include "genesis/population/functions/heatmap_colorization.hpp"
+#include "genesis/population/plotting/genome_heatmap.hpp"
+#include "genesis/population/plotting/heatmap_colorization.hpp"
 #include "genesis/utils/math/statistics.hpp"
 #include "genesis/utils/tools/color/list_diverging.hpp"
 #include "genesis/utils/tools/color/list_sequential.hpp"

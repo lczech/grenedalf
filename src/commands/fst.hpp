@@ -57,6 +57,7 @@ public:
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";
     CliOption<std::string> comparand_list = "";
+    CliOption<size_t>      threading_threshold = 4096;
 
     // Output options
     TableOutputOptions table_output;
