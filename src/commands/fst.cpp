@@ -38,6 +38,7 @@
 #include "genesis/utils/containers/transform_iterator.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/core/std.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
 
@@ -133,8 +134,6 @@ void setup_fst( CLI::App& app )
     // Settings: Pool sizes
     options->poolsizes.add_poolsizes_opt_to_app( sub, false );
 
-    // TODO need settings for min/max coverage etc. see prototype implementations!
-
     // TODO need to check if this is still needed when filtering for snps...
     // Settings: Omit Empty Windows
     options->omit_na_windows.option = sub->add_flag(
@@ -213,27 +212,59 @@ void setup_fst( CLI::App& app )
 //     get_sample_pairs_
 // -------------------------------------------------------------------------
 
+// We want to build a hash map for pairs, which needs hashing first...
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator () (const std::pair<T1,T2> &p) const {
+        auto h1 = std::hash<T1>{}(p.first);
+        auto h2 = std::hash<T2>{}(p.second);
+        return genesis::utils::hash_combine( h1, h2 );
+    }
+};
+
 std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& options )
 {
     using namespace genesis::utils;
 
+    // We here build a vector of pairs, in order to keep the order of pairs as specified.
+    // This is important, as otherwise our assignmen of which samples and pairs belong
+    // to which value computed will get messed up.
+
     // Get sample names and map to their index or throw if invalid name is given.
+    // We create a map of names to their index in the list; if used, the names need to be unique.
+    // We however only need it when a comparand of sorts is provided, so that we can look up the
+    // names. Without comaparnd, we do not need the names, and hence can allow duplicates.
+    // We hence use a lambda to only fill the map when needed.
     auto const& sample_names = options.variant_input.sample_names();
+    std::unordered_map<std::string, size_t> sample_map;
+    auto make_sample_map = [&](){
+        for( size_t i = 0; i < sample_names.size(); ++i ) {
+            auto const& name = sample_names[i];
+            if( sample_map.count( name ) > 0 ) {
+                throw std::runtime_error(
+                    "Duplicate sample name \"" + name + "\". "
+                    "Cannot uniquely identify the samples used for the FST comparands."
+                );
+            }
+            sample_map[name] = i;
+        }
+    };
     auto sample_index = [&]( std::string const& name ) -> size_t {
-        auto it = std::find( sample_names.begin(), sample_names.end(), name );
-        if( it == sample_names.end() ) {
+        auto it = sample_map.find( name );
+        if( it == sample_map.end() ) {
             throw CLI::ValidationError(
                 "Comparand sample names",
                 "Invalid sample name: \"" + name  + "\" that was not found in the input, "
                 "or was filtered out."
             );
         }
-        return static_cast<size_t>( it - sample_names.begin() );
+        return it->second;
     };
 
     // Get all pairs of samples for which we want to compute FST.
     std::vector<std::pair<size_t, size_t>> sample_pairs;
     if( *options.comparand.option ) {
+        make_sample_map();
         if( *options.second_comparand.option ) {
             // Only exactly one pair of samples.
             auto const index_a = sample_index( options.comparand.value );
@@ -250,8 +281,11 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
             }
         }
     } else if( *options.comparand_list.option ) {
-        // Read list of pairs from file.
+        // Read list of pairs from file, and prepare the name index lookup.
         auto const lines = file_read_lines( options.comparand_list.value );
+        make_sample_map();
+
+        // Get all pairs from the file, and build the list.
         for( size_t i = 0; i < lines.size(); ++i ) {
             auto const& line = lines[i];
             auto const pair = split( line, ",\t", false );
@@ -276,16 +310,19 @@ std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& opti
         }
     }
 
-    // Check for duplicates.
-    std::vector<std::pair<size_t, size_t>> dups;
+    // Check for duplicates. Build a hash map for fast lookup of which pairs are there already.
+    // We tried with a vector first for simplicity, but that just got too expensive
+    // when many samples (in the thousands) are involved, as this means millions of pairs,
+    // each involving a linear search through the vector to check for duplicates...
+    std::unordered_set<std::pair<size_t, size_t>, pair_hash> dups;
     for( auto const& pair : sample_pairs ) {
         auto const rev_pair = std::pair<size_t, size_t>( pair.second, pair.first );
-        if( contains( dups, pair ) || contains( dups, rev_pair )) {
+        if( dups.count( pair ) > 0 || dups.count( rev_pair ) > 0 ) {
             LOG_WARN << "Sample pairing for sample \"" << sample_names[pair.first]
                      << "\" and sample \"" << sample_names[pair.second]
                      << "\" is provided more than once.";
         }
-        dups.push_back( pair );
+        dups.insert( pair );
     }
 
     return sample_pairs;

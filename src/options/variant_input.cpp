@@ -290,9 +290,11 @@ void VariantInputOptions::prepare_data_() const
     }
     LOG_MSG1;
     if( contains_duplicates( sample_names_ )) {
-        LOG_WARN << "The input contains duplicate sample names. We can work with that internally, "
-                 << "but it will make working with the output more difficult. Use verbose output "
-                 << "(--verbose) to show a list of all sample names.";
+        LOG_WARN << "The input contains duplicate sample names. Some grenedalf commands can work "
+                 << "with that internally, other not (and will then fail). Either way, this will "
+                 << "make working with the output more difficult downstream, and we recommend "
+                 << "to clean up the names first. "
+                 << "Use verbose output (--verbose) to show a list of all sample names.";
         LOG_MSG1;
     }
 }
