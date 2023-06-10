@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,17 @@ void setup_sync_file( CLI::App& app )
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
 
+    // Options
+    options->with_header.option = sub->add_flag(
+        "--with-header",
+        options->with_header.value,
+        "We provide an ad-hoc extension of the sync format that allows to store sample names in "
+        "sync files. When using this flag, a header line is added to the output file of the form: "
+        "`#chr pos ref S1...`, where `S1...` is the list of sample names. Not all tools that read "
+        "sync files will be able to parse this though."
+    );
+    options->with_header.option->group( "Settings" );
+
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
     options->file_output.add_file_compress_opt_to_app( sub );
@@ -76,9 +87,17 @@ void run_sync_file( SyncFileOptions const& options )
     options.file_output.check_output_files_nonexistence( "counts", "sync" );
     auto sync_ofs = options.file_output.get_output_target( "counts", "sync" );
 
+    // Add the header line
+    if( options.with_header.value ) {
+        (*sync_ofs) << "#chr\tpos\tref";
+        for( auto const& sample_name :  options.variant_input.sample_names() ) {
+            (*sync_ofs) << "\t" << sample_name;
+        }
+        (*sync_ofs) << "\n";
+    }
+
     // Write the sync data
     for( auto const& freq_it : options.variant_input.get_iterator() ) {
         to_sync( freq_it, sync_ofs->ostream() );
-        // (*sync_ofs) << "\n";
     }
 }
