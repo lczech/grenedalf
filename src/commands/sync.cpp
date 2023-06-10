@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "commands/sync_file.hpp"
+#include "commands/sync.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 
@@ -32,12 +32,12 @@
 //      Setup
 // =================================================================================================
 
-void setup_sync_file( CLI::App& app )
+void setup_sync( CLI::App& app )
 {
     // Create the options and subcommand objects.
-    auto options = std::make_shared<SyncFileOptions>();
+    auto options = std::make_shared<SyncOptions>();
     auto sub = app.add_subcommand(
-        "sync-file",
+        "sync",
         "Create a PoPoolation2 sync file that lists per-sample base counts at each position "
         "in the genome."
     );
@@ -47,7 +47,7 @@ void setup_sync_file( CLI::App& app )
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
 
-    // Options
+    // With Header
     options->with_header.option = sub->add_flag(
         "--with-header",
         options->with_header.value,
@@ -57,6 +57,17 @@ void setup_sync_file( CLI::App& app )
         "sync files will be able to parse this though."
     );
     options->with_header.option->group( "Settings" );
+
+    // Guess Reference Base
+    options->guess_reference_base.option = sub->add_flag(
+        "--guess-reference-base",
+        options->guess_reference_base.value,
+        "By default, when reading from input file formats that do not store the reference base, "
+        "we do not attempt to guess it. When set however, we use the base with the highest count "
+        "as the reference base for the output. Alternatively, when a reference genome is provided, "
+        "we use that to correctly set the reference bases, independently of whether this flag is set."
+    );
+    options->guess_reference_base.option->group( "Settings" );
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
@@ -71,7 +82,7 @@ void setup_sync_file( CLI::App& app )
             "Kofler2011-PoPoolation2"
         },
         [ options ]() {
-            run_sync_file( *options );
+            run_sync( *options );
         }
     ));
 }
@@ -80,12 +91,37 @@ void setup_sync_file( CLI::App& app )
 //      Run
 // =================================================================================================
 
-void run_sync_file( SyncFileOptions const& options )
+void run_sync( SyncOptions const& options )
 {
     using namespace genesis::population;
 
-    options.file_output.check_output_files_nonexistence( "counts", "sync" );
-    auto sync_ofs = options.file_output.get_output_target( "counts", "sync" );
+    options.file_output.check_output_files_nonexistence( "sync", "sync" );
+    auto sync_ofs = options.file_output.get_output_target( "sync", "sync" );
+
+    // TODO The below ref genome code is almost identical to the one in frequency.
+    // Refactor to avoid code duplication.
+
+    // If we have a reference genome, use it to correctly get the bases for the output here.
+    if( options.variant_input.get_reference_genome() ) {
+        auto const ref_gen = options.variant_input.get_reference_genome();
+        options.variant_input.add_combined_filter_and_transforms(
+            [ref_gen]( genesis::population::Variant& var ){
+                guess_and_set_ref_and_alt_bases( var, *ref_gen );
+                return true;
+            }
+        );
+    } else if( options.guess_reference_base.value ) {
+        // Most of our input sources do not provide ref, and almost non provide alt bases.
+        // So we use our guess function to augment the data. The function is idempotent
+        // (unless we set the `force` parameter, which we do not do here), so for sources that do
+        // contain ref and/or alt bases, nothing changes.
+        options.variant_input.add_combined_filter_and_transforms(
+            []( genesis::population::Variant& var ){
+                guess_and_set_ref_and_alt_bases( var );
+                return true;
+            }
+        );
+    }
 
     // Add the header line
     if( options.with_header.value ) {

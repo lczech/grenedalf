@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 #include "commands/frequency.hpp"
 #include "commands/fst.hpp"
 #include "commands/simulate.hpp"
-#include "commands/sync_file.hpp"
+#include "commands/sync.hpp"
 
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
@@ -58,7 +58,7 @@ inline void setup_commands( CLI::App& app )
     setup_frequency( app );
     setup_fst( app );
     setup_simulate( app );
-    setup_sync_file( app );
+    setup_sync( app );
 
     // Add the global options to each of the above subcommands.
     global_options.add_to_module( app );

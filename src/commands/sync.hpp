@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_SYNC_FILE_H_
-#define GRENEDALF_COMMANDS_SYNC_FILE_H_
+#ifndef GRENEDALF_COMMANDS_SYNC_H_
+#define GRENEDALF_COMMANDS_SYNC_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -36,13 +36,14 @@
 //      Options
 // =================================================================================================
 
-class SyncFileOptions
+class SyncOptions
 {
 public:
 
     VariantInputOptions variant_input;
     FileOutputOptions   file_output;
     CliOption<bool>     with_header = false;
+    CliOption<bool>     guess_reference_base = false;
 
 };
 
@@ -50,7 +51,7 @@ public:
 //      Functions
 // =================================================================================================
 
-void setup_sync_file( CLI::App& app );
-void run_sync_file( SyncFileOptions const& options );
+void setup_sync( CLI::App& app );
+void run_sync( SyncOptions const& options );
 
 #endif // include guard
