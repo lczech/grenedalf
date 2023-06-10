@@ -174,7 +174,7 @@ void VariantInputOptions::add_reference_genome_opts_to_app(
     reference_genome_fasta_file_.option = sub->add_option(
         "--reference-genome-fasta-file",
         reference_genome_fasta_file_.value,
-        "Provide a reference genome in `fasta` format. This allows to correctly assign the "
+        "Provide a reference genome in `.fasta[.gz]` format. This allows to correctly assign the "
         "reference bases in file formats that do not store them, and serves as an integrity check "
         "in those that do. It further is used as a sequence dictionary to determine the chromosome "
         "order and length, on behalf of a dict or fai file."
@@ -186,7 +186,7 @@ void VariantInputOptions::add_reference_genome_opts_to_app(
     reference_genome_dict_file_.option = sub->add_option(
         "--reference-genome-dict-file",
         reference_genome_dict_file_.value,
-        "Provide a reference genome sequence dictionary in `dict` format. It is used to determine "
+        "Provide a reference genome sequence dictionary in `.dict` format. It is used to determine "
         "the chromosome order and length, without having to provide the full reference genome."
     );
     reference_genome_dict_file_.option->group( group );
@@ -196,7 +196,7 @@ void VariantInputOptions::add_reference_genome_opts_to_app(
     reference_genome_fai_file_.option = sub->add_option(
         "--reference-genome-fai-file",
         reference_genome_fai_file_.value,
-        "Provide a reference genome sequence dictionary in `fai` format. It is used to determine "
+        "Provide a reference genome sequence dictionary in `.fai` format. It is used to determine "
         "the chromosome order and length, without having to provide the full reference genome."
     );
     reference_genome_fai_file_.option->group( group );
@@ -494,11 +494,10 @@ void VariantInputOptions::prepare_iterator_single_file_() const
 
     // Add a visitor that checks chromosome order and length. We need to check order here,
     // as the single iterator does not do this already (as opposed to the parallel one below).
-    if( sequence_dict_ ) {
-        iterator_.add_visitor(
-            genesis::population::make_variant_input_iterator_sequence_order_visitor( sequence_dict_ )
-        );
-    }
+    // Without a dict (when sequence_dict_ is nullptr), this checks lexicographically.
+    iterator_.add_visitor(
+        genesis::population::make_variant_input_iterator_sequence_order_visitor( sequence_dict_ )
+    );
 
     // Add the region filters.
     // need to refactor, rename, and add a filter for each sample.
@@ -594,10 +593,9 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
     );
 
     // If a sequence dict in some format was provided, we use it for the iterator,
-    // so that the chromosome order can be used correctly. Also check chromosome length.
-    if( sequence_dict_ ) {
-        parallel_it.sequence_dict( sequence_dict_ );
-    }
+    // so that the chromosome order can be used correctly. If not provided, nullptr is also okay.
+    // We check chromosome length below as well.
+    parallel_it.sequence_dict( sequence_dict_ );
 
     // Go through all sources again, build the sample names list from them,
     // and add the individual samples filters to all of them, e.g., so that regions are filtered
