@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -177,8 +177,8 @@ std::function<void()> grenedalf_cli_callback(
     check_citations( citations );
 
     // If the genesis/grenedalf citation is not present, add it to the front!
-    if( ! genesis::utils::contains( citations, "Czech2021-grenedalf" )) {
-        citations.insert( citations.begin(), "Czech2021-grenedalf" );
+    if( ! genesis::utils::contains( citations, "Czech2023-grenedalf" )) {
+        citations.insert( citations.begin(), "Czech2023-grenedalf" );
     }
 
     // Add the citations to the list, so that they can be used by the wiki command
