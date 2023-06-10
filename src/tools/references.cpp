@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2021 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -58,13 +58,13 @@ struct Citation
 };
 
 static std::unordered_map<std::string, Citation> citations_ = {
-    { "Czech2021-grenedalf", {
-        {{ "Lucas", "Czech" }, { "Moises", "Exposito-Alonso" }},
-        "Grenedalf: Genome Analyses of Differential Allele Frequencies",
+    { "Czech2023-grenedalf", {
+        {{ "Lucas", "Czech" }, { "Jeffrey", "Spence" }, { "Moises", "Exposito-Alonso" }},
+        "grenedalf: population genetic statistics for the next generation of pool sequencing",
         "Manuscript in preparation",
         "",
         "",
-        "2021",
+        "2023",
         ""
     }},
     { "Kofler2011-PoPoolation", {
