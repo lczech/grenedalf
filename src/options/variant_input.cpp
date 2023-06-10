@@ -34,7 +34,9 @@
 #include "genesis/population/formats/variant_parallel_input_iterator.hpp"
 #include "genesis/population/functions/filter_transform.hpp"
 #include "genesis/population/functions/functions.hpp"
+#include "genesis/population/functions/variant_input_iterator.hpp"
 #include "genesis/sequence/formats/fasta_reader.hpp"
+#include "genesis/sequence/functions/dict.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/core/logging.hpp"
@@ -78,6 +80,30 @@ void VariantInputOptions::add_variant_input_opts_to_app(
     std::string const& group
 ) {
 
+    // Add the basic options first.
+    add_input_files_opts_to_app( sub );
+    add_reference_genome_opts_to_app( sub, group );
+
+    // Additional options next.
+    if( with_sample_name_opts ) {
+        // input_sample_names_.add_sample_name_opts_to_app( sub, group );
+        input_sample_names_.add_sample_name_opts_to_app( sub );
+    }
+    if( with_region_filter_opts ) {
+        // region_filter_.add_region_filter_opts_to_app( sub, group );
+        region_filter_.add_region_filter_opts_to_app( sub );
+    }
+}
+
+// -------------------------------------------------------------------------
+//     add_input_files_opts_to_app
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::add_input_files_opts_to_app(
+    CLI::App* sub,
+    std::string const& group
+) {
+
     // Add input file type options. This is the only point where we explicitly state
     // which file types we want to add. If we want to make some of them optional later for
     // certain commands - here is the place to do so.
@@ -110,17 +136,6 @@ void VariantInputOptions::add_variant_input_opts_to_app(
         CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
     );
 
-    // Add option for reading in the reference genome.
-    reference_genome_file_.option = sub->add_option(
-        "--reference-genome-file",
-        reference_genome_file_.value,
-        "Provide a reference genome in fasta format. This allows to correctly assign the reference "
-        "bases in file formats that do not store them, and serves as an integrity check in those "
-        "that do."
-    );
-    reference_genome_file_.option->group( group );
-    reference_genome_file_.option->check( CLI::ExistingFile );
-
     // Hidden options to set the LambdaIterator block sizes for speed.
 
     // First for the main block size of the iterator that is collecing all Variants,
@@ -144,16 +159,57 @@ void VariantInputOptions::add_variant_input_opts_to_app(
         "This option is an optimization feature that can be experiment with for larger datasets."
     );
     parallel_block_size_.option->group( "" );
+}
 
-    // Additional options.
-    if( with_sample_name_opts ) {
-        // input_sample_names_.add_sample_name_opts_to_app( sub, group );
-        input_sample_names_.add_sample_name_opts_to_app( sub );
-    }
-    if( with_region_filter_opts ) {
-        // region_filter_.add_region_filter_opts_to_app( sub, group );
-        region_filter_.add_region_filter_opts_to_app( sub );
-    }
+// -------------------------------------------------------------------------
+//     add_reference_genome_opts_to_app
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::add_reference_genome_opts_to_app(
+    CLI::App* sub,
+    std::string const& group
+) {
+
+    // Add option for reading the reference genome.
+    reference_genome_fasta_file_.option = sub->add_option(
+        "--reference-genome-fasta-file",
+        reference_genome_fasta_file_.value,
+        "Provide a reference genome in `fasta` format. This allows to correctly assign the "
+        "reference bases in file formats that do not store them, and serves as an integrity check "
+        "in those that do. It further is used as a sequence dictionary to determine the chromosome "
+        "order and length, on behalf of a dict or fai file."
+    );
+    reference_genome_fasta_file_.option->group( group );
+    reference_genome_fasta_file_.option->check( CLI::ExistingFile );
+
+    // Add option for reading a sequence dict.
+    reference_genome_dict_file_.option = sub->add_option(
+        "--reference-genome-dict-file",
+        reference_genome_dict_file_.value,
+        "Provide a reference genome sequence dictionary in `dict` format. It is used to determine "
+        "the chromosome order and length, without having to provide the full reference genome."
+    );
+    reference_genome_dict_file_.option->group( group );
+    reference_genome_dict_file_.option->check( CLI::ExistingFile );
+
+    // Add option for reading a sequence fai.
+    reference_genome_fai_file_.option = sub->add_option(
+        "--reference-genome-fai-file",
+        reference_genome_fai_file_.value,
+        "Provide a reference genome sequence dictionary in `fai` format. It is used to determine "
+        "the chromosome order and length, without having to provide the full reference genome."
+    );
+    reference_genome_fai_file_.option->group( group );
+    reference_genome_fai_file_.option->check( CLI::ExistingFile );
+
+    // Mutally exclusive, to keep it simple. Otherwise, we'd have to check
+    // that those files agree with each other. Might add later.
+    reference_genome_fasta_file_.option->excludes( reference_genome_dict_file_.option );
+    reference_genome_fasta_file_.option->excludes( reference_genome_fai_file_.option );
+    reference_genome_dict_file_.option->excludes( reference_genome_fasta_file_.option );
+    reference_genome_dict_file_.option->excludes( reference_genome_fai_file_.option );
+    reference_genome_fai_file_.option->excludes( reference_genome_fasta_file_.option );
+    reference_genome_fai_file_.option->excludes( reference_genome_dict_file_.option );
 }
 
 // =================================================================================================
@@ -220,37 +276,51 @@ void VariantInputOptions::print_report() const
 // =================================================================================================
 
 // -------------------------------------------------------------------------
-//     prepare_data_
+//     prepare_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_() const
+void VariantInputOptions::prepare_() const
 {
-    using namespace genesis;
-    using namespace genesis::population;
-    using namespace genesis::utils;
-
     // Checks for internal correct setup
     if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
         // Nothing to be done. We already prepared the data.
         return;
     }
 
+    // First prepare the reference genome and dict, as this might be needed by the iterator.
+    // Then, prepare the iterator, either for a single, or for multiple input files.
+    prepare_reference_();
+    prepare_iterator_();
+}
+
+// -------------------------------------------------------------------------
+//     prepare_reference_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::prepare_reference_() const
+{
+    using namespace genesis::sequence;
+    using namespace genesis::utils;
+
+    // Internally check that at most one was set.
+    size_t used_ref_opts = 0;
+
     // Read the reference genome first, if provided, as some formats might want to use it.
-    if( *reference_genome_file_.option ) {
-        LOG_MSG << "Reading reference genome";
-        auto reader = genesis::sequence::FastaReader();
-        reference_genome_ = std::make_shared<genesis::sequence::ReferenceGenome>(
-            reader.read_reference_genome(
-                genesis::utils::from_file( reference_genome_file_.value )
-            )
+    if( *reference_genome_fasta_file_.option ) {
+        ++used_ref_opts;
+
+        LOG_MSG << "Reading reference genome fasta";
+        auto reader = FastaReader();
+        reference_genome_ = std::make_shared<ReferenceGenome>(
+            reader.read_reference_genome( from_file( reference_genome_fasta_file_.value ))
         );
 
-        // Some user output
-        LOG_MSG1 << "Reference genome contains " << reference_genome_->size() << " chromosome"
-                 << ( reference_genome_->size() != 1 ? "s" : "" );
-        for( auto const& chr : *reference_genome_ ) {
-            LOG_MSG2 << " - " << chr.label();
-        }
+        // Some user output. Nope, we print the sequence dict instead, for consistency.
+        // LOG_MSG1 << "Reference genome contains " << reference_genome_->size() << " chromosome"
+        //          << ( reference_genome_->size() != 1 ? "s" : "" );
+        // for( auto const& chr : *reference_genome_ ) {
+        //     LOG_MSG2 << " - " << chr.label();
+        // }
 
         // Very hacky... at the moment, only the Frequency Table Input actually makes use of this,
         // but we somehow need to get the ref genome to it before we initialize its iterator...
@@ -259,7 +329,56 @@ void VariantInputOptions::prepare_data_() const
         for( auto const& input_file : input_files_ ) {
             input_file->add_reference_genome( reference_genome_ );
         }
+
+        // Also use the ref genome to build a dict for the parallel iterator and the seq check.
+        sequence_dict_ = std::make_shared<SequenceDict>(
+            reference_genome_to_dict( *reference_genome_ )
+        );
     }
+
+    // Read the dict or fai as an alternative.
+    if( *reference_genome_dict_file_.option ) {
+        ++used_ref_opts;
+
+        LOG_MSG << "Reading reference genome dict";
+        sequence_dict_ = std::make_shared<SequenceDict>(
+            read_sequence_dict( from_file( reference_genome_dict_file_.value ))
+        );
+    }
+    if( *reference_genome_fai_file_.option ) {
+        ++used_ref_opts;
+
+        LOG_MSG << "Reading reference genome fai";
+        sequence_dict_ = std::make_shared<SequenceDict>(
+            read_sequence_fai( from_file( reference_genome_fai_file_.value ))
+        );
+    }
+
+    // User output of what we just read.
+    if( sequence_dict_ ) {
+        LOG_MSG1 << "Reference genome contains " << sequence_dict_->size() << " chromosome"
+                 << ( sequence_dict_->size() != 1 ? "s" : "" );
+        for( auto const& chr : *sequence_dict_ ) {
+            LOG_MSG2 << " - " << chr.name;
+        }
+    }
+
+    // Final check.
+    internal_check(
+        used_ref_opts < 2,
+        "More than one option related to reference genome and sequence dictionary is set."
+    );
+}
+
+// -------------------------------------------------------------------------
+//     prepare_iterator_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::prepare_iterator_() const
+{
+    using namespace genesis;
+    using namespace genesis::population;
+    using namespace genesis::utils;
 
     // Check how many files are given. If it is a single one, we just use that for the input
     // iterator, which is faster than piping it through a parallel iterator. For multiple files,
@@ -275,9 +394,9 @@ void VariantInputOptions::prepare_data_() const
             "Input sources", "At least one input file has to be provided."
         );
     } else if( file_count == 1 ) {
-        prepare_data_single_file_();
+        prepare_iterator_single_file_();
     } else {
-        prepare_data_multiple_files_();
+        prepare_iterator_multiple_files_();
     }
     assert( iterator_ );
     assert( ! sample_names_.empty() );
@@ -300,15 +419,15 @@ void VariantInputOptions::prepare_data_() const
 }
 
 // -------------------------------------------------------------------------
-//     prepare_data_single_file_
+//     prepare_iterator_single_file_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_single_file_() const
+void VariantInputOptions::prepare_iterator_single_file_() const
 {
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
-        "prepare_data_single_file_() called in an invalid context."
+        "prepare_iterator_single_file_() called in an invalid context."
     );
 
     // Get the input file as a pointer, using the one input that the user provided,
@@ -320,12 +439,14 @@ void VariantInputOptions::prepare_data_single_file_() const
                 provided_input_file = input_file.get();
             } else {
                 internal_check(
-                    false, "prepare_data_single_file_() called with more than one file provided"
+                    false, "prepare_iterator_single_file_() called with more than one file provided"
                 );
             }
         }
     }
-    internal_check( provided_input_file, "prepare_data_single_file_() called with no file provided" );
+    internal_check(
+        provided_input_file, "prepare_iterator_single_file_() called with no file provided"
+    );
 
     // If a sample name prefix or a list is given,
     // we check that this is only for the allowed file types.
@@ -368,8 +489,16 @@ void VariantInputOptions::prepare_data_single_file_() const
     }
     internal_check(
         static_cast<bool>( iterator_ ) && ! sample_names_.empty(),
-        "prepare_data_single_file_() call to file prepare function did not succeed."
+        "prepare_iterator_single_file_() call to file prepare function did not succeed."
     );
+
+    // Add a visitor that checks chromosome order and length. We need to check order here,
+    // as the single iterator does not do this already (as opposed to the parallel one below).
+    if( sequence_dict_ ) {
+        iterator_.add_visitor(
+            genesis::population::make_variant_input_iterator_sequence_order_visitor( sequence_dict_ )
+        );
+    }
 
     // Add the region filters.
     // need to refactor, rename, and add a filter for each sample.
@@ -397,10 +526,10 @@ void VariantInputOptions::prepare_data_single_file_() const
 }
 
 // -------------------------------------------------------------------------
-//     prepare_data_multiple_files_
+//     prepare_iterator_multiple_files_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_data_multiple_files_() const
+void VariantInputOptions::prepare_iterator_multiple_files_() const
 {
     using namespace genesis;
     using namespace genesis::population;
@@ -409,7 +538,7 @@ void VariantInputOptions::prepare_data_multiple_files_() const
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
         ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
-        "prepare_data_multiple_files_() called in an invalid context."
+        "prepare_iterator_multiple_files_() called in an invalid context."
     );
 
     // Sample name list cannot be used with multiple files.
@@ -461,8 +590,14 @@ void VariantInputOptions::prepare_data_multiple_files_() const
 
     // Check that we have multiple input files.
     internal_check(
-        file_count > 1, "prepare_data_multiple_files_() called with just one file provided"
+        file_count > 1, "prepare_iterator_multiple_files_() called with just one file provided"
     );
+
+    // If a sequence dict in some format was provided, we use it for the iterator,
+    // so that the chromosome order can be used correctly. Also check chromosome length.
+    if( sequence_dict_ ) {
+        parallel_it.sequence_dict( sequence_dict_ );
+    }
 
     // Go through all sources again, build the sample names list from them,
     // and add the individual samples filters to all of them, e.g., so that regions are filtered
@@ -488,8 +623,16 @@ void VariantInputOptions::prepare_data_multiple_files_() const
     iterator_ = make_variant_input_iterator_from_variant_parallel_input_iterator( parallel_it );
     internal_check(
         iterator_.data().sample_names.size() == sample_names_.size(),
-        "prepare_data_multiple_files_() with different number of samples in iterator and list"
+        "prepare_iterator_multiple_files_() with different number of samples in iterator and list"
     );
+
+    // Add a visitor that checks chromosome length. We do not need to check order,
+    // as this is done with the above sequence dict already internally.
+    if( sequence_dict_ ) {
+        iterator_.add_visitor(
+            make_variant_input_iterator_sequence_length_visitor( sequence_dict_ )
+        );
+    }
 
     // Add the filters and transformations that are to be applied to all samples combined.
     add_combined_filters_and_transforms_to_iterator_( iterator_ );

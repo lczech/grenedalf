@@ -36,6 +36,7 @@
 #include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
 #include "genesis/sequence/reference_genome.hpp"
+#include "genesis/sequence/sequence_dict.hpp"
 #include "genesis/utils/containers/lambda_iterator.hpp"
 #include "genesis/utils/containers/range.hpp"
 
@@ -103,6 +104,16 @@ public:
         std::string const& group = "Input Settings"
     );
 
+    void add_input_files_opts_to_app(
+        CLI::App* sub,
+        std::string const& group = "Input Settings"
+    );
+
+    void add_reference_genome_opts_to_app(
+        CLI::App* sub,
+        std::string const& group = "Input Settings"
+    );
+
     // -------------------------------------------------------------------------
     //     Command Setup Functions
     // -------------------------------------------------------------------------
@@ -140,7 +151,7 @@ public:
      */
     std::vector<std::string> const& sample_names() const
     {
-        prepare_data_();
+        prepare_();
         return sample_names_;
     }
 
@@ -151,7 +162,7 @@ public:
      */
     VariantInputIterator& get_iterator() const
     {
-        prepare_data_();
+        prepare_();
         return iterator_;
     }
 
@@ -194,9 +205,11 @@ public:
 
 private:
 
-    void prepare_data_() const;
-    void prepare_data_single_file_() const;
-    void prepare_data_multiple_files_() const;
+    void prepare_() const;
+    void prepare_reference_() const;
+    void prepare_iterator_() const;
+    void prepare_iterator_single_file_() const;
+    void prepare_iterator_multiple_files_() const;
 
     /**
      * @brief Add filters and transformations that are to be applied to each input individually.
@@ -235,7 +248,9 @@ private:
 
     // General input settings
     CliOption<std::string> multi_file_loci_set_ = "union";
-    CliOption<std::string> reference_genome_file_;
+    CliOption<std::string> reference_genome_fasta_file_;
+    CliOption<std::string> reference_genome_dict_file_;
+    CliOption<std::string> reference_genome_fai_file_;
 
     // Hidden options to set the LambdaIterator block size for speed.
     CliOption<size_t> iterator_block_size_ = 8192;
@@ -266,8 +281,9 @@ private:
     // Not all formats have sample names, so we need to cache those.
     mutable std::vector<std::string> sample_names_;
 
-    // Also load the reference genome, if provided.
+    // Also load the reference genome and dict, if provided.
     mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;
+    mutable std::shared_ptr<genesis::sequence::SequenceDict> sequence_dict_;
 
     // Counts, for reporting
     mutable size_t num_chromosomes_ = 0;
