@@ -302,6 +302,13 @@ void VariantInputOptions::prepare_reference_() const
     using namespace genesis::sequence;
     using namespace genesis::utils;
 
+    // Check if we already ran this function (which can happen depending on the order in which
+    // we downstream request this). As we always set the sequence_dict_ if there is any
+    // reference-related input option, we just use this as a check whether we already ran.
+    if( sequence_dict_ ) {
+        return;
+    }
+
     // Internally check that at most one was set.
     size_t used_ref_opts = 0;
 

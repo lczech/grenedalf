@@ -171,7 +171,17 @@ public:
      */
     std::shared_ptr<genesis::sequence::ReferenceGenome> get_reference_genome() const
     {
+        prepare_reference_();
         return reference_genome_;
+    }
+
+    /**
+     * @brief Return the pointer to the reference sequence dictionary, if provided, or nullptr.
+     */
+    std::shared_ptr<genesis::sequence::SequenceDict> get_reference_dict() const
+    {
+        prepare_reference_();
+        return sequence_dict_;
     }
 
     // -------------------------------------------------------------------------
