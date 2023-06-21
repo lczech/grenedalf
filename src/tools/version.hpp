@@ -52,7 +52,7 @@ inline std::string grenedalf_header()
 
 inline std::string grenedalf_title()
 {
-    return "grenedalf - genome analyses of differential allele frequencies";
+    return "grenedalf: population genetic statistics for the next generation of pool sequencing";
 }
 
 #endif // include guard

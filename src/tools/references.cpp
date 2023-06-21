@@ -61,11 +61,11 @@ static std::unordered_map<std::string, Citation> citations_ = {
     { "Czech2023-grenedalf", {
         {{ "Lucas", "Czech" }, { "Jeffrey", "Spence" }, { "Moises", "Exposito-Alonso" }},
         "grenedalf: population genetic statistics for the next generation of pool sequencing",
-        "Manuscript in preparation",
+        "arXiv",
         "",
         "",
         "2023",
-        ""
+        "arXiv:2306.11622"
     }},
     { "Kofler2011-PoPoolation", {
         {
