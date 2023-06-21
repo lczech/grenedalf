@@ -65,7 +65,7 @@ static std::unordered_map<std::string, Citation> citations_ = {
         "",
         "",
         "2023",
-        "arXiv:2306.11622"
+        "10.48550/arXiv.2306.11622"
     }},
     { "Kofler2011-PoPoolation", {
         {
