@@ -52,7 +52,8 @@ public:
     PoolsizesOptions              poolsizes;
 
     // Specific settings
-    CliOption<std::string> method = "";
+    CliOption<std::string> method = "unbiased-nei";
+    CliOption<bool>        write_pi_tables = false;
     CliOption<bool>        omit_na_windows = false;
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";

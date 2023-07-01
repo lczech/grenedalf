@@ -53,12 +53,22 @@
 // =================================================================================================
 
 /**
+ * @brief Window type that we use throughout, where each position in the Window is a Variant.
+ */
+using VariantWindow = ::genesis::population::Window<::genesis::population::Variant>;
+
+/**
+ * @brief Window type that we use throughout, where each position in the Window is a Variant.
+ */
+using VariantWindowView = ::genesis::population::WindowView<::genesis::population::Variant>;
+
+/**
  * @brief Generic Window Iterator type that we are using throughout grenedalf.
  *
  * We use the base class for types of window iterators here,
  * meaning that this type has to be used through pointers.
  */
-using VariantWindowIterator = genesis::population::VariantWindowIterator;
+using VariantWindowIterator = ::genesis::population::VariantWindowIterator;
 
 /**
  * @brief Generic Window View Iterator type that we are using throughout grenedalf.
@@ -66,7 +76,7 @@ using VariantWindowIterator = genesis::population::VariantWindowIterator;
  * We use the base class for types of window iterators here,
  * meaning that this type has to be used through pointers.
  */
-using VariantWindowViewIterator = genesis::population::VariantWindowViewIterator;
+using VariantWindowViewIterator = ::genesis::population::VariantWindowViewIterator;
 
 // =================================================================================================
 //      Window Options

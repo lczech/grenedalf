@@ -47,6 +47,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <tuple>
 #include <vector>
 
 // =================================================================================================
@@ -134,6 +135,18 @@ void setup_fst( CLI::App& app )
     // Settings: Pool sizes
     options->poolsizes.add_poolsizes_opt_to_app( sub, false );
 
+    // Settings: Write pi tables
+    options->write_pi_tables.option = sub->add_flag(
+        "--write-pi-tables",
+        options->write_pi_tables.value,
+        "When using either of the two unbiased (Nei or Hudson) estimators, also write tables "
+        "of the involved pi values (within, between, and total). See our equations for details. "
+        "We here scale the values by the number of variant sites (which is printed in the output "
+        "table column `snps`); multiplying the pi and the snps per row gives the absolute sum of pi "
+        " values, which can be used if a different scaling is required instead."
+    );
+    options->write_pi_tables.option->group( "Settings" );
+
     // TODO need to check if this is still needed when filtering for snps...
     // Settings: Omit Empty Windows
     options->omit_na_windows.option = sub->add_flag(
@@ -217,7 +230,7 @@ void setup_fst( CLI::App& app )
 }
 
 // =================================================================================================
-//      Helper Functions
+//      Setup Functions
 // =================================================================================================
 
 // -------------------------------------------------------------------------
@@ -417,13 +430,187 @@ genesis::population::FstPoolProcessor get_fst_pool_processor_(
     return processor;
 }
 
+// =================================================================================================
+//      Output Functions
+// =================================================================================================
+
+/**
+ * @brief State of the command.
+ *
+ * This is a simple POD to keep all data related to the fst computation and output files
+ * for per-position/window files in one place, so that we can break stuff into functions.
+ */
+struct FstCommandState
+{
+    FstMethod method;
+
+    // The output to write to, for per-window output.
+    // The pi ones are only used when using fst unbiased nei or hudson,
+    // and when the respective option is set.
+    std::shared_ptr<::genesis::utils::BaseOutputTarget> fst_output_target;
+    std::shared_ptr<::genesis::utils::BaseOutputTarget> pi_within_output_target;
+    std::shared_ptr<::genesis::utils::BaseOutputTarget> pi_between_output_target;
+    std::shared_ptr<::genesis::utils::BaseOutputTarget> pi_total_output_target;
+
+    // How many windows were actually used, and how many skipped due to only containing nan.
+    size_t used_count = 0;
+    size_t skipped_count = 0;
+
+    // Are we using whole genome mode, and all to all?
+    // In those cases, we need to produce some extra files.
+    bool is_whole_genome;
+    bool is_all_to_all;
+};
+
+/**
+ * @brief Collection of vectors for pi within, between, and total, in that order.
+ */
+using PiVectorTuple = std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>;
+
 // -------------------------------------------------------------------------
-//     print_fst_list_
+//     check_output_files_
 // -------------------------------------------------------------------------
 
-void print_fst_list_(
+void check_output_files_(
     FstOptions const& options,
-    std::vector<double> const& window_fst,
+    FstCommandState& state
+) {
+    // Check that the pi tables are actually computed.
+    if(
+        options.write_pi_tables.value && (
+            state.method != FstMethod::kUnbiasedNei &&
+            state.method != FstMethod::kUnbiasedHudson
+        )
+    ) {
+        throw CLI::ValidationError(
+            options.write_pi_tables.option->get_name(),
+            "Can only write pi tables when the unbiased Nei or Hudson estimator is being used."
+        );
+    }
+
+    // Basic output file check
+    options.file_output.check_output_files_nonexistence( "fst", "csv" );
+    if( options.write_pi_tables.value ) {
+        options.file_output.check_output_files_nonexistence( "pi-within", "csv" );
+        options.file_output.check_output_files_nonexistence( "pi-between", "csv" );
+        options.file_output.check_output_files_nonexistence( "pi-total", "csv" );
+    }
+
+    // Also check the additional files, if we are going to produce them.
+    if( state.is_whole_genome ) {
+        options.file_output.check_output_files_nonexistence( "fst-list", "csv" );
+        if( options.write_pi_tables.value ) {
+            options.file_output.check_output_files_nonexistence( "pi-within-list", "csv" );
+            options.file_output.check_output_files_nonexistence( "pi-between-list", "csv" );
+            options.file_output.check_output_files_nonexistence( "pi-total-list", "csv" );
+        }
+
+        // If we run an all-to-all FST computation, we also want to output a matrix.
+        if( state.is_all_to_all ) {
+            options.file_output.check_output_files_nonexistence( "fst-matrix", "csv" );
+            if( options.write_pi_tables.value ) {
+                options.file_output.check_output_files_nonexistence( "pi-within-matrix", "csv" );
+                options.file_output.check_output_files_nonexistence( "pi-between-matrix", "csv" );
+                options.file_output.check_output_files_nonexistence( "pi-total-matrix", "csv" );
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------
+//     prepare_output_files_
+// -------------------------------------------------------------------------
+
+void prepare_output_files_(
+    FstOptions const& options,
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs,
+    FstCommandState& state
+) {
+    // Get basic options.
+    auto const& sample_names = options.variant_input.sample_names();
+    auto const sep_char = options.table_output.get_separator_char();
+
+    // Helper function to write the header of our per-window file formats
+    auto open_file_and_write_header_ = [&](
+        std::shared_ptr<::genesis::utils::BaseOutputTarget>& target,
+        std::string const& base_name
+    ) {
+        // Make an output target, i.e., get the file name, and open the file
+        target = options.file_output.get_output_target( base_name, "csv" );
+
+        // Write the header line to it.
+        (*target) << "chrom" << sep_char << "start" << sep_char << "end" << sep_char << "snps";
+        for( auto const& pair : sample_pairs ) {
+            (*target) << sep_char << sample_names[pair.first] << "." << sample_names[pair.second];
+        }
+        (*target) << "\n";
+    };
+
+    // Prepare output file and write header line with all pairs of samples.
+    open_file_and_write_header_( state.fst_output_target, "fst" );
+
+    // Also create the per-window output files for the pi files, if needed.
+    if( options.write_pi_tables.value ) {
+        open_file_and_write_header_( state.pi_within_output_target, "pi-within" );
+        open_file_and_write_header_( state.pi_between_output_target, "pi-between" );
+        open_file_and_write_header_( state.pi_total_output_target, "pi-total" );
+    }
+}
+
+// -------------------------------------------------------------------------
+//     get_pi_vectors_
+// -------------------------------------------------------------------------
+
+/**
+ * @brief Get the pi values for all pairs of samples.
+ *
+ * We here currently need to dynamically cast the FstPoolCalculator instances, which is ugly.
+ * Might want to refactor later, but good enough for now to get it working.
+ *
+ * Returns vectors for pi within, between, and total, in that order.
+ */
+PiVectorTuple get_pi_vectors_(
+     ::genesis::population::FstPoolProcessor const& processor
+) {
+    using namespace ::genesis::population;
+
+    // Prepare the result vectors.
+    PiVectorTuple result;
+    auto const size = processor.calculators().size();
+    std::get<0>(result).resize( size );
+    std::get<1>(result).resize( size );
+    std::get<2>(result).resize( size );
+
+    // Get the pi values from all calculators, assuming that they are of the correct type.
+    for( size_t i = 0; i < processor.calculators().size(); ++i ) {
+        auto& raw_calc = processor.calculators()[i];
+        auto cast_calc = dynamic_cast<FstPoolCalculatorUnbiased const*>( raw_calc.get() );
+        internal_check( cast_calc, "Unbiased Nei/Hudson calculator expected." );
+
+        // We print the values, scaled by number of variants
+        // (i.e., the number of values that were added up there in the first place).
+        std::get<0>(result)[i] = cast_calc->get_pi_within()  / processor.processed_count();
+        std::get<1>(result)[i] = cast_calc->get_pi_between() / processor.processed_count();
+        std::get<2>(result)[i] = cast_calc->get_pi_total()   / processor.processed_count();
+    }
+
+    return result;
+}
+
+// -------------------------------------------------------------------------
+//     print_pairwise_value_list_
+// -------------------------------------------------------------------------
+
+/**
+ * @brief Print a pairwise list of values to a file.
+ *
+ * This is meant for whole genome computations, where we have a single value per pair of samples.
+ * This function then prints these values, in rows of the form "Sample1 Sample2 value".
+ */
+void print_pairwise_value_list_(
+    FstOptions const& options,
+    std::string const& out_file_basename,
+    std::vector<double> const& values,
     std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
     using namespace genesis::utils;
@@ -433,26 +620,34 @@ void print_fst_list_(
     auto const sep_char = options.table_output.get_separator_char();
 
     // For whole genome FST, we fill a list with all pairs.
-    std::shared_ptr<BaseOutputTarget> fst_list_ofs;
-    fst_list_ofs = options.file_output.get_output_target( "fst-list", "csv" );
-    (*fst_list_ofs) << "first" << sep_char << "second" << sep_char << "FST\n";
-    assert( sample_pairs.size() == window_fst.size() );
+    std::shared_ptr<BaseOutputTarget> output_target;
+    output_target = options.file_output.get_output_target( out_file_basename + "-list", "csv" );
+    (*output_target) << "first" << sep_char << "second" << sep_char << "FST\n";
+    assert( sample_pairs.size() == values.size() );
 
     // Write all pairs.
     for( size_t i = 0; i < sample_pairs.size(); ++i ) {
         auto const& pair = sample_pairs[i];
-        (*fst_list_ofs) << sample_names[pair.first] << sep_char << sample_names[pair.second];
-        (*fst_list_ofs) << sep_char << window_fst[i] << "\n";
+        (*output_target) << sample_names[pair.first] << sep_char << sample_names[pair.second];
+        (*output_target) << sep_char << values[i] << "\n";
     }
 }
 
 // -------------------------------------------------------------------------
-//     print_fst_matrix_
+//     print_pairwise_value_matrix_
 // -------------------------------------------------------------------------
 
-void print_fst_matrix_(
+/**
+ * @brief Print a pairwise matrix of values to a file.
+ *
+ * This is meant for whole genome computations, where we have a single value per pair of samples.
+ * This function then prints these values, as a symmetrical matrix, with the samples in the rows
+ * and columns.
+ */
+void print_pairwise_value_matrix_(
     FstOptions const& options,
-    std::vector<double> const& window_fst,
+    std::string const& out_file_basename,
+    std::vector<double> const& values,
     std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
     using namespace genesis::utils;
@@ -465,15 +660,138 @@ void print_fst_matrix_(
     auto mat = Matrix<double>( sample_names.size(), sample_names.size(), 0.0 );
     for( size_t i = 0; i < sample_pairs.size(); ++i ) {
         auto const& pair = sample_pairs[i];
-        mat( pair.first, pair.second ) = window_fst[i];
-        mat( pair.second, pair.first ) = window_fst[i];
+        mat( pair.first, pair.second ) = values[i];
+        mat( pair.second, pair.first ) = values[i];
     }
 
     // For whole genome all-to-all FST, we fill a matrix with all samples.
-    std::shared_ptr<BaseOutputTarget> fst_matrix_ofs;
-    fst_matrix_ofs = options.file_output.get_output_target( "fst-matrix", "csv" );
+    std::shared_ptr<BaseOutputTarget> output_target;
+    output_target = options.file_output.get_output_target( out_file_basename + "-matrix", "csv" );
     auto writer = MatrixWriter<double>( std::string( 1, sep_char ));
-    writer.write( mat, fst_matrix_ofs, sample_names, sample_names, "sample" );
+    writer.write( mat, output_target, sample_names, sample_names, "sample" );
+}
+
+// -------------------------------------------------------------------------
+//     print_output_line_
+// -------------------------------------------------------------------------
+
+void print_output_line_(
+    FstOptions const& options,
+    ::genesis::population::FstPoolProcessor const& processor,
+    VariantWindowView const& window,
+    std::vector<double> const& values,
+    ::genesis::utils::BaseOutputTarget& target
+) {
+    // Get the separator char to use for table entries.
+    auto const sep_char = options.table_output.get_separator_char();
+
+    // Write fixed columns.
+    target << window.chromosome();
+    target << sep_char << window.first_position();
+    target << sep_char << window.last_position();
+    target << sep_char << processor.processed_count();
+
+    // Write the per-pair FST values in the correct order.
+    for( auto const& fst : values ) {
+        if( std::isfinite( fst ) ) {
+            target << sep_char << fst;
+        } else {
+            target << sep_char << options.table_output.get_na_entry();
+        }
+    }
+    target << "\n";
+}
+
+// -------------------------------------------------------------------------
+//     print_fst_files_
+// -------------------------------------------------------------------------
+
+/**
+ * @brief Print the fst values for all sample pairs, for a given window.
+ *
+ * This function is called once per window, and writes out the per-pair results to the output file.
+ */
+void print_to_output_files_(
+    FstOptions const& options,
+    ::genesis::population::FstPoolProcessor const& processor,
+    VariantWindowView const& window,
+    std::vector<std::pair<size_t, size_t>> const& sample_pairs,
+    FstCommandState& state
+) {
+    // Get the results and check them.
+    auto const& window_fst = processor.get_result();
+    internal_check(
+        window_fst.size() == sample_pairs.size(),
+        "Inconsistent size of window fst values and sample pairs."
+    );
+
+    // In case that we want to print the pi values for the unbiased estimator, get those.
+    PiVectorTuple pi_vectors;
+    if( options.write_pi_tables.value ) {
+        pi_vectors = get_pi_vectors_( processor );
+        internal_check( std::get<0>(pi_vectors).size() == sample_pairs.size() );
+        internal_check( std::get<1>(pi_vectors).size() == sample_pairs.size() );
+        internal_check( std::get<2>(pi_vectors).size() == sample_pairs.size() );
+    }
+
+    // Write the values, unless all of them are nan, then we might skip.
+    // Skip empty windows if the user wants to.
+    if(
+        options.omit_na_windows.value && (
+            processor.processed_count() == 0 ||
+            std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
+                return std::isfinite( v );
+            })
+        )
+    ) {
+        ++state.skipped_count;
+    } else {
+        ++state.used_count;
+        print_output_line_( options, processor, window, window_fst, *state.fst_output_target );
+        if( options.write_pi_tables.value ) {
+            print_output_line_(
+                options, processor, window, std::get<0>(pi_vectors), *state.pi_within_output_target
+            );
+            print_output_line_(
+                options, processor, window, std::get<1>(pi_vectors), *state.pi_between_output_target
+            );
+            print_output_line_(
+                options, processor, window, std::get<2>(pi_vectors), *state.pi_total_output_target
+            );
+        }
+    }
+
+    // For whole genome, and then also for all-to-all, we produce special tables on top.
+    if( state.is_whole_genome ) {
+        internal_check( options.window.get_num_windows() == 1, "Whole genome with multiple windows" );
+        print_pairwise_value_list_( options, "fst", window_fst, sample_pairs );
+        if( options.write_pi_tables.value ) {
+            print_pairwise_value_list_(
+                options, "pi-within",  std::get<0>(pi_vectors), sample_pairs
+            );
+            print_pairwise_value_list_(
+                options, "pi-between", std::get<1>(pi_vectors), sample_pairs
+            );
+            print_pairwise_value_list_(
+                options, "pi-total",   std::get<2>(pi_vectors), sample_pairs
+            );
+        }
+
+        if( state.is_all_to_all ) {
+            print_pairwise_value_matrix_( options, "fst", window_fst, sample_pairs );
+            if( options.write_pi_tables.value ) {
+                print_pairwise_value_matrix_(
+                    options, "pi-within",  std::get<0>(pi_vectors), sample_pairs
+                );
+                print_pairwise_value_matrix_(
+                    options, "pi-between", std::get<1>(pi_vectors), sample_pairs
+                );
+                print_pairwise_value_matrix_(
+                    options, "pi-total",   std::get<2>(pi_vectors), sample_pairs
+                );
+            }
+        }
+    }
 }
 
 // =================================================================================================
@@ -484,30 +802,19 @@ void run_fst( FstOptions const& options )
 {
     using namespace genesis::population;
     using namespace genesis::utils;
-    // using VariantWindow = Window<genesis::population::Variant>;
 
-    // Basic output file check
-    options.file_output.check_output_files_nonexistence( "fst", "csv" );
+    // The state POD that stores the run objects in one place.
+    FstCommandState state;
+    state.method = get_enum_map_value( fst_method_map, options.method.value );
+    state.is_whole_genome = ( options.window.window_type() == WindowOptions::WindowType::kGenome );
+    state.is_all_to_all = ( ! *options.comparand.option) && ( ! *options.comparand_list.option );
 
-    // Also check the additional files, if we are going to produce them.
-    bool const is_whole_genome = ( options.window.window_type() == WindowOptions::WindowType::kGenome );
-    bool const is_all_to_all = ( ! *options.comparand.option) && ( ! *options.comparand_list.option );
-    if( is_whole_genome ) {
-        options.file_output.check_output_files_nonexistence( "fst-list", "csv" );
-
-        // If we run an all-to-all FST computation, we also want to output a matrix.
-        if( is_all_to_all ) {
-            options.file_output.check_output_files_nonexistence( "fst-matrix", "csv" );
-        }
-    }
+    // Check that none of the output files exist.
+    check_output_files_( options, state );
 
     // -------------------------------------------------------------------------
     //     Preparation
     // -------------------------------------------------------------------------
-
-    // Use an enum for the method, which is faster to check in the main loop than doing
-    // string comparisons all the time.
-    auto const method = get_enum_map_value( fst_method_map, options.method.value );
 
     // Before accessing the variant input, we need to add the filters to it.
     // We use a variant filter that always filters out non-SNP positions here.
@@ -520,7 +827,7 @@ void run_fst( FstOptions const& options )
     );
     genesis::population::VariantFilter total_filter;
     total_filter.only_snps = true;
-    if( method == FstMethod::kKarlsson ) {
+    if( state.method == FstMethod::kKarlsson ) {
         total_filter.only_biallelic_snps = true;
     }
     options.variant_input.add_combined_filter_and_transforms(
@@ -539,35 +846,23 @@ void run_fst( FstOptions const& options )
 
     // If we do all-to-all, we expect a triangular matrix size of entries.
     internal_check(
-        ! is_all_to_all || sample_pairs.size() == triangular_size( sample_names.size() ),
+        ! state.is_all_to_all || sample_pairs.size() == triangular_size( sample_names.size() ),
         "Expeting all-to-all FST to create a trinangular number of sample pairs."
     );
 
     // Make the processor.
-    FstPoolProcessor processor = get_fst_pool_processor_( options, method, sample_pairs );
+    FstPoolProcessor processor = get_fst_pool_processor_( options, state.method, sample_pairs );
 
     // -------------------------------------------------------------------------
     //     Prepare Tables, Print Headers
     // -------------------------------------------------------------------------
 
-    // Get the separator char to use for table entries.
-    auto const sep_char = options.table_output.get_separator_char();
-
-    // Prepare output file and write header line with all pairs of samples.
-    auto fst_ofs = options.file_output.get_output_target( "fst", "csv" );
-    (*fst_ofs) << "chrom" << sep_char << "start" << sep_char << "end" << sep_char << "snps";
-    for( auto const& pair : sample_pairs ) {
-        (*fst_ofs) << sep_char << sample_names[pair.first] << "." << sample_names[pair.second];
-    }
-    (*fst_ofs) << "\n";
+    // Prepare the main output file per window
+    prepare_output_files_( options, sample_pairs, state );
 
     // -------------------------------------------------------------------------
     //     Main Loop
     // -------------------------------------------------------------------------
-
-    // Iterate the file and compute per-window FST.
-    size_t use_cnt = 0;
-    size_t nan_cnt = 0;
 
     auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
@@ -578,7 +873,6 @@ void run_fst( FstOptions const& options )
 
         // Compute diversity over samples.
         // #pragma omp parallel for
-        size_t entry_count = 0;
         for( auto const& variant : window ) {
             internal_check(
                 variant.samples.size() == sample_names.size(),
@@ -587,67 +881,21 @@ void run_fst( FstOptions const& options )
 
             // TODO add thread pool? might need to be implemented in the processor itself.
             processor.process( variant );
-            ++entry_count;
-        }
-        auto const& window_fst = processor.get_result();
-        internal_check(
-            window_fst.size() == sample_pairs.size(),
-            "Inconsistent size of window fst values and sample pairs."
-        );
-
-        // Write the values, unless all of them are nan, then we might skip.
-        // Skip empty windows if the user wants to.
-        if(
-            options.omit_na_windows.value && (
-                entry_count == 0 ||
-                std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
-                    return std::isfinite( v );
-                })
-            )
-        ) {
-            ++nan_cnt;
-        } else {
-            ++use_cnt;
-
-            // Write fixed columns.
-            (*fst_ofs) << window.chromosome();
-            (*fst_ofs) << sep_char << window.first_position();
-            (*fst_ofs) << sep_char << window.last_position();
-            (*fst_ofs) << sep_char << entry_count;
-
-            // Write the per-pair FST values in the correct order.
-            for( auto const& fst : window_fst ) {
-                if( std::isfinite( fst ) ) {
-                    (*fst_ofs) << sep_char << fst;
-                } else {
-                    (*fst_ofs) << sep_char << options.table_output.get_na_entry();
-                }
-            }
-            (*fst_ofs) << "\n";
         }
 
-        // For whole genome, and then also for all-to-all, we produce special tables on top.
-        if( is_whole_genome ) {
-            internal_check(
-                options.window.get_num_windows() == 1,
-                "More than one window for whole genome"
-            );
-            print_fst_list_( options, window_fst, sample_pairs );
-            if( is_all_to_all ) {
-                print_fst_matrix_( options, window_fst, sample_pairs );
-            }
-        }
+        // Print the output to all files that we want.
+        print_to_output_files_( options, processor, window, sample_pairs, state );
     }
     internal_check(
-        use_cnt + nan_cnt == options.window.get_num_windows(),
+        state.used_count + state.skipped_count == options.window.get_num_windows(),
         "Number of windows is inconsistent."
     );
 
     // Final user output.
     options.window.print_report();
-    if( nan_cnt > 0 ) {
-        LOG_MSG << "Thereof, skipped " << nan_cnt << " window"
-                << ( nan_cnt != 1 ? "s" : "" ) << " without any FST values.";
+    if( state.skipped_count > 0 ) {
+        LOG_MSG << "Thereof, skipped " << state.skipped_count << " window"
+                << ( state.skipped_count != 1 ? "s" : "" ) << " without any FST values.";
     }
     options.filter_numerical.print_report();
 }

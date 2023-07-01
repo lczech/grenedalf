@@ -82,11 +82,11 @@ void write_columns(
  */
 inline void internal_check(
     bool condition,
-    std::string const& error_message
+    std::string const& error_message = ""
 ) {
     if( ! condition ) {
         throw std::domain_error(
-            "Internal error: " + error_message
+            "Internal error: " + ( error_message.empty() ? "Unknown error" : error_message )
         );
     }
 }
