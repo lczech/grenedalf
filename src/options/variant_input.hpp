@@ -295,9 +295,11 @@ private:
     mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;
     mutable std::shared_ptr<genesis::sequence::SequenceDict> sequence_dict_;
 
-    // Counts, for reporting
+    // Counts, for reporting: How many chr and pos have we seen,
+    // and if we have a ref genome fasta, did we see any mismatching bases?
     mutable size_t num_chromosomes_ = 0;
     mutable size_t num_positions_ = 0;
+    mutable size_t num_mismatch_bases_ = 0;
 
 };
 

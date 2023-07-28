@@ -42,6 +42,7 @@
 #include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/options.hpp"
 #include "genesis/utils/core/std.hpp"
+#include "genesis/utils/text/char.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
 
@@ -269,6 +270,11 @@ void VariantInputOptions::print_report() const
     auto const pos_cnt = num_positions_;
     LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
             << " with " << pos_cnt << " (non-filtered) position" << ( pos_cnt != 1 ? "s" : "" ) << ".";
+    if( num_mismatch_bases_ > 0 ) {
+        LOG_WARN << "Out of these, " << num_mismatch_bases_ << " positions had a mismatch between "
+                 << "the bases as determined from the input file(s) compared to the provided "
+                 << "reference genome. Please check that you provided a fitting reference genome!";
+    }
 }
 
 // =================================================================================================
@@ -717,4 +723,20 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
             }
         }
     );
+
+    // If we have a reference genome, we also check that its bases match what we find in the
+    // input files, and report if that's not fitting.
+    if( reference_genome_ ) {
+        iterator.add_visitor(
+            [ this ]( Variant const& variant ) mutable {
+                auto const var_base = genesis::utils::to_upper( variant.reference_base );
+                auto const ref_base = reference_genome_->get_base(
+                    variant.chromosome, variant.position
+                );
+                if( var_base != 'N' && ref_base != 'N' && var_base != ref_base ) {
+                    ++num_mismatch_bases_;
+                }
+            }
+        );
+    }
 }
