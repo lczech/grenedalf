@@ -576,13 +576,13 @@ PiVectorTuple get_pi_vectors_(
 
     // Prepare the result vectors.
     PiVectorTuple result;
-    auto const size = processor.calculators().size();
-    std::get<0>(result).resize( size );
-    std::get<1>(result).resize( size );
-    std::get<2>(result).resize( size );
+    auto const result_size = processor.calculators().size();
+    std::get<0>(result).resize( result_size );
+    std::get<1>(result).resize( result_size );
+    std::get<2>(result).resize( result_size );
 
     // Get the pi values from all calculators, assuming that they are of the correct type.
-    for( size_t i = 0; i < processor.calculators().size(); ++i ) {
+    for( size_t i = 0; i < result_size; ++i ) {
         auto& raw_calc = processor.calculators()[i];
         auto cast_calc = dynamic_cast<FstPoolCalculatorUnbiased const*>( raw_calc.get() );
         internal_check( cast_calc, "Unbiased Nei/Hudson calculator expected." );
@@ -728,6 +728,13 @@ void print_to_output_files_(
     // In case that we want to print the pi values for the unbiased estimator, get those.
     PiVectorTuple pi_vectors;
     if( options.write_pi_tables.value ) {
+        // Assert that we indeed are computing one of the unbiased estimators.
+        internal_check(
+            state.method == FstMethod::kUnbiasedNei || state.method == FstMethod::kUnbiasedHudson,
+            "Unbiased Nei/Hudson calculator expected when using --write-pi-values"
+        );
+
+        // Get the values to be printed here
         pi_vectors = get_pi_vectors_( processor );
         internal_check( std::get<0>(pi_vectors).size() == sample_pairs.size() );
         internal_check( std::get<1>(pi_vectors).size() == sample_pairs.size() );
@@ -813,7 +820,7 @@ void run_fst( FstOptions const& options )
     check_output_files_( options, state );
 
     // -------------------------------------------------------------------------
-    //     Preparation
+    //     Options Preparation
     // -------------------------------------------------------------------------
 
     // Before accessing the variant input, we need to add the filters to it.
@@ -878,8 +885,6 @@ void run_fst( FstOptions const& options )
                 variant.samples.size() == sample_names.size(),
                 "Inconsistent number of samples in input file."
             );
-
-            // TODO add thread pool? might need to be implemented in the processor itself.
             processor.process( variant );
         }
 
