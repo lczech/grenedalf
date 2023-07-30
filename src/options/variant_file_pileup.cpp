@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "options/variant_input_pileup.hpp"
+#include "options/variant_file_pileup.hpp"
 
 #include "options/global.hpp"
 #include "tools/misc.hpp"
@@ -40,7 +40,7 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputPileupOptions::add_file_input_opt_to_app_(
+CLI::Option* VariantFilePileupOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
@@ -48,7 +48,7 @@ CLI::Option* VariantInputPileupOptions::add_file_input_opt_to_app_(
     // Correct setup check.
     internal_check(
         file_input_.option() == nullptr,
-        "Cannot use the same VariantInputPileupOptions object multiple times."
+        "Cannot use the same VariantFilePileupOptions object multiple times."
     );
 
     // TODO add options for reading: with quality, with ancestral base
@@ -101,7 +101,7 @@ CLI::Option* VariantInputPileupOptions::add_file_input_opt_to_app_(
 //      Run Functions
 // =================================================================================================
 
-VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::get_iterator_(
+VariantFilePileupOptions::VariantInputIterator VariantFilePileupOptions::get_iterator_(
     std::string const& filename
 ) const {
     using namespace genesis::population;

@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_SYNC_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_SYNC_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILE_PILEUP_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILE_PILEUP_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,20 +27,20 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
-#include "options/variant_input_file.hpp"
+#include "options/variant_file.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
-//      VariantInputSync Options
+//      Variant File Pileup Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantInputSyncOptions final : public VariantInputFileOptions
+class VariantFilePileupOptions final : public VariantFileOptions
 {
 public:
 
@@ -48,14 +48,14 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputSyncOptions()  = default;
-    ~VariantInputSyncOptions() = default;
+    VariantFilePileupOptions()  = default;
+    ~VariantFilePileupOptions() = default;
 
-    VariantInputSyncOptions( VariantInputSyncOptions const& other ) = default;
-    VariantInputSyncOptions( VariantInputSyncOptions&& )            = default;
+    VariantFilePileupOptions( VariantFilePileupOptions const& other ) = default;
+    VariantFilePileupOptions( VariantFilePileupOptions&& )            = default;
 
-    VariantInputSyncOptions& operator= ( VariantInputSyncOptions const& other ) = default;
-    VariantInputSyncOptions& operator= ( VariantInputSyncOptions&& )            = default;
+    VariantFilePileupOptions& operator= ( VariantFilePileupOptions const& other ) = default;
+    VariantFilePileupOptions& operator= ( VariantFilePileupOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Virtual Functions
@@ -71,7 +71,7 @@ private:
 
     std::string get_default_group_name_() const override
     {
-        return "Input sync";
+        return "Input (m)pileup";
     }
 
     VariantInputIterator get_iterator_(
@@ -84,8 +84,11 @@ private:
 
 private:
 
-    // Sync
-    // no extra options for the user here at the moment
+    CliOption<size_t>      pileup_min_base_qual_    = 0;
+    CliOption<std::string> pileup_quality_encoding_ = "sanger";
+    // CliOption<bool> with_quality_string_ = true;
+    // CliOption<bool> with_ancestral_base_ = false;
+
 
 };
 

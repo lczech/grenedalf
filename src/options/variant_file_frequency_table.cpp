@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "options/variant_input_frequency_table.hpp"
+#include "options/variant_file_frequency_table.hpp"
 
 #include "options/global.hpp"
 #include "tools/misc.hpp"
@@ -35,7 +35,7 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
+CLI::Option* VariantFileFrequencyTableOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
@@ -43,7 +43,7 @@ CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
     // Correct setup check.
     internal_check(
         file_input_.option() == nullptr,
-        "Cannot use the same VariantInputFrequencyTableOptions object multiple times."
+        "Cannot use the same VariantFileFrequencyTableOptions object multiple times."
     );
 
     // Add the base file input option
@@ -99,7 +99,7 @@ CLI::Option* VariantInputFrequencyTableOptions::add_file_input_opt_to_app_(
     return file_input_.option();
 }
 
-void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
+void VariantFileFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     CLI::App* sub,
     std::string const& group
 ) {
@@ -214,12 +214,12 @@ void VariantInputFrequencyTableOptions::add_extra_file_input_opts_to_app_(
 //      Run Functions
 // =================================================================================================
 
-char VariantInputFrequencyTableOptions::get_separator_char_() const
+char VariantFileFrequencyTableOptions::get_separator_char_() const
 {
     return translate_separator_char( separator_char_ );
 }
 
-VariantInputFrequencyTableOptions::VariantInputIterator VariantInputFrequencyTableOptions::get_iterator_(
+VariantFileFrequencyTableOptions::VariantInputIterator VariantFileFrequencyTableOptions::get_iterator_(
     std::string const& filename
 ) const {
     using namespace genesis::population;

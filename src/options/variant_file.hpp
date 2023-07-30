@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_FILE_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_FILE_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILE_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILE_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -42,13 +42,13 @@ class VariantInputOptions;
 class VariantInputSampleNamesOptions;
 
 // =================================================================================================
-//      Variant Input Sam Options
+//      Variant File Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantInputFileOptions
+class VariantFileOptions
 {
 public:
 
@@ -64,14 +64,14 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputFileOptions()  = default;
-    virtual ~VariantInputFileOptions() = default;
+    VariantFileOptions()  = default;
+    virtual ~VariantFileOptions() = default;
 
-    VariantInputFileOptions( VariantInputFileOptions const& other ) = default;
-    VariantInputFileOptions( VariantInputFileOptions&& )            = default;
+    VariantFileOptions( VariantFileOptions const& other ) = default;
+    VariantFileOptions( VariantFileOptions&& )            = default;
 
-    VariantInputFileOptions& operator= ( VariantInputFileOptions const& other ) = default;
-    VariantInputFileOptions& operator= ( VariantInputFileOptions&& )            = default;
+    VariantFileOptions& operator= ( VariantFileOptions const& other ) = default;
+    VariantFileOptions& operator= ( VariantFileOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Setup Functions

@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_VCF_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_VCF_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILE_SAM_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILE_SAM_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,20 +27,20 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
-#include "options/variant_input_file.hpp"
+#include "options/variant_file.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
-//      VariantInputVcf Options
+//      Variant File Sam Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantInputVcfOptions final : public VariantInputFileOptions
+class VariantFileSamOptions final : public VariantFileOptions
 {
 public:
 
@@ -48,14 +48,14 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputVcfOptions()  = default;
-    ~VariantInputVcfOptions() = default;
+    VariantFileSamOptions()  = default;
+    ~VariantFileSamOptions() = default;
 
-    VariantInputVcfOptions( VariantInputVcfOptions const& other ) = default;
-    VariantInputVcfOptions( VariantInputVcfOptions&& )            = default;
+    VariantFileSamOptions( VariantFileSamOptions const& other ) = default;
+    VariantFileSamOptions( VariantFileSamOptions&& )            = default;
 
-    VariantInputVcfOptions& operator= ( VariantInputVcfOptions const& other ) = default;
-    VariantInputVcfOptions& operator= ( VariantInputVcfOptions&& )            = default;
+    VariantFileSamOptions& operator= ( VariantFileSamOptions const& other ) = default;
+    VariantFileSamOptions& operator= ( VariantFileSamOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Virtual Functions
@@ -71,12 +71,12 @@ private:
 
     std::string get_default_group_name_() const override
     {
-        return "Input VCF/BCF";
+        return "Input SAM/BAM/CRAM";
     }
 
     VariantInputIterator get_iterator_(
         std::string const& filename
-    ) const override;
+    ) const override ;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -84,8 +84,15 @@ private:
 
 private:
 
-    // Vcf
-    // no extra options for the user here at the moment
+    // SAM/BAM/CRAM
+    CliOption<size_t>      sam_min_map_qual_      = 0;
+    CliOption<size_t>      sam_min_base_qual_     = 0;
+    CliOption<bool>        sam_split_by_rg_       = false;
+    CliOption<std::string> sam_flags_include_all_;
+    CliOption<std::string> sam_flags_include_any_;
+    CliOption<std::string> sam_flags_exclude_all_;
+    CliOption<std::string> sam_flags_exclude_any_;
+
 
 };
 

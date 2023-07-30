@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_SAMPLE_NAMES_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_SAMPLE_NAMES_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_SAMPLE_NAMES_H_
+#define GRENEDALF_OPTIONS_VARIANT_SAMPLE_NAMES_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -34,11 +34,8 @@
 #include <string>
 #include <vector>
 
-// Forward Declaration
-class VariantInputOptions;
-
 // =================================================================================================
-//      VariantInputSampleNames Options
+//      Variant Sample Names Options
 // =================================================================================================
 
 /**

@@ -28,7 +28,7 @@
 
 #include "options/file_input.hpp"
 #include "options/variant_filter_region.hpp"
-#include "options/variant_input_file.hpp"
+#include "options/variant_file.hpp"
 #include "options/variant_sample_names.hpp"
 #include "tools/cli_option.hpp"
 
@@ -248,7 +248,7 @@ private:
     // Input file types
     // We use our abstract base class to model different types of input files,
     // to avoid code repetition when adding and processing them here.
-    std::vector<std::unique_ptr<VariantInputFileOptions>> input_files_;
+    std::vector<std::unique_ptr<VariantFileOptions>> input_files_;
 
     // Additional options for sample names, filters, etc.
     // We just outsourced them to keep the class here a bit more compact, but those are actually

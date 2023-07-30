@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_FREQUENCY_TABLE_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_FREQUENCY_TABLE_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILE_FREQUENCY_TABLE_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILE_FREQUENCY_TABLE_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,20 +27,20 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
-#include "options/variant_input_file.hpp"
+#include "options/variant_file.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
-//      VariantInputFrequencyTable Options
+//      Variant File Frequency Table Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantInputFrequencyTableOptions final : public VariantInputFileOptions
+class VariantFileFrequencyTableOptions final : public VariantFileOptions
 {
 public:
 
@@ -55,22 +55,22 @@ public:
      * instead of normal getters/setters, as this allows us to set them in the VariantInputOptions
      * when creating the instance, instead of having to cast later etc... hacky, but good enough.
      */
-    VariantInputFrequencyTableOptions(
+    VariantFileFrequencyTableOptions(
         bool add_extra_opts = true
     )
         : add_extra_opts_( add_extra_opts )
     {}
 
-    ~VariantInputFrequencyTableOptions() = default;
+    ~VariantFileFrequencyTableOptions() = default;
 
-    VariantInputFrequencyTableOptions( VariantInputFrequencyTableOptions const& other ) = default;
-    VariantInputFrequencyTableOptions( VariantInputFrequencyTableOptions&& )            = default;
+    VariantFileFrequencyTableOptions( VariantFileFrequencyTableOptions const& other ) = default;
+    VariantFileFrequencyTableOptions( VariantFileFrequencyTableOptions&& )            = default;
 
-    VariantInputFrequencyTableOptions& operator= (
-        VariantInputFrequencyTableOptions const& other
+    VariantFileFrequencyTableOptions& operator= (
+        VariantFileFrequencyTableOptions const& other
     ) = default;
-    VariantInputFrequencyTableOptions& operator= (
-        VariantInputFrequencyTableOptions&&
+    VariantFileFrequencyTableOptions& operator= (
+        VariantFileFrequencyTableOptions&&
     )= default;
 
     // -------------------------------------------------------------------------

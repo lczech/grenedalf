@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "options/variant_input_vcf.hpp"
+#include "options/variant_file_vcf.hpp"
 
 #include "options/global.hpp"
 #include "tools/misc.hpp"
@@ -35,7 +35,7 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputVcfOptions::add_file_input_opt_to_app_(
+CLI::Option* VariantFileVcfOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
@@ -43,7 +43,7 @@ CLI::Option* VariantInputVcfOptions::add_file_input_opt_to_app_(
     // Correct setup check.
     internal_check(
         file_input_.option() == nullptr,
-        "Cannot use the same VariantInputVcfOptions object multiple times."
+        "Cannot use the same VariantFileVcfOptions object multiple times."
     );
 
     // Add the option
@@ -63,7 +63,7 @@ CLI::Option* VariantInputVcfOptions::add_file_input_opt_to_app_(
 //      Run Functions
 // =================================================================================================
 
-VariantInputVcfOptions::VariantInputIterator VariantInputVcfOptions::get_iterator_(
+VariantFileVcfOptions::VariantInputIterator VariantFileVcfOptions::get_iterator_(
     std::string const& filename
 ) const {
     using namespace genesis::population;

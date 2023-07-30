@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_PILEUP_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_PILEUP_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILE_VCF_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILE_VCF_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,20 +27,20 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
-#include "options/variant_input_file.hpp"
+#include "options/variant_file.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
-//      VariantInputPileup Options
+//      Variant File Vcf Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantInputPileupOptions final : public VariantInputFileOptions
+class VariantFileVcfOptions final : public VariantFileOptions
 {
 public:
 
@@ -48,14 +48,14 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputPileupOptions()  = default;
-    ~VariantInputPileupOptions() = default;
+    VariantFileVcfOptions()  = default;
+    ~VariantFileVcfOptions() = default;
 
-    VariantInputPileupOptions( VariantInputPileupOptions const& other ) = default;
-    VariantInputPileupOptions( VariantInputPileupOptions&& )            = default;
+    VariantFileVcfOptions( VariantFileVcfOptions const& other ) = default;
+    VariantFileVcfOptions( VariantFileVcfOptions&& )            = default;
 
-    VariantInputPileupOptions& operator= ( VariantInputPileupOptions const& other ) = default;
-    VariantInputPileupOptions& operator= ( VariantInputPileupOptions&& )            = default;
+    VariantFileVcfOptions& operator= ( VariantFileVcfOptions const& other ) = default;
+    VariantFileVcfOptions& operator= ( VariantFileVcfOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Virtual Functions
@@ -71,7 +71,7 @@ private:
 
     std::string get_default_group_name_() const override
     {
-        return "Input (m)pileup";
+        return "Input VCF/BCF";
     }
 
     VariantInputIterator get_iterator_(
@@ -84,11 +84,8 @@ private:
 
 private:
 
-    CliOption<size_t>      pileup_min_base_qual_    = 0;
-    CliOption<std::string> pileup_quality_encoding_ = "sanger";
-    // CliOption<bool> with_quality_string_ = true;
-    // CliOption<bool> with_ancestral_base_ = false;
-
+    // Vcf
+    // no extra options for the user here at the moment
 
 };
 

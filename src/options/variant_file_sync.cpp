@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "options/variant_input_sync.hpp"
+#include "options/variant_file_sync.hpp"
 
 #include "options/global.hpp"
 #include "tools/misc.hpp"
@@ -36,7 +36,7 @@
 //      Setup Functions
 // =================================================================================================
 
-CLI::Option* VariantInputSyncOptions::add_file_input_opt_to_app_(
+CLI::Option* VariantFileSyncOptions::add_file_input_opt_to_app_(
     CLI::App* sub,
     bool required,
     std::string const& group
@@ -44,7 +44,7 @@ CLI::Option* VariantInputSyncOptions::add_file_input_opt_to_app_(
     // Correct setup check.
     internal_check(
         file_input_.option() == nullptr,
-        "Cannot use the same VariantInputSyncOptions object multiple times."
+        "Cannot use the same VariantFileSyncOptions object multiple times."
     );
 
     // Add the option
@@ -61,7 +61,7 @@ CLI::Option* VariantInputSyncOptions::add_file_input_opt_to_app_(
 //      Run Functions
 // =================================================================================================
 
-VariantInputSyncOptions::VariantInputIterator VariantInputSyncOptions::get_iterator_(
+VariantFileSyncOptions::VariantInputIterator VariantFileSyncOptions::get_iterator_(
     std::string const& filename
 ) const {
     using namespace genesis::population;

@@ -24,11 +24,11 @@
 #include "options/variant_input.hpp"
 
 #include "options/global.hpp"
-#include "options/variant_input_frequency_table.hpp"
-#include "options/variant_input_pileup.hpp"
-#include "options/variant_input_sam.hpp"
-#include "options/variant_input_sync.hpp"
-#include "options/variant_input_vcf.hpp"
+#include "options/variant_file_frequency_table.hpp"
+#include "options/variant_file_pileup.hpp"
+#include "options/variant_file_sam.hpp"
+#include "options/variant_file_sync.hpp"
+#include "options/variant_file_vcf.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/variant_parallel_input_iterator.hpp"
@@ -108,11 +108,11 @@ void VariantInputOptions::add_input_files_opts_to_app(
     // Add input file type options. This is the only point where we explicitly state
     // which file types we want to add. If we want to make some of them optional later for
     // certain commands - here is the place to do so.
-    input_files_.emplace_back( genesis::utils::make_unique<VariantInputSamOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantInputPileupOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantInputSyncOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantInputVcfOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantInputFrequencyTableOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantFileSamOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantFilePileupOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantFileSyncOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantFileVcfOptions>() );
+    input_files_.emplace_back( genesis::utils::make_unique<VariantFileFrequencyTableOptions>() );
 
     // Now add all command line arguments of these file types to the CLI app,
     // in the order in which we added them above.
@@ -444,7 +444,7 @@ void VariantInputOptions::prepare_iterator_single_file_() const
 
     // Get the input file as a pointer, using the one input that the user provided,
     // and asserting that it only was one that was provided.
-    VariantInputFileOptions const* provided_input_file = nullptr;
+    VariantFileOptions const* provided_input_file = nullptr;
     for( auto const& input_file : input_files_ ) {
         if( input_file->get_file_input_options().provided() ) {
             if( provided_input_file == nullptr ) {

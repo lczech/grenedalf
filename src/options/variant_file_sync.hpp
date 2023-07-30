@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_INPUT_SAM_H_
-#define GRENEDALF_OPTIONS_VARIANT_INPUT_SAM_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILE_SYNC_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILE_SYNC_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,20 +27,20 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
-#include "options/variant_input_file.hpp"
+#include "options/variant_file.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
 #include <vector>
 
 // =================================================================================================
-//      Variant Input Sam Options
+//      Variant File Sync Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantInputSamOptions final : public VariantInputFileOptions
+class VariantFileSyncOptions final : public VariantFileOptions
 {
 public:
 
@@ -48,14 +48,14 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputSamOptions()  = default;
-    ~VariantInputSamOptions() = default;
+    VariantFileSyncOptions()  = default;
+    ~VariantFileSyncOptions() = default;
 
-    VariantInputSamOptions( VariantInputSamOptions const& other ) = default;
-    VariantInputSamOptions( VariantInputSamOptions&& )            = default;
+    VariantFileSyncOptions( VariantFileSyncOptions const& other ) = default;
+    VariantFileSyncOptions( VariantFileSyncOptions&& )            = default;
 
-    VariantInputSamOptions& operator= ( VariantInputSamOptions const& other ) = default;
-    VariantInputSamOptions& operator= ( VariantInputSamOptions&& )            = default;
+    VariantFileSyncOptions& operator= ( VariantFileSyncOptions const& other ) = default;
+    VariantFileSyncOptions& operator= ( VariantFileSyncOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Virtual Functions
@@ -71,12 +71,12 @@ private:
 
     std::string get_default_group_name_() const override
     {
-        return "Input SAM/BAM/CRAM";
+        return "Input sync";
     }
 
     VariantInputIterator get_iterator_(
         std::string const& filename
-    ) const override ;
+    ) const override;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -84,15 +84,8 @@ private:
 
 private:
 
-    // SAM/BAM/CRAM
-    CliOption<size_t>      sam_min_map_qual_      = 0;
-    CliOption<size_t>      sam_min_base_qual_     = 0;
-    CliOption<bool>        sam_split_by_rg_       = false;
-    CliOption<std::string> sam_flags_include_all_;
-    CliOption<std::string> sam_flags_include_any_;
-    CliOption<std::string> sam_flags_exclude_all_;
-    CliOption<std::string> sam_flags_exclude_any_;
-
+    // Sync
+    // no extra options for the user here at the moment
 
 };
 
