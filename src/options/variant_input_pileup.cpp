@@ -24,7 +24,6 @@
 #include "options/variant_input_pileup.hpp"
 
 #include "options/global.hpp"
-#include "options/variant_input_sample_names.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/simple_pileup_common.hpp"

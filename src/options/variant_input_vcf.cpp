@@ -24,7 +24,6 @@
 #include "options/variant_input_vcf.hpp"
 
 #include "options/global.hpp"
-#include "options/variant_input_sample_names.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/vcf_input_iterator.hpp"

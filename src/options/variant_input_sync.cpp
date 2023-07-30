@@ -24,7 +24,6 @@
 #include "options/variant_input_sync.hpp"
 
 #include "options/global.hpp"
-#include "options/variant_input_sample_names.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/sync_input_iterator.hpp"

@@ -44,7 +44,7 @@ class VariantInputOptions;
 /**
  * @brief
  */
-class VariantInputSampleNamesOptions
+class VariantSampleNamesOptions
 {
 public:
 
@@ -52,14 +52,14 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantInputSampleNamesOptions()  = default;
-    ~VariantInputSampleNamesOptions() = default;
+    VariantSampleNamesOptions()  = default;
+    ~VariantSampleNamesOptions() = default;
 
-    VariantInputSampleNamesOptions( VariantInputSampleNamesOptions const& other ) = default;
-    VariantInputSampleNamesOptions( VariantInputSampleNamesOptions&& )            = default;
+    VariantSampleNamesOptions( VariantSampleNamesOptions const& other ) = default;
+    VariantSampleNamesOptions( VariantSampleNamesOptions&& )            = default;
 
-    VariantInputSampleNamesOptions& operator= ( VariantInputSampleNamesOptions const& other ) = default;
-    VariantInputSampleNamesOptions& operator= ( VariantInputSampleNamesOptions&& )            = default;
+    VariantSampleNamesOptions& operator= ( VariantSampleNamesOptions const& other ) = default;
+    VariantSampleNamesOptions& operator= ( VariantSampleNamesOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Setup Functions

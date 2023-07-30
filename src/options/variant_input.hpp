@@ -29,7 +29,7 @@
 #include "options/file_input.hpp"
 #include "options/variant_filter_region.hpp"
 #include "options/variant_input_file.hpp"
-#include "options/variant_input_sample_names.hpp"
+#include "options/variant_sample_names.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/formats/variant_input_iterator.hpp"
@@ -253,7 +253,7 @@ private:
     // Additional options for sample names, filters, etc.
     // We just outsourced them to keep the class here a bit more compact, but those are actually
     // options that are kind of tightly integrated with the functionality here.
-    VariantInputSampleNamesOptions sample_name_options_;
+    VariantSampleNamesOptions sample_name_options_;
     VariantFilterRegionOptions region_filter_options_;
 
     // General input settings

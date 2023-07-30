@@ -24,7 +24,6 @@
 #include "options/variant_input_frequency_table.hpp"
 
 #include "options/global.hpp"
-#include "options/variant_input_sample_names.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/frequency_table_input_iterator.hpp"

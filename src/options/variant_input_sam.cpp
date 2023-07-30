@@ -24,7 +24,6 @@
 #include "options/variant_input_sam.hpp"
 
 #include "options/global.hpp"
-#include "options/variant_input_sample_names.hpp"
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/sam_flags.hpp"

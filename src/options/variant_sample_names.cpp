@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "options/variant_input_sample_names.hpp"
+#include "options/variant_sample_names.hpp"
 
 #include "options/global.hpp"
 #include "tools/misc.hpp"
@@ -43,14 +43,14 @@
 //      Setup Functions
 // =================================================================================================
 
-void VariantInputSampleNamesOptions::add_sample_name_opts_to_app(
+void VariantSampleNamesOptions::add_sample_name_opts_to_app(
     CLI::App* sub,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
         rename_samples_.option == nullptr,
-        "Cannot use the same VariantInputSampleNamesOptions object multiple times."
+        "Cannot use the same VariantSampleNamesOptions object multiple times."
     );
 
     // Rename samples option.
@@ -106,7 +106,7 @@ void VariantInputSampleNamesOptions::add_sample_name_opts_to_app(
 //     rename_samples
 // -------------------------------------------------------------------------
 
-void VariantInputSampleNamesOptions::rename_samples( std::vector<std::string>& sample_names ) const
+void VariantSampleNamesOptions::rename_samples( std::vector<std::string>& sample_names ) const
 {
     using namespace genesis::utils;
 
@@ -206,7 +206,7 @@ void VariantInputSampleNamesOptions::rename_samples( std::vector<std::string>& s
 //     add_sample_name_filter
 // -------------------------------------------------------------------------
 
-void VariantInputSampleNamesOptions::add_sample_name_filter(
+void VariantSampleNamesOptions::add_sample_name_filter(
     genesis::population::VariantInputIterator& iterator
 ) const {
     using namespace genesis::population;
@@ -254,7 +254,7 @@ void VariantInputSampleNamesOptions::add_sample_name_filter(
 //     process_sample_name_list_option_
 // -------------------------------------------------------------------------
 
-std::vector<std::string> VariantInputSampleNamesOptions::process_sample_name_list_option_(
+std::vector<std::string> VariantSampleNamesOptions::process_sample_name_list_option_(
     std::string const& list
 ) const {
     using namespace genesis::utils;
