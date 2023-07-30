@@ -103,8 +103,7 @@ CLI::Option* VariantInputPileupOptions::add_file_input_opt_to_app_(
 // =================================================================================================
 
 VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::get_iterator_(
-    std::string const& filename,
-    VariantInputSampleNamesOptions const& sample_names_options
+    std::string const& filename
 ) const {
     using namespace genesis::population;
     using namespace genesis::sequence;
@@ -131,27 +130,11 @@ VariantInputPileupOptions::VariantInputIterator VariantInputPileupOptions::get_i
         }
     } catch(...) {}
 
-    // We can use the sample filter settings to obtain a list of indices of samples
-    // that we want to restrict the reading to. If no filter is given, that list is empty.
-    // The second value of the returned pair indicates whether the list in inversed.
-    auto const sample_filter = sample_names_options.find_sample_indices_from_sample_filters();
-
     // Prepare the base Reader with settings as needed.
     auto reader = SimplePileupReader();
     reader.quality_encoding( user_enc );
     reader.min_base_quality( pileup_min_base_qual_.value );
 
     // Make an iterator.
-    auto iterator = make_variant_input_iterator_from_pileup_file(
-        filename, sample_filter.first, sample_filter.second, reader
-    );
-
-    // Pileup does not have sample names, so set them based on user input or simple enumeration.
-    // make_variant_input_iterator_from_pileup_file() returns a list with as many
-    // empty strings as the file has samples (exactly one in that case).
-    iterator.data().sample_names = sample_names_options.make_anonymous_sample_names(
-        iterator.data().sample_names.size()
-    );
-
-    return iterator;
+    return make_variant_input_iterator_from_pileup_file( filename, reader );
 }

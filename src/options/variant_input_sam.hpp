@@ -74,14 +74,8 @@ private:
         return "Input SAM/BAM/CRAM";
     }
 
-    bool has_sample_names_() const override
-    {
-        return sam_split_by_rg_.value;
-    }
-
     VariantInputIterator get_iterator_(
-        std::string const& filename,
-        VariantInputSampleNamesOptions const& sample_names_options
+        std::string const& filename
     ) const override ;
 
     // -------------------------------------------------------------------------

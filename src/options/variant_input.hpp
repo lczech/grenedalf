@@ -152,7 +152,7 @@ public:
     std::vector<std::string> const& sample_names() const
     {
         prepare_();
-        return sample_names_;
+        return iterator_.data().sample_names;
     }
 
     /**
@@ -250,11 +250,11 @@ private:
     // to avoid code repetition when adding and processing them here.
     std::vector<std::unique_ptr<VariantInputFileOptions>> input_files_;
 
-    // Sample names, for file types without them, and filters for sample names
-    VariantInputSampleNamesOptions input_sample_names_;
-
-    // Filters
-    VariantFilterRegionOptions region_filter_;
+    // Additional options for sample names, filters, etc.
+    // We just outsourced them to keep the class here a bit more compact, but those are actually
+    // options that are kind of tightly integrated with the functionality here.
+    VariantInputSampleNamesOptions sample_name_options_;
+    VariantFilterRegionOptions region_filter_options_;
 
     // General input settings
     CliOption<std::string> multi_file_loci_set_ = "union";
@@ -287,9 +287,6 @@ private:
     // The `VariantInputIterator` takes care of all of this, and just gives us an iterable,
     // yielding a Variant for each position.
     mutable VariantInputIterator iterator_;
-
-    // Not all formats have sample names, so we need to cache those.
-    mutable std::vector<std::string> sample_names_;
 
     // Also load the reference genome and dict, if provided.
     mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;

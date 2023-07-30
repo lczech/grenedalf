@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
+#include "genesis/population/functions/variant_input_iterator.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -33,6 +34,10 @@
 #include <algorithm>
 #include <cassert>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 // =================================================================================================
 //      Setup Functions
@@ -44,54 +49,36 @@ void VariantInputSampleNamesOptions::add_sample_name_opts_to_app(
 ) {
     // Correct setup check.
     internal_check(
-        sample_name_prefix_.option == nullptr && sample_name_list_.option == nullptr,
+        rename_samples_.option == nullptr,
         "Cannot use the same VariantInputSampleNamesOptions object multiple times."
     );
 
-    // Name list option.
-    sample_name_list_.option = sub->add_option(
-        "--sample-name-list",
-        sample_name_list_.value,
-        "Some file types do not contain sample names, such as (m)pileup or sync files. For such "
-        "file types, sample names can here be provided as either (1) a comma- or tab-separated "
-        "list, or (2) as a file with one sample name per line, in the same order as samples are in "
-        "the actual input file. We then use these names in the output and the "
+    // Rename samples option.
+    rename_samples_.option = sub->add_option(
+        "--rename-samples-file",
+        rename_samples_.value,
+        "Allows to rename samples, by providing a file that lists the old and new sample names, "
+        "one per line, separating old and new names by a tab.\n"
+        "By default, we use sample names as provided in the input files. Some file types however do "
+        "not contain sample names, such as (m)pileup or sync files. For such file types, sample "
+        "names are automatically assigned by using their input file base name (without path and "
+        "extension), followed by a dot and numbers 1..n for all samples in that file. "
+        "For instance, samples in `/path/to/sample.sync` are named `sample.1`, `sample.2`, etc.\n"
+        "Using this option, those names can be renamed as needed. Use verbose output (`--verbose`) "
+        "to show a list of all sample names. We then use these names in the output and the "
         "`--filter-samples-include` and `--filter-samples-exclude` options. "
-        "If not provided, we simply use numbers 1..n as sample names for these files types. "
-        "Note that this option can only be used if a single file is given as input. "
-        "Alternatively, use `--sample-name-prefix` to provide a prefix for this sample numbering."
     );
-    sample_name_list_.option->group( group );
-    // sample_name_list_.option->check( CLI::ExistingFile );
-
-    // Prefix option.
-    sample_name_prefix_.option = sub->add_option(
-        "--sample-name-prefix",
-        sample_name_prefix_.value,
-        "Some file types do not contain sample names, such as (m)pileup or sync files. For such "
-        "file types, this prefix followed by indices 1..n can be used instead to provide unique "
-        "names per sample that we use in the output and the `--filter-samples-include` and "
-        "`--filter-samples-exclude` options. For example, use \"Sample_\" as a prefix. "
-        "If not provided, we simply use numbers 1..n as sample names for these files types. "
-        "This prefix also works if multiple files are given as input. "
-        "Alternatively, use `--sample-name-list` to directly provide a list of sample names."
-    );
-    sample_name_prefix_.option->group( group );
-    // sample_name_prefix_.option->needs( pileup_file_.option );
-
-    // The two ways of specifying sample names are mutually exclusive.
-    sample_name_list_.option->excludes( sample_name_prefix_.option );
-    sample_name_prefix_.option->excludes( sample_name_list_.option );
+    rename_samples_.option->group( group );
+    rename_samples_.option->check( CLI::ExistingFile );
 
     // Add option for sample name filter.
     filter_samples_include_.option = sub->add_option(
         "--filter-samples-include",
         filter_samples_include_.value,
         "Sample names to include (all other samples are excluded); either (1) a comma- or "
-        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
-        "is provided, all samples in the input file are used. The option considers "
-        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
-        "names. Note that this option can only be used if a single file is given as input."
+        "tab-separated list given on the command line, or (2) a file with one sample name per line. "
+        "If no sample filter is provided, all samples in the input file are used. "
+        "The option is applied after potentially renaming the samples with `--rename-samples-file`."
     );
     filter_samples_include_.option->group( group );
 
@@ -100,16 +87,15 @@ void VariantInputSampleNamesOptions::add_sample_name_opts_to_app(
         "--filter-samples-exclude",
         filter_samples_exclude_.value,
         "Sample names to exclude (all other samples are included); either (1) a comma- or "
-        "tab-separated list, or (2) a file with one sample name per line. If no sample filter "
-        "is provided, all samples in the input file are used. The option considers "
-        "`--sample-name-list` or `--sample-name-prefix` for file types that do not contain sample "
-        "names. Note that this option can only be used if a single file is given as input."
+        "tab-separated list given on the command line, or (2) a file with one sample name per line. "
+        "If no sample filter is provided, all samples in the input file are used. "
+        "The option is applied after potentially renaming the samples with `--rename-samples-file`."
     );
     filter_samples_exclude_.option->group( group );
 
     // Include and exclude are mutually exclusive.
-    filter_samples_exclude_.option->excludes( filter_samples_include_.option );
     filter_samples_include_.option->excludes( filter_samples_exclude_.option );
+    filter_samples_exclude_.option->excludes( filter_samples_include_.option );
 }
 
 // =================================================================================================
@@ -117,10 +103,158 @@ void VariantInputSampleNamesOptions::add_sample_name_opts_to_app(
 // =================================================================================================
 
 // -------------------------------------------------------------------------
+//     rename_samples
+// -------------------------------------------------------------------------
+
+void VariantInputSampleNamesOptions::rename_samples( std::vector<std::string>& sample_names ) const
+{
+    using namespace genesis::utils;
+
+    // If the option is not set or used, we do no renaming.
+    if( ! rename_samples_.option || ! *rename_samples_.option ) {
+        return;
+    }
+
+    // Read the rename list from the provided file.
+    std::unordered_map<std::string, std::string> rename_map;
+    std::unordered_set<std::string> uniq_new_names;
+    auto const lines = file_read_lines( rename_samples_.value );
+    for( auto const& line : lines ) {
+        auto const parts = split( line, "\t" );
+        if( parts.size() != 2 ) {
+            throw CLI::ValidationError(
+                rename_samples_.option->get_name() + "(" + rename_samples_.value + ")",
+                "Sample renaming list contains invalid lines. We expect an old and a new sample "
+                "name, split by a tab character, but instead found \"" + line + "\""
+            );
+        }
+
+        // Check for uniqueness of old and new sample names.
+        if( rename_map.count( parts[0] ) > 0 ) {
+            throw CLI::ValidationError(
+                rename_samples_.option->get_name() + "(" + rename_samples_.value + ")",
+                "Sample renaming list contains duplicate entries for old sample name \"" +
+                parts[0] + "\""
+            );
+        }
+        if( uniq_new_names.count( parts[1] ) > 0 ) {
+            throw CLI::ValidationError(
+                rename_samples_.option->get_name() + "(" + rename_samples_.value + ")",
+                "Sample renaming list contains duplicate entries for new sample name \"" +
+                parts[1] + "\", which would result in multiple samples with the same name."
+            );
+        }
+
+        // Now we can add the entry to both sets.
+        rename_map[ parts[0] ] = parts[1];
+        uniq_new_names.insert( parts[1] );
+    }
+    assert( rename_map.size() == lines.size() );
+    assert( uniq_new_names.size() == lines.size() );
+
+    // Now rename, using the map. While doing so, we do duplication check of the old names as well,
+    // just to be on the save side. Also, we keep track of all possibilities here,
+    // for user convenience and error checking.
+    std::unordered_set<std::string> uniq_old_names;
+    size_t not_in_map = 0;
+    size_t properly_renamed = 0;
+    size_t same_old_and_new_name = 0;
+    for( auto& name : sample_names ) {
+        // Old name unique check
+        if( uniq_old_names.count( name ) > 0 ) {
+            throw std::runtime_error(
+                "Cannot rename sample names, as input sample name \"" + name + "\" is not unique "
+                "and appears multiple times in the input files."
+            );
+        }
+        uniq_old_names.insert( name );
+
+        // See if we can do a renaming properly.
+        if( rename_map.count( name ) == 0 ) {
+            ++not_in_map;
+            continue;
+        }
+        if( rename_map[name] == name ) {
+            ++same_old_and_new_name;
+        } else {
+            ++properly_renamed;
+        }
+        auto const old_name = name;
+        name = rename_map[old_name];
+        rename_map.erase( old_name );
+    }
+    assert( not_in_map + properly_renamed + same_old_and_new_name == sample_names.size() );
+
+    // Now produce user output reporting on what we did here.
+    LOG_MSG << "Renamed " << ( properly_renamed + same_old_and_new_name ) << " out of "
+            << sample_names.size() << " sample names.";
+    if( same_old_and_new_name > 0 ) {
+        LOG_WARN << "Out of those, " << same_old_and_new_name << " names contained identical "
+                 << "entries for the old and new name, which hence did not change anything.";
+    }
+    if( not_in_map > 0 ) {
+        LOG_WARN << "Did not find old and new name pair for " << not_in_map << " samples "
+                 << "in the rename list, which where hence not renamed.";
+    }
+    if( rename_map.size() > 0 ) {
+        LOG_WARN << "Rename list contains " << rename_map.size() << " entries whose old name "
+                 << "is not a sample name of the input samples, and which were hence not used.";
+    }
+}
+
+// -------------------------------------------------------------------------
+//     add_sample_name_filter
+// -------------------------------------------------------------------------
+
+void VariantInputSampleNamesOptions::add_sample_name_filter(
+    genesis::population::VariantInputIterator& iterator
+) const {
+    using namespace genesis::population;
+
+    // Only continue if we actually have a filter.
+    if( filter_samples_include_.value.empty() && filter_samples_exclude_.value.empty() ) {
+        return;
+    }
+
+    // Make filters as required.
+    auto const& sample_names = iterator.data().sample_names;
+    std::vector<bool> sample_filter;
+    if( ! filter_samples_include_.value.empty() ) {
+        auto const list = process_sample_name_list_option_( filter_samples_include_.value );
+        sample_filter = make_sample_filter( sample_names, list, false );
+    }
+    if( ! filter_samples_exclude_.value.empty() ) {
+        auto const list = process_sample_name_list_option_( filter_samples_exclude_.value );
+        sample_filter = make_sample_filter( sample_names, list, true );
+    }
+    internal_check(
+        sample_filter.size() == sample_names.size(), "sample_filter.size() != sample_names.size()"
+    );
+
+    // Checks and user information.
+    size_t pop_count = 0;
+    for( size_t i = 0; i < sample_filter.size(); ++i ) {
+        if( sample_filter[i] ) {
+            ++pop_count;
+        }
+    }
+    if( pop_count == 0 ) {
+        throw std::runtime_error( "Sample filter results in no samples being used." );
+    }
+    LOG_MSG << "Sample filter results in " << pop_count << " samples out of "
+            << sample_filter.size() << " being used.";
+
+    // Now add the transform that does the actual filtering.
+    iterator.add_transform(
+        make_variant_input_iterator_sample_name_filter_transform( sample_filter )
+    );
+}
+
+// -------------------------------------------------------------------------
 //     process_sample_name_list_option_
 // -------------------------------------------------------------------------
 
-std::vector<std::string> VariantInputSampleNamesOptions::process_sample_name_list_option(
+std::vector<std::string> VariantInputSampleNamesOptions::process_sample_name_list_option_(
     std::string const& list
 ) const {
     using namespace genesis::utils;
@@ -138,156 +272,4 @@ std::vector<std::string> VariantInputSampleNamesOptions::process_sample_name_lis
     }
 
     return result;
-}
-
-// -------------------------------------------------------------------------
-//     make_anonymous_sample_names_
-// -------------------------------------------------------------------------
-
-std::vector<std::string> VariantInputSampleNamesOptions::make_anonymous_sample_names(
-    size_t sample_count
-) const {
-    // Edge case, just to make sure.
-    if( sample_count == 0 ) {
-        throw std::runtime_error( "Input file does not contain any samples." );
-    }
-
-    // Prepare
-    std::vector<std::string> result;
-
-    // In case we have a proper list of sample names, use that.
-    if( sample_name_list_.option && *sample_name_list_.option ) {
-        result = process_sample_name_list_option( sample_name_list_.value );
-        if( result.size() != sample_count ) {
-            throw CLI::ValidationError(
-                sample_name_list_.option->get_name() + "(" + sample_name_list_.value + ")",
-                "Invalid sample names list that contains " + std::to_string( result.size() ) +
-                " name entries. This is incongruent with the input file, which contains " +
-                std::to_string( sample_count ) +
-                " samples (after filtering, if a sample name filter was given)."
-            );
-        }
-        assert( result.size() > 0 );
-        return result;
-    }
-
-    // In case we have a prefix for sample names instead, or nothing, just enumerate.
-    std::string prefix;
-    if( sample_name_prefix_.option && *sample_name_prefix_.option ) {
-        prefix = sample_name_prefix_.value;
-    }
-    result.reserve( sample_count );
-    for( size_t i = 0; i < sample_count; ++i ) {
-        result.emplace_back( prefix + std::to_string( i + 1 ));
-    }
-    assert( result.size() > 0 );
-    return result;
-}
-
-// -------------------------------------------------------------------------
-//     find_sample_indices_from_sample_filters_
-// -------------------------------------------------------------------------
-
-std::pair<std::vector<size_t>, bool>
-VariantInputSampleNamesOptions::find_sample_indices_from_sample_filters() const
-{
-    // Prepare result.
-    std::vector<size_t> indices;
-
-    // Get whether we want to include or exclude sample names.
-    bool const is_include = ! filter_samples_include_.value.empty();
-    bool const is_exclude = ! filter_samples_exclude_.value.empty();
-
-    // Not both can be given at the same time, as we made the options mutually exclusive.
-    internal_check( !( is_include && is_exclude ), "include and exclude filters are both given" );
-
-    // If no filters are given, just return empty, indicating to the caller that we do not filter.
-    // This is also the return of this function when multiple files are given, in which case
-    // we cannot apply sample filtering... that would just be too tedious to provide via a CLI.
-    if( ! is_include && ! is_exclude ) {
-        assert( indices.empty() );
-        return { indices, false };
-    }
-
-    // Get the sample names, depending on which type (inc/exc) we have.
-    auto const filter_list = process_sample_name_list_option(
-        is_include ? filter_samples_include_.value : filter_samples_exclude_.value
-    );
-
-    // When this function is called, we do not have opened the input file yet, so we do not
-    // know how many samples there are. So here, we either need to get the list of sample names
-    // (if the user provided one), or use enumeration to find the indices. The list loading is
-    // duplicate work unfortunately, as it will be loaded again later. Alternatively, we could
-    // split this into the case where a list of names is given, and the case where enumeration is
-    // used, but that would make set_anonymous_sample_names() and its setup more complex...
-    // So let's live with loading the list twice.
-
-    if( sample_name_list_.option && *sample_name_list_.option ) {
-        // In case we have a proper list of sample names, use that, and check the filters against it.
-        auto const sample_names = process_sample_name_list_option( sample_name_list_.value );
-        assert( sample_names.size() > 0 );
-
-        // Go through all provided sample names for the filter, find their positon in the sample
-        // name list, and fill the indices with these positions.
-        for( auto const& filtered_name : filter_list ) {
-            auto const it = std::find( sample_names.begin(), sample_names.end(), filtered_name );
-            if( it == sample_names.end() ) {
-                // Filter name not found, throw. First, helpful user output.
-                LOG_MSG << "Sample names:";
-                for( auto const& sn : sample_names ) {
-                    LOG_MSG << " - " << sn;
-                }
-                throw CLI::ValidationError(
-                    sample_name_list_.option->get_name(),
-                    "Invalid sample name used for filtering: \"" + filtered_name  + "\"."
-                );
-            } else {
-                // Add filter index to result.
-                auto const index = it - sample_names.begin();
-                indices.push_back( index );
-            }
-        }
-    } else {
-        // If we do not have a given list of sample names, we instead use the prefix and enumerate.
-        std::string prefix;
-        if( sample_name_prefix_.option && *sample_name_prefix_.option ) {
-            prefix = sample_name_prefix_.value;
-        }
-
-        // Go through all filter names, remove the prefix from the filter names (might be empty),
-        // and check that the remainder is a number. If so, it's the index (offset by 1).
-        for( auto filtered_name : filter_list ) {
-            if( ! genesis::utils::starts_with( filtered_name, prefix )) {
-                throw CLI::ValidationError(
-                    sample_name_prefix_.option->get_name(),
-                    "Invalid sample name used for filtering: \"" + filtered_name  + "\" "
-                    "that does not fit the sample prefix given by " +
-                    sample_name_prefix_.option->get_name()
-                );
-            }
-
-            // Here, we know that the filter name contains the prefix, so we can remove it,
-            // and convert the rest to a number. We use 1 based indexing in the user provided names,
-            // so zero is invalid. But then we need to offset to get our actual zero-based index.
-            filtered_name = filtered_name.substr( prefix.length() );
-            size_t index = 0;
-            try {
-                index = genesis::utils::convert_from_string<size_t>( filtered_name, true );
-            } catch(...) {
-                index = 0;
-            }
-            if( index == 0 ) {
-                throw CLI::ValidationError(
-                    sample_name_prefix_.option->get_name(),
-                    "Invalid sample name used for filtering: \"" + filtered_name  + "\" "
-                    "that does not contain a valid number after the prefix."
-                );
-            }
-            assert( index > 0 );
-            indices.push_back( index - 1 );
-        }
-    }
-
-    // Return the indices, and whether they are to be interpreted as inverses.
-    return { std::move( indices ), is_exclude };
 }

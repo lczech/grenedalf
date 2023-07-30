@@ -46,12 +46,8 @@ void PoolsizesOptions::add_poolsizes_opt_to_app(
         "--pool-sizes",
         poolsizes.value,
         "Pool sizes for all samples that are used (not filtered out). Either "
-        "\n(1) a single pool size that is used for all samples, "
-        "\n(2) a comma- or tab-separated list of pool sizes in the same order as the samples in the "
-        "input file (including samples that will be filtered out), "
-        "\n(3) a path to a file with one pool size per line, in the same order as the samples in the "
-        "input file (that is, same as (2), but in a file instead of on the command line), or "
-        "\n(4) a path to a file that contains a comma- or tab-separated list of sample names and "
+        "\n(1) a single pool size that is used for all samples, specified on the command line, or "
+        "\n(2) a path to a file that contains a comma- or tab-separated list of sample names and "
         "pool sizes, with one name/size pair per line, in any order of lines."
     );
     poolsizes.option->group( group );
@@ -107,118 +103,75 @@ std::vector<size_t> PoolsizesOptions::get_pool_sizes(
     auto result = std::vector<size_t>( sample_names.size(), 0 );
     if( is_file( poolsizes.value )) {
 
-        // We cover both variants here, file with single values per line,
-        // or file with name to size mapping. We check for consistency using the indicator variable.
-        // 0 means: not yet set (before first line was processed), 1 and 2 mean that this
-        // either single value or map from name to size.
-        size_t type = 0;
-
-        // Read the file line by line and process. We keep a map, but might not use it afterwards.
+        // Read the file line by line and process.
         auto const lines = file_read_lines( poolsizes.value );
         std::unordered_map<std::string, size_t> ps_map;
         for( size_t i = 0; i < lines.size(); ++i ) {
             auto const& line = lines[i];
 
-            // Dissect the line and see if we got a sample name and a number, or a single value.
+            // Dissect the line and see if we got a sample name and a number.
             auto const pair = split( line, ",\t", false );
-            if( type != 0 && type != pair.size() ) {
+            if( pair.size() != 2 ) {
                 throw CLI::ValidationError(
                     poolsizes.option->get_name() + "(" +
                     poolsizes.value + ")",
                     "Invalid pool sizes file that contains an invalid line at " +
-                    std::to_string( i + 1 ) + "."
+                    std::to_string( i + 1 ) + " not consisting of a sample name and a pool size."
                 );
             }
 
-            // Error check on first line of file.
-            if( type == 0 && pair.size() == 1 && lines.size() != sample_names.size() ) {
+            // For name value pairs, do a duplicate check first...
+            if( ps_map.count( pair[0] ) > 0 ) {
                 throw CLI::ValidationError(
                     poolsizes.option->get_name() + "(" +
                     poolsizes.value + ")",
-                    "Invalid file with list of pool sizes that contains " +
-                    std::to_string( lines.size() ) + " entries, which is different from number of " +
-                    "samples in the input file " + std::to_string( sample_names.size() ) + "."
+                    "Invalid line that contains duplicate sample names (line " +
+                    std::to_string( i + 1 ) + "): \"" + pair[0] + "\""
                 );
             }
 
-            // Now set the type for subsequent iterations, so that we can check that the file
-            // is consistently either a single value, or a name value pair.
-            type = pair.size();
+            // ... then add the entry to the map.
+            assert( ps_map.count( pair[0] ) == 0 );
+            ps_map[ pair[0] ] = convert_poolsize_( pair[1] );
+        }
 
-            if( pair.size() == 1 ) {
-                // For single value, set the entry in the result.
-                assert( lines.size() == result.size() );
-                assert( i < result.size() );
-                result[i] = convert_poolsize_( line );
-            } else if(  pair.size() == 2 ) {
-                // For name value pairs, do a duplicate check first...
-                if( ps_map.count( pair[0] ) > 0 ) {
-                    throw CLI::ValidationError(
-                        poolsizes.option->get_name() + "(" +
-                        poolsizes.value + ")",
-                        "Invalid line that contains duplicate sample names (line " +
-                        std::to_string( i + 1 ) + ")."
-                    );
-                }
+        // Fill the vector of pool sizes with values in the correct order
+        // (that is, using the sample name order).
+        // Throw if the sample needs to be given (it's in the used list), but isn't in the file.
+        for( size_t i = 0; i < sample_names.size(); ++i ) {
+            if( ! sample_filter.empty() && ! sample_filter[i] ) {
+                // Sample is not used in the computation anyway, so we can skip it without failing.
+                continue;
+            }
 
-                // ... then add the entry to the map.
-                assert( ps_map.count( pair[0] ) == 0 );
-                ps_map[ pair[0] ] = convert_poolsize_( pair[1] );
+            auto const& sample_name = sample_names[i];
+            if( ps_map.count(sample_name) > 0 ) {
+                // Found the name, use its pool size.
+                result[i] = ps_map[sample_name];
+                ps_map.erase( sample_name );
             } else {
-                // Everything above 2 values per line is an error.
                 throw CLI::ValidationError(
                     poolsizes.option->get_name() + "(" +
                     poolsizes.value + ")",
-                    "Invalid line that does not contain a pool size or pair of sample name and "
-                    "pool size (line " + std::to_string( i + 1 ) + ")."
+                    "Sample name \"" + sample_name +  "\" missing from pool size file."
                 );
             }
         }
 
-        // If we filled the map, use it to set sizes.
-        if( type == 2 ) {
-            // Fill the vector of pool sizes with values in the correct order
-            // (that is, using the sample name order).
-            // Throw if the sample needs to be given (it's in the used list), but isn't in the file.
-            for( size_t i = 0; i < sample_names.size(); ++i ) {
-                if( ! sample_filter.empty() && ! sample_filter[i] ) {
-                    continue;
-                }
-
-                auto const& sn = sample_names[i];
-                if( ps_map.count(sn) > 0 ) {
-                    result[i] = ps_map[sn];
-                } else {
-                    throw CLI::ValidationError(
-                        poolsizes.option->get_name() + "(" +
-                        poolsizes.value + ")",
-                        "Sample name \"" + sn +  "\" missing from pool size file."
-                    );
-                }
+        // If there is anything left, we warn the user.
+        if( ps_map.size() > 0 ) {
+            LOG_WARN << "Pool sizes file contains " << ps_map.size() << " entries that were not "
+                    << "used, i.e., whose sample names do not appear in the input files.";
+            for( auto const& entry : ps_map ) {
+                LOG_MSG2 << " - " << entry.first;
             }
         }
     } else {
 
-        // Non-file case. If it is a single value, use it for all. If it's a list, split.
-        auto const vals = split( poolsizes.value, ",\t" );
-        if( vals.size() == 1 ) {
-            // Just give every sample the same pool size.
-            auto const ps = convert_poolsize_( poolsizes.value );
-            for( auto& entry : result ) {
-                entry = ps;
-            }
-        } else if( vals.size() == sample_names.size() ) {
-            for( size_t i = 0; i < vals.size(); ++i ) {
-                result[i] = convert_poolsize_( vals[i] );
-            }
-        } else {
-            throw CLI::ValidationError(
-                poolsizes.option->get_name() + "(" +
-                poolsizes.value + ")",
-                "Invalid list of pool sizes provided with " + std::to_string( vals.size() ) +
-                " entries, which is different from number of samples in the input file " +
-                std::to_string( sample_names.size() ) + "."
-            );
+        // Non-file case. If it is a single value, use it for all.
+        auto const ps = convert_poolsize_( poolsizes.value );
+        for( auto& entry : result ) {
+            entry = ps;
         }
     }
     assert( result.size() == sample_names.size() );

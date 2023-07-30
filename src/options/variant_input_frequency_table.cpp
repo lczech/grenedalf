@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -221,8 +221,7 @@ char VariantInputFrequencyTableOptions::get_separator_char_() const
 }
 
 VariantInputFrequencyTableOptions::VariantInputIterator VariantInputFrequencyTableOptions::get_iterator_(
-    std::string const& filename,
-    VariantInputSampleNamesOptions const& sample_names_options
+    std::string const& filename
 ) const {
     using namespace genesis::population;
 
@@ -264,29 +263,7 @@ VariantInputFrequencyTableOptions::VariantInputIterator VariantInputFrequencyTab
     }
 
     // Prepare the iterator.
-    // See if we want to filter by sample name, and if so, resolve the name list.
-    VariantInputIterator iterator;
-    if( ! sample_names_options.get_filter_samples_include().value.empty() ) {
-        auto const list = sample_names_options.process_sample_name_list_option(
-            sample_names_options.get_filter_samples_include().value
-        );
-        iterator = make_variant_input_iterator_from_frequency_table_file(
-            filename, list, false, get_separator_char_(), reader
-        );
-    } else if( ! sample_names_options.get_filter_samples_exclude().value.empty() ) {
-        auto const list = sample_names_options.process_sample_name_list_option(
-            sample_names_options.get_filter_samples_exclude().value
-        );
-        iterator = make_variant_input_iterator_from_frequency_table_file(
-            filename, list, true, get_separator_char_(), reader
-        );
-    } else {
-        iterator = make_variant_input_iterator_from_frequency_table_file(
-            filename, get_separator_char_(), reader
-        );
-    }
-
-    // As opposed to most other file formats, this contains sample names (only the filtered ones).
-    // So here we do not need to set them, and can directly return.
-    return iterator;
+    return make_variant_input_iterator_from_frequency_table_file(
+        filename, get_separator_char_(), reader
+    );
 }

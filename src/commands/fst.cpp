@@ -383,7 +383,7 @@ genesis::population::FstPoolProcessor get_fst_pool_processor_(
     auto const pool_sizes = (
         needs_pool_sizes
         ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
-        : std::vector<size_t>( sample_names.size() )
+        : std::vector<size_t>( sample_names.size(), 0 )
     );
 
     // For our unbiased and for Kofler, check that we got the right number of pool sizes.

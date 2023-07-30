@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -65,37 +65,12 @@ CLI::Option* VariantInputVcfOptions::add_file_input_opt_to_app_(
 // =================================================================================================
 
 VariantInputVcfOptions::VariantInputIterator VariantInputVcfOptions::get_iterator_(
-    std::string const& filename,
-    VariantInputSampleNamesOptions const& sample_names_options
+    std::string const& filename
 ) const {
     using namespace genesis::population;
 
     // Prepare the iterator.
-    // See if we want to filter by sample name, and if so, resolve the name list.
     // By default, this also already filters for biallelic SNPs.
-    VariantInputIterator iterator;
     bool const only_biallelic = true;
-    if( ! sample_names_options.get_filter_samples_include().value.empty() ) {
-        auto const list = sample_names_options.process_sample_name_list_option(
-            sample_names_options.get_filter_samples_include().value
-        );
-        iterator = make_variant_input_iterator_from_pool_vcf_file(
-            filename, list, false, only_biallelic
-        );
-    } else if( ! sample_names_options.get_filter_samples_exclude().value.empty() ) {
-        auto const list = sample_names_options.process_sample_name_list_option(
-            sample_names_options.get_filter_samples_exclude().value
-        );
-        iterator = make_variant_input_iterator_from_pool_vcf_file(
-            filename, list, true, only_biallelic
-        );
-    } else {
-        iterator = make_variant_input_iterator_from_pool_vcf_file(
-            filename, only_biallelic
-        );
-    }
-
-    // As opposed to most other file formats, VCF contains sample names (only the filtered ones).
-    // So here we do not need to set them, and can directly return.
-    return iterator;
+    return make_variant_input_iterator_from_pool_vcf_file( filename, only_biallelic );
 }

@@ -74,14 +74,8 @@ private:
         return "Input (m)pileup";
     }
 
-    bool has_sample_names_() const override
-    {
-        return false;
-    }
-
     VariantInputIterator get_iterator_(
-        std::string const& filename,
-        VariantInputSampleNamesOptions const& sample_names_options
+        std::string const& filename
     ) const override;
 
     // -------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,8 +151,7 @@ CLI::Option* VariantInputSamOptions::add_file_input_opt_to_app_(
 // =================================================================================================
 
 VariantInputSamOptions::VariantInputIterator VariantInputSamOptions::get_iterator_(
-    std::string const& filename,
-    VariantInputSampleNamesOptions const& sample_names_options
+    std::string const& filename
 ) const {
     using namespace genesis::population;
 
@@ -166,54 +165,6 @@ VariantInputSamOptions::VariantInputIterator VariantInputSamOptions::get_iterato
     reader.flags_exclude_all( string_to_sam_flag( sam_flags_exclude_all_.value ));
     reader.flags_exclude_any( string_to_sam_flag( sam_flags_exclude_any_.value ));
 
-    if( sam_split_by_rg_.value ) {
-
-        // If we split by RG tag, we can use filters. Check which ones are given by the user.
-        if( ! sample_names_options.get_filter_samples_include().value.empty() ) {
-            auto const list = sample_names_options.process_sample_name_list_option(
-                sample_names_options.get_filter_samples_include().value
-            );
-            reader.rg_tag_filter( std::unordered_set<std::string>{ list.begin(), list.end() });
-        } else if( ! sample_names_options.get_filter_samples_exclude().value.empty() ) {
-            auto const list = sample_names_options.process_sample_name_list_option(
-                sample_names_options.get_filter_samples_exclude().value
-            );
-            reader.rg_tag_filter( std::unordered_set<std::string>{ list.begin(), list.end() });
-            reader.inverse_rg_tag_filter( true );
-        }
-
-    } else {
-
-        // Assert that no filters are set, as this does not make sense with just one sample.
-        // This cannot really be done via CLI11 settings directly, as we'd need to excludes()
-        // the case that the --split-by-rg was _not_ set... So let's do this here.
-        auto const sample_filter = sample_names_options.find_sample_indices_from_sample_filters();
-        if( ! sample_filter.first.empty() ) {
-            throw CLI::ValidationError(
-                sam_split_by_rg_.option->get_name() + ", " +
-                sample_names_options.get_filter_samples_include().option->get_name() +
-                "(" + sample_names_options.get_filter_samples_include().value + "), " +
-                sample_names_options.get_filter_samples_exclude().option->get_name() +
-                "(" + sample_names_options.get_filter_samples_exclude().value + ")",
-                "Cannot use sample name filters for sam/bam/cram files without splitting by "
-                "@RG read group tags. Without splitting, the file is considered as a single sample, "
-                "in which case filtering does not make sense."
-            );
-        }
-    }
-
     // Make an iterator.
-    auto iterator = make_variant_input_iterator_from_sam_file( filename, reader );
-
-    // If we do not split by RG tag, there is only a single sample. But still let's name it.
-    // make_variant_input_iterator_from_sam_file() with rg splitting returns a list with as many
-    // empty strings as the file has samples (exactly one in that case).
-    if( ! sam_split_by_rg_.value ) {
-        assert( iterator.data().sample_names.size() == 1 );
-        iterator.data().sample_names = sample_names_options.make_anonymous_sample_names(
-            iterator.data().sample_names.size()
-        );
-    }
-
-    return iterator;
+    return make_variant_input_iterator_from_sam_file( filename, reader );
 }

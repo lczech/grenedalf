@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@
 #include "CLI/CLI.hpp"
 
 #include "tools/cli_option.hpp"
+
+#include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/variant.hpp"
 
 #include <string>
 #include <vector>
@@ -68,79 +71,16 @@ public:
     );
 
     // -------------------------------------------------------------------------
-    //     Access Functions
-    // -------------------------------------------------------------------------
-
-    /**
-     * @brief Get the option for setting the sample names.
-     */
-    CliOption<std::string> const& get_sample_name_list() const
-    {
-        return sample_name_list_;
-    }
-
-    /**
-     * @brief Get the option for setting the sample prefix.
-     */
-    CliOption<std::string> const& get_sample_name_prefix() const
-    {
-        return sample_name_prefix_;
-    }
-
-    /**
-     * @brief Get the option for including sample names.
-     */
-    CliOption<std::string> const& get_filter_samples_include() const
-    {
-        return filter_samples_include_;
-    }
-
-    /**
-     * @brief Get the option for excluding sample names.
-     */
-    CliOption<std::string> const& get_filter_samples_exclude() const
-    {
-        return filter_samples_exclude_;
-    }
-
-    // -------------------------------------------------------------------------
     //     Run Functions
     // -------------------------------------------------------------------------
 
-    /**
-     * @brief Get a list of sample names, for example for pileup or sync files that do not have
-     * sample names in the file, or to filter by sample name. The given @p list is interpreted
-     * either as a file with one sample name per line, or as a list of sample names, tab or comma
-     * separated.
-     */
-    std::vector<std::string> process_sample_name_list_option(
-        std::string const& list
-    ) const;
+    void rename_samples( std::vector<std::string>& sample_names ) const;
 
-    /**
-     * @brief For file formats that do not have sample names, use this function to get
-     * their sample names, taking the sample naming options into account.
-     */
-    std::vector<std::string> make_anonymous_sample_names( size_t sample_count ) const;
+    void add_sample_name_filter( genesis::population::VariantInputIterator& iterator ) const;
 
-    /**
-     * @brief Return a list of the sample indices, which is needed for some of the readers
-     * that only take indices for filtering.
-     *
-     * Get a list of sample indices that remain after filtering, based on sample names
-     * and filtering options, and whether that list is inversed (use all _but_ the given indices).
-     *
-     * This looks at the filter_samples_include_ and filter_samples_exclude_ list, and determines
-     * which one to use as a list of input filters. If neither is given by the user, we return
-     * an empty vector. If the exclude list is given, the bool of the returned pair is true,
-     * indicating that the indices are to be interpreted as inverses.
-     *
-     * As this function is only needed for readers that process file types without sample names,
-     * we here translate to indices. If the user provided a list of sample names to be used,
-     * we use that to find the indices. If not, we use the sample name prefix and simply count
-     * sample numbers.
-     */
-    std::pair<std::vector<size_t>, bool> find_sample_indices_from_sample_filters() const;
+private:
+
+    std::vector<std::string> process_sample_name_list_option_( std::string const& list ) const;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -149,8 +89,7 @@ public:
 private:
 
     // Sample names and filters
-    CliOption<std::string> sample_name_list_ = "";
-    CliOption<std::string> sample_name_prefix_ = ""; // "Sample_"
+    CliOption<std::string> rename_samples_ = "";
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
 

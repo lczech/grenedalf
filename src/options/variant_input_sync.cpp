@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,25 +63,10 @@ CLI::Option* VariantInputSyncOptions::add_file_input_opt_to_app_(
 // =================================================================================================
 
 VariantInputSyncOptions::VariantInputIterator VariantInputSyncOptions::get_iterator_(
-    std::string const& filename,
-    VariantInputSampleNamesOptions const& sample_names_options
+    std::string const& filename
 ) const {
     using namespace genesis::population;
 
-    // We can use the sample filter settings, see prepare_pileup_iterator_() for details.
-    auto const sample_filter = sample_names_options.find_sample_indices_from_sample_filters();
-
     // Make an iterator.
-    auto iterator = make_variant_input_iterator_from_sync_file(
-        filename, sample_filter.first, sample_filter.second
-    );
-
-    // Sync does not have sample names, so set them based on user input or simple enumeration.
-    // make_variant_input_iterator_from_sync_file() returns a list with as many
-    // empty strings as the file has samples (exactly one in that case).
-    iterator.data().sample_names = sample_names_options.make_anonymous_sample_names(
-        iterator.data().sample_names.size()
-    );
-
-    return iterator;
+    return make_variant_input_iterator_from_sync_file( filename );
 }

@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,25 +106,11 @@ public:
     }
 
     /**
-     * @brief Has the file format, with its current settings, sample names that can be used?
-     *
-     * Needs to be called during runtime - for some file formats we only know this information
-     * after the user has provided their settings.
-     */
-    bool has_sample_names() const
-    {
-        return has_sample_names_();
-    }
-
-    /**
      * @brief Get the iterator for one of the files, parsing it as the file type that
      * the derived class is for.
      */
-    VariantInputIterator get_iterator(
-        std::string const& filename,
-        VariantInputSampleNamesOptions const& sample_names_options
-    ) const {
-        return get_iterator_( filename, sample_names_options );
+    VariantInputIterator get_iterator( std::string const& filename ) const {
+        return get_iterator_( filename );
     }
 
     // -------------------------------------------------------------------------
@@ -147,12 +133,7 @@ protected:
 
     virtual std::string get_default_group_name_() const = 0;
 
-    virtual bool has_sample_names_() const = 0;
-
-    virtual VariantInputIterator get_iterator_(
-        std::string const& filename,
-        VariantInputSampleNamesOptions const& sample_names_options
-    ) const = 0;
+    virtual VariantInputIterator get_iterator_( std::string const& filename ) const = 0;
 
     // -------------------------------------------------------------------------
     //     Option Members

@@ -87,12 +87,12 @@ void VariantInputOptions::add_variant_input_opts_to_app(
 
     // Additional options next.
     if( with_sample_name_opts ) {
-        // input_sample_names_.add_sample_name_opts_to_app( sub, group );
-        input_sample_names_.add_sample_name_opts_to_app( sub );
+        // sample_name_options_.add_sample_name_opts_to_app( sub, group );
+        sample_name_options_.add_sample_name_opts_to_app( sub );
     }
     if( with_region_filter_opts ) {
-        // region_filter_.add_region_filter_opts_to_app( sub, group );
-        region_filter_.add_region_filter_opts_to_app( sub );
+        // region_filter_options_.add_region_filter_opts_to_app( sub, group );
+        region_filter_options_.add_region_filter_opts_to_app( sub );
     }
 }
 
@@ -221,7 +221,7 @@ void VariantInputOptions::add_individual_filter_and_transforms(
     std::function<bool(genesis::population::Variant&)> const& func
 ) const {
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
+    if( static_cast<bool>( iterator_ )) {
         throw std::domain_error(
             "Internal error: Calling add_individual_filter_and_transforms() "
             "after input source iteration has already been started."
@@ -242,7 +242,7 @@ void VariantInputOptions::add_combined_filter_and_transforms(
     std::function<bool(genesis::population::Variant&)> const& func
 ) const {
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
+    if( static_cast<bool>( iterator_ )) {
         throw std::domain_error(
             "Internal error: Calling add_combined_filter_and_transforms() "
             "after input source iteration has already been started."
@@ -288,7 +288,7 @@ void VariantInputOptions::print_report() const
 void VariantInputOptions::prepare_() const
 {
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ ) || ! sample_names_.empty() ) {
+    if( static_cast<bool>( iterator_ )) {
         // Nothing to be done. We already prepared the data.
         return;
     }
@@ -412,21 +412,20 @@ void VariantInputOptions::prepare_iterator_() const
         prepare_iterator_multiple_files_();
     }
     assert( iterator_ );
-    assert( ! sample_names_.empty() );
 
     // Some user output.
-    LOG_MSG1 << "Processing " << sample_names_.size()
-             << " sample" << ( sample_names_.size() == 1 ? "" : "s" );
-    for( auto const& sn : sample_names_ ) {
+    LOG_MSG1 << "Processing " << sample_names().size()
+             << " sample" << ( sample_names().size() == 1 ? "" : "s" );
+    for( auto const& sn : sample_names() ) {
         LOG_MSG2 << " - " << sn;
     }
     LOG_MSG1;
-    if( contains_duplicates( sample_names_ )) {
+    if( contains_duplicates( sample_names() )) {
         LOG_WARN << "The input contains duplicate sample names. Some grenedalf commands can work "
                  << "with that internally, other not (and will then fail). Either way, this will "
                  << "make working with the output more difficult downstream, and we recommend "
                  << "to clean up the names first. "
-                 << "Use verbose output (--verbose) to show a list of all sample names.";
+                 << "Use verbose output (`--verbose`) to show a list of all sample names.";
         LOG_MSG1;
     }
 }
@@ -439,7 +438,7 @@ void VariantInputOptions::prepare_iterator_single_file_() const
 {
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
-        ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
+        ! static_cast<bool>( iterator_ ),
         "prepare_iterator_single_file_() called in an invalid context."
     );
 
@@ -461,47 +460,25 @@ void VariantInputOptions::prepare_iterator_single_file_() const
         provided_input_file, "prepare_iterator_single_file_() called with no file provided"
     );
 
-    // If a sample name prefix or a list is given,
-    // we check that this is only for the allowed file types.
-    auto const is_sample_name_list = (
-        input_sample_names_.get_sample_name_list().option &&
-        *input_sample_names_.get_sample_name_list().option
-    );
-    auto const is_sample_name_pref = (
-        input_sample_names_.get_sample_name_prefix().option &&
-        *input_sample_names_.get_sample_name_prefix().option
-    );
-    if( is_sample_name_list || is_sample_name_pref ) {
-        // Not both can be given, as the options are mutually exclusive.
-        assert( is_sample_name_list ^ is_sample_name_pref );
-        if( provided_input_file->has_sample_names() ) {
-            throw CLI::ValidationError(
-                "Input sources",
-                "Can only use " + input_sample_names_.get_sample_name_list().option->get_name() +
-                " or " + input_sample_names_.get_sample_name_prefix().option->get_name() +
-                " for input file formats that do not already have sample sames, such as (m)pileup "
-                "or sync files, or sam/bam/cram files without splitting by @RG read group tags "
-                "(which then is considered as a single sample that contains all reads independent "
-                "of their @RG)."
-            );
-        }
-    }
-
     // Prepare the iterator depending on the input file format, using the pointer.
     assert( provided_input_file );
     assert( provided_input_file->get_file_input_options().file_count() == 1 );
     iterator_ = provided_input_file->get_iterator(
-        provided_input_file->get_file_input_options().file_paths()[0],
-        input_sample_names_
+        provided_input_file->get_file_input_options().file_paths()[0]
     );
 
+    // Apply sample renaming and filtering. We need to do this here first, before processing
+    // any other filters and transforms, to make sure that they all see the correct
+    // sample names and numbers.
+    sample_name_options_.rename_samples( iterator_.data().sample_names );
+    sample_name_options_.add_sample_name_filter( iterator_ );
+
     // Copy over the sample names from the iterator, so that they are accessible.
-    sample_names_ = iterator_.data().sample_names;
-    if( sample_names_.empty() ) {
+    if( sample_names().empty() ) {
         throw std::runtime_error( "Invalid input file that does not contain any samples." );
     }
     internal_check(
-        static_cast<bool>( iterator_ ) && ! sample_names_.empty(),
+        static_cast<bool>( iterator_ ),
         "prepare_iterator_single_file_() call to file prepare function did not succeed."
     );
 
@@ -549,37 +526,9 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
 
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
-        ! static_cast<bool>( iterator_ ) && sample_names_.empty(),
+        ! static_cast<bool>( iterator_ ),
         "prepare_iterator_multiple_files_() called in an invalid context."
     );
-
-    // Sample name list cannot be used with multiple files.
-    if(
-        input_sample_names_.get_sample_name_list().option &&
-        *input_sample_names_.get_sample_name_list().option
-    ) {
-        throw CLI::ValidationError(
-            "Input sources",
-            "Can only use " + input_sample_names_.get_sample_name_list().option->get_name() +
-            " for single input files, but not when multiple input files are given."
-        );
-    }
-
-    // No sample name filters can be given, as that would just be too tedious to specify via a CLI.
-    if(
-        ! input_sample_names_.get_filter_samples_include().value.empty() ||
-        ! input_sample_names_.get_filter_samples_exclude().value.empty()
-    ) {
-        throw CLI::ValidationError(
-            input_sample_names_.get_filter_samples_include().option->get_name() + "(" +
-            input_sample_names_.get_filter_samples_include().value + "), " +
-            input_sample_names_.get_filter_samples_exclude().option->get_name() + "(" +
-            input_sample_names_.get_filter_samples_exclude().value + ")",
-            "Can only use sample name filters for single input files, "
-            "but not when multiple input files are given, "
-            "as specifying filters per file via a command line interface is just too tedious."
-        );
-    }
 
     // Get whether the user wants the union or intersection of all parallel input loci.
     auto const contribution = get_enum_map_value(
@@ -594,7 +543,7 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
     for( auto const& input_file : input_files_ ) {
         for( auto const& file : input_file->get_file_input_options().file_paths() ) {
             parallel_it.add_variant_input_iterator(
-                input_file->get_iterator( file, input_sample_names_ ), contribution
+                input_file->get_iterator( file ), contribution
             );
             ++file_count;
         }
@@ -613,11 +562,7 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
     // Go through all sources again, build the sample names list from them,
     // and add the individual samples filters to all of them, e.g., so that regions are filtered
     // before the data even reaches the parallel iterator. Faster!
-    assert( sample_names_.empty() );
     for( auto& input : parallel_it.inputs() ) {
-        for( auto const& sample_name : input.data().sample_names ) {
-            sample_names_.push_back( input.data().source_name + ":" + sample_name );
-        }
         add_individual_filters_and_transforms_to_iterator_( input );
 
         // Following the reasoning from above: we need to use the global thread pool,
@@ -632,10 +577,12 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
 
     // Finally, create the parallel iterator.
     iterator_ = make_variant_input_iterator_from_variant_parallel_input_iterator( parallel_it );
-    internal_check(
-        iterator_.data().sample_names.size() == sample_names_.size(),
-        "prepare_iterator_multiple_files_() with different number of samples in iterator and list"
-    );
+
+    // Apply sample renaming and filtering. We need to do this here first, before processing
+    // any other filters and transforms, to make sure that they all see the correct
+    // sample names and numbers.
+    sample_name_options_.rename_samples( iterator_.data().sample_names );
+    sample_name_options_.add_sample_name_filter( iterator_ );
 
     // Add a visitor that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.
@@ -676,8 +623,8 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_iterator_(
     // to deal with positions that we are about to discard anyway.
 
     // Add the genome region list as a filter.
-    if( region_filter_.get_region_filter() ) {
-        iterator.add_filter( make_filter_by_region( region_filter_.get_region_filter() ));
+    if( region_filter_options_.get_region_filter() ) {
+        iterator.add_filter( make_filter_by_region( region_filter_options_.get_region_filter() ));
     }
 
     // Add the addtional filters and transformations that might have been set by the commands.
