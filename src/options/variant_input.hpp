@@ -27,13 +27,13 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_input.hpp"
-#include "options/variant_filter_region.hpp"
 #include "options/variant_file.hpp"
+#include "options/variant_filter_region.hpp"
 #include "options/variant_sample_names.hpp"
+#include "options/variant_reference_genome.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/formats/variant_input_iterator.hpp"
-#include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
 #include "genesis/sequence/reference_genome.hpp"
 #include "genesis/sequence/sequence_dict.hpp"
@@ -63,7 +63,6 @@ public:
     // -------------------------------------------------------------------------
 
     using Variant = genesis::population::Variant;
-    using GenomeLocusSet = genesis::population::GenomeLocusSet;
     using VariantInputIterator = genesis::population::VariantInputIterator;
 
     // -------------------------------------------------------------------------
@@ -99,17 +98,13 @@ public:
      */
     void add_variant_input_opts_to_app(
         CLI::App* sub,
+        bool with_reference_genome_opts = true,
         bool with_sample_name_opts = true,
         bool with_region_filter_opts = true,
         std::string const& group = "Input Settings"
     );
 
     void add_input_files_opts_to_app(
-        CLI::App* sub,
-        std::string const& group = "Input Settings"
-    );
-
-    void add_reference_genome_opts_to_app(
         CLI::App* sub,
         std::string const& group = "Input Settings"
     );
@@ -147,6 +142,22 @@ public:
     // -------------------------------------------------------------------------
 
     /**
+     * @brief Return the pointer to the reference genome, if provided, or nullptr.
+     */
+    std::shared_ptr<genesis::sequence::ReferenceGenome> get_reference_genome() const
+    {
+        return reference_genome_options_.get_reference_genome();
+    }
+
+    /**
+     * @brief Return the pointer to the reference sequence dictionary, if provided, or nullptr.
+     */
+    std::shared_ptr<genesis::sequence::SequenceDict> get_reference_dict() const
+    {
+        return reference_genome_options_.get_reference_dict();
+    }
+
+    /**
      * @brief Get all sample names given in the input file that are not filtered out.
      */
     std::vector<std::string> const& sample_names() const
@@ -164,24 +175,6 @@ public:
     {
         prepare_();
         return iterator_;
-    }
-
-    /**
-     * @brief Return the pointer to the reference genome, if provided, or nullptr.
-     */
-    std::shared_ptr<genesis::sequence::ReferenceGenome> get_reference_genome() const
-    {
-        prepare_reference_();
-        return reference_genome_;
-    }
-
-    /**
-     * @brief Return the pointer to the reference sequence dictionary, if provided, or nullptr.
-     */
-    std::shared_ptr<genesis::sequence::SequenceDict> get_reference_dict() const
-    {
-        prepare_reference_();
-        return sequence_dict_;
     }
 
     // -------------------------------------------------------------------------
@@ -216,7 +209,6 @@ public:
 private:
 
     void prepare_() const;
-    void prepare_reference_() const;
     void prepare_iterator_() const;
     void prepare_iterator_single_file_() const;
     void prepare_iterator_multiple_files_() const;
@@ -249,22 +241,18 @@ private:
     // We use our abstract base class to model different types of input files,
     // to avoid code repetition when adding and processing them here.
     std::vector<std::unique_ptr<VariantFileOptions>> input_files_;
-
-    // Additional options for sample names, filters, etc.
-    // We just outsourced them to keep the class here a bit more compact, but those are actually
-    // options that are kind of tightly integrated with the functionality here.
-    VariantSampleNamesOptions sample_name_options_;
-    VariantFilterRegionOptions region_filter_options_;
-
-    // General input settings
     CliOption<std::string> multi_file_loci_set_ = "union";
-    CliOption<std::string> reference_genome_fasta_file_;
-    CliOption<std::string> reference_genome_dict_file_;
-    CliOption<std::string> reference_genome_fai_file_;
 
     // Hidden options to set the LambdaIterator block size for speed.
     CliOption<size_t> iterator_block_size_ = 8192;
     CliOption<size_t> parallel_block_size_ = 4096;
+
+    // Additional options for sample names, filters, etc.
+    // We just outsourced them to keep the class here a bit more compact, but those are actually
+    // options that are kind of tightly integrated with the functionality here.
+    VariantReferenceGenomeOptions reference_genome_options_;
+    VariantSampleNamesOptions     sample_name_options_;
+    VariantFilterRegionOptions    region_filter_options_;
 
     // Transformations and filters, can be added by the commands as needed for their processing.
     // The individual is applied per input source, and the compbined is applied on the whole
@@ -287,10 +275,6 @@ private:
     // The `VariantInputIterator` takes care of all of this, and just gives us an iterable,
     // yielding a Variant for each position.
     mutable VariantInputIterator iterator_;
-
-    // Also load the reference genome and dict, if provided.
-    mutable std::shared_ptr<genesis::sequence::ReferenceGenome> reference_genome_;
-    mutable std::shared_ptr<genesis::sequence::SequenceDict> sequence_dict_;
 
     // Counts, for reporting: How many chr and pos have we seen,
     // and if we have a ref genome fasta, did we see any mismatching bases?
