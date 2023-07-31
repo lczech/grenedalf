@@ -248,6 +248,16 @@ void VariantSampleNamesOptions::add_sample_name_filter(
     iterator.add_transform(
         make_variant_input_iterator_sample_name_filter_transform( sample_filter )
     );
+
+    // We also need to re-set the sample names, so that they only contain the used ones.
+    std::vector<std::string> new_sample_names;
+    new_sample_names.reserve( pop_count );
+    for( size_t i = 0; i < sample_filter.size(); ++i ) {
+        if( sample_filter[i] ) {
+            new_sample_names.push_back( sample_names[i] );
+        }
+    }
+    iterator.data().sample_names = new_sample_names;
 }
 
 // -------------------------------------------------------------------------
