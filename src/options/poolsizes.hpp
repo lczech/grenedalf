@@ -30,6 +30,7 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -85,13 +86,26 @@ public:
         std::vector<bool> const& sample_filter = std::vector<bool>{}
     ) const;
 
+private:
+
+    size_t convert_poolsize_( std::string const& str ) const;
+
+    std::unordered_map<std::string, size_t> read_pool_size_map_from_file_() const;
+
+    void set_pool_sizes_from_map_(
+        std::vector<std::string> const& sample_names,
+        std::vector<bool> const& sample_filter,
+        std::unordered_map<std::string, size_t>& sample_name_to_pool_size,
+        std::vector<size_t>& pool_sizes
+    ) const;
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
 
 private:
 
-    CliOption<std::string> poolsizes = "";
+    CliOption<std::string> pool_sizes_opt_ = "";
 
 };
 
