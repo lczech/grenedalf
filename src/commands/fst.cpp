@@ -541,7 +541,7 @@ void prepare_output_files_(
         // Write the header line to it.
         (*target) << "chrom" << sep_char << "start" << sep_char << "end" << sep_char << "snps";
         for( auto const& pair : sample_pairs ) {
-            (*target) << sep_char << sample_names[pair.first] << "." << sample_names[pair.second];
+            (*target) << sep_char << sample_names[pair.first] << ":" << sample_names[pair.second];
         }
         (*target) << "\n";
     };
