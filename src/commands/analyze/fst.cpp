@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "commands/fst.hpp"
+#include "commands/analyze/fst.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
@@ -79,7 +79,7 @@ void setup_fst( CLI::App& app )
     auto options = std::make_shared<FstOptions>();
     auto sub = app.add_subcommand(
         "fst",
-        "Compute FST in windows or at individual positions along the genome."
+        "Compute pool-sequencing corrected measures of FST."
     );
 
     // -------------------------------------------------------------------------

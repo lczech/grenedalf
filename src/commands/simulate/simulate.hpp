@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_SYNC_H_
-#define GRENEDALF_COMMANDS_SYNC_H_
+#ifndef GRENEDALF_COMMANDS_SIMULATE_SIMULATE_H_
+#define GRENEDALF_COMMANDS_SIMULATE_SIMULATE_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,8 +27,9 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_output.hpp"
-#include "options/variant_input.hpp"
+#include "tools/cli_option.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -36,14 +37,30 @@
 //      Options
 // =================================================================================================
 
-class SyncOptions
+class SimulateOptions
 {
 public:
 
-    VariantInputOptions variant_input;
-    FileOutputOptions   file_output;
-    CliOption<bool>     with_header = false;
-    CliOption<bool>     guess_reference_base = false;
+    // General options
+    CliOption<std::string> format = "pileup";
+    CliOption<std::uint32_t> random_seed;
+
+    // Sample coverages, as single numbers, or as min/max entries per sample.
+    CliOption<std::string> coverages;
+
+    // Chromosome and positions
+    CliOption<std::string> chromosome = "A";
+    CliOption<double> mutation_rate = 1e-8;
+    CliOption<size_t> mutation_count;
+    CliOption<size_t> length;
+    CliOption<bool> omit_invariant_positions = false;
+
+    // Pileup quality scores
+    CliOption<bool> with_quality_scores = false;
+    CliOption<size_t> min_phred_score = 10;
+    CliOption<size_t> max_phred_score = 40;
+
+    FileOutputOptions  file_output;
 
 };
 
@@ -51,7 +68,7 @@ public:
 //      Functions
 // =================================================================================================
 
-void setup_sync( CLI::App& app );
-void run_sync( SyncOptions const& options );
+void setup_simulate( CLI::App& app );
+void run_simulate( SimulateOptions const& options );
 
 #endif // include guard

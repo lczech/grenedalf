@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "commands/simulate.hpp"
+#include "commands/simulate/simulate.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 

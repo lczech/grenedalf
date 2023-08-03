@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_FST_H_
-#define GRENEDALF_COMMANDS_FST_H_
+#ifndef GRENEDALF_COMMANDS_CONVERT_FREQUENCY_H_
+#define GRENEDALF_COMMANDS_CONVERT_FREQUENCY_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -27,11 +27,8 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_output.hpp"
-#include "options/poolsizes.hpp"
-#include "options/table_output.hpp"
-#include "options/variant_filter_numerical.hpp"
 #include "options/variant_input.hpp"
-#include "options/window.hpp"
+#include "options/table_output.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
@@ -41,28 +38,26 @@
 //      Options
 // =================================================================================================
 
-class FstOptions
+class FrequencyOptions
 {
 public:
 
-    // Input options
-    VariantInputOptions           variant_input;
-    VariantFilterNumericalOptions filter_numerical;
-    WindowOptions                 window;
-    PoolsizesOptions              poolsizes;
+    CliOption<bool> write_sample_counts    = false;
+    CliOption<bool> write_sample_coverage  = false;
+    CliOption<bool> write_sample_ref_freq  = false;
+    CliOption<bool> write_sample_alt_freq  = false;
 
-    // Specific settings
-    CliOption<std::string> method = "unbiased-nei";
-    CliOption<bool>        write_pi_tables = false;
-    CliOption<bool>        omit_na_windows = false;
-    CliOption<std::string> comparand = "";
-    CliOption<std::string> second_comparand = "";
-    CliOption<std::string> comparand_list = "";
-    CliOption<size_t>      threading_threshold = 4096;
+    CliOption<bool> write_total_counts     = false;
+    CliOption<bool> write_total_coverage   = false;
+    CliOption<bool> write_total_frequency  = false;
 
-    // Output options
-    TableOutputOptions table_output;
-    FileOutputOptions  file_output;
+    CliOption<bool> write_invariants       = false;
+    CliOption<bool> omit_ref_alt_bases     = false;
+    CliOption<bool> omit_alt_bases         = false;
+
+    VariantInputOptions variant_input;
+    TableOutputOptions  table_output;
+    FileOutputOptions   file_output;
 
 };
 
@@ -70,7 +65,7 @@ public:
 //      Functions
 // =================================================================================================
 
-void setup_fst( CLI::App& app );
-void run_fst( FstOptions const& options );
+void setup_frequency( CLI::App& app );
+void run_frequency( FrequencyOptions const& options );
 
 #endif // include guard

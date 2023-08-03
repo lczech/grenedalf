@@ -26,12 +26,12 @@
 
 #include "CLI/CLI.hpp"
 
-#include "commands/afs_heatmap.hpp"
-#include "commands/diversity.hpp"
-#include "commands/frequency.hpp"
-#include "commands/fst.hpp"
-#include "commands/simulate.hpp"
-#include "commands/sync.hpp"
+#include "commands/analyze/diversity.hpp"
+#include "commands/analyze/fst.hpp"
+#include "commands/convert/frequency.hpp"
+#include "commands/convert/sync.hpp"
+#include "commands/simulate/simulate.hpp"
+#include "commands/visualize/afs_heatmap.hpp"
 
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
@@ -53,7 +53,10 @@ inline void setup_commands( CLI::App& app )
     // sub->require_subcommand( 1 );
 
     // Add module subcommands.
-    setup_afs_heatmap( app );
+    // Keeping alphabetical order here for now - need to change if we decide to use sub-commands as
+    // in gappa, where the command would be called `grenedalf analyze fst` instead of `grenedalf fst`
+
+    // setup_afs_heatmap( app );
     setup_diversity( app );
     setup_frequency( app );
     setup_fst( app );

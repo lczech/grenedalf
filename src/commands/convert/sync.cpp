@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "commands/sync.hpp"
+#include "commands/convert/sync.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 

@@ -21,7 +21,7 @@
     260 Panama Street, Stanford, CA 94305, USA
 */
 
-#include "commands/diversity.hpp"
+#include "commands/analyze/diversity.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
@@ -50,9 +50,8 @@ void setup_diversity( CLI::App& app )
     auto options = std::make_shared<DiversityOptions>();
     auto sub = app.add_subcommand(
         "diversity",
-        "Compute the pool-sequencing corrected diversity measures Theta Pi, "
-        "Theta Watterson, and Tajima's D, following the PoPoolation approach, "
-        "for each sample, in windows along the genome."
+        "Compute pool-sequencing corrected diversity measures Theta Pi, "
+        "Theta Watterson, and Tajima's D."
     );
 
     // -------------------------------------------------------------------------

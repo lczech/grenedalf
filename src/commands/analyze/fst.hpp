@@ -1,9 +1,9 @@
-#ifndef GRENEDALF_COMMANDS_FREQUENCY_H_
-#define GRENEDALF_COMMANDS_FREQUENCY_H_
+#ifndef GRENEDALF_COMMANDS_ANALYZE_FST_H_
+#define GRENEDALF_COMMANDS_ANALYZE_FST_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,8 +27,11 @@
 #include "CLI/CLI.hpp"
 
 #include "options/file_output.hpp"
-#include "options/variant_input.hpp"
+#include "options/poolsizes.hpp"
 #include "options/table_output.hpp"
+#include "options/variant_filter_numerical.hpp"
+#include "options/variant_input.hpp"
+#include "options/window.hpp"
 #include "tools/cli_option.hpp"
 
 #include <string>
@@ -38,26 +41,28 @@
 //      Options
 // =================================================================================================
 
-class FrequencyOptions
+class FstOptions
 {
 public:
 
-    CliOption<bool> write_sample_counts    = false;
-    CliOption<bool> write_sample_coverage  = false;
-    CliOption<bool> write_sample_ref_freq  = false;
-    CliOption<bool> write_sample_alt_freq  = false;
+    // Input options
+    VariantInputOptions           variant_input;
+    VariantFilterNumericalOptions filter_numerical;
+    WindowOptions                 window;
+    PoolsizesOptions              poolsizes;
 
-    CliOption<bool> write_total_counts     = false;
-    CliOption<bool> write_total_coverage   = false;
-    CliOption<bool> write_total_frequency  = false;
+    // Specific settings
+    CliOption<std::string> method = "unbiased-nei";
+    CliOption<bool>        write_pi_tables = false;
+    CliOption<bool>        omit_na_windows = false;
+    CliOption<std::string> comparand = "";
+    CliOption<std::string> second_comparand = "";
+    CliOption<std::string> comparand_list = "";
+    CliOption<size_t>      threading_threshold = 4096;
 
-    CliOption<bool> write_invariants       = false;
-    CliOption<bool> omit_ref_alt_bases     = false;
-    CliOption<bool> omit_alt_bases         = false;
-
-    VariantInputOptions variant_input;
-    TableOutputOptions  table_output;
-    FileOutputOptions   file_output;
+    // Output options
+    TableOutputOptions table_output;
+    FileOutputOptions  file_output;
 
 };
 
@@ -65,7 +70,7 @@ public:
 //      Functions
 // =================================================================================================
 
-void setup_frequency( CLI::App& app );
-void run_frequency( FrequencyOptions const& options );
+void setup_fst( CLI::App& app );
+void run_fst( FstOptions const& options );
 
 #endif // include guard

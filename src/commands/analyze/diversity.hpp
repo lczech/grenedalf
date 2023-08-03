@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_COMMANDS_DIVERSITY_H_
-#define GRENEDALF_COMMANDS_DIVERSITY_H_
+#ifndef GRENEDALF_COMMANDS_ANALYZE_DIVERSITY_H_
+#define GRENEDALF_COMMANDS_ANALYZE_DIVERSITY_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies

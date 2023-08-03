@@ -1,9 +1,9 @@
-#ifndef GRENEDALF_COMMANDS_AFS_HEATMAP_H_
-#define GRENEDALF_COMMANDS_AFS_HEATMAP_H_
+#ifndef GRENEDALF_COMMANDS_VISUALIZE_AFS_HEATMAP_H_
+#define GRENEDALF_COMMANDS_VISUALIZE_AFS_HEATMAP_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2023 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
