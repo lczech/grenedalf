@@ -54,6 +54,9 @@ To install these, run:
     ~~~.sh
     apt-get install build-essential cmake autoconf automake zlib1g-dev libbz2-dev liblzma-dev libtinfo5
     ~~~
+  * On computer clusters, where you usually do not have the rights to install these tools
+    directly, try the `module load` system (or equivalent for your cluster) to load sufficiently
+    recent versions of the build tools.
 
 This works in our [CI tests](https://github.com/lczech/grenedalf/actions);
 if it does not work for you, please open an [issue](https://github.com/lczech/grenedalf/issues).
