@@ -243,7 +243,7 @@ void VariantFilterRegionOptions::prepare_region_filters() const
             }
         }
         auto const chr_cnt = region_filter_->chromosome_count();
-        assert( chr_cnt = full_chr + spec_chr );
+        assert( chr_cnt == full_chr + spec_chr );
 
         // Nice log message telling us what the filters will do.
         LOG_MSG << "Applying " << to_lower( filter_region_set_.value ) << " of " << filter_cnt
