@@ -385,10 +385,14 @@ std::vector<genesis::population::DiversityPoolCalculator> get_diversity_calculat
     // Prepare pool settings for each sample.
     // We here re-use the numerical filter settings as provided by the user.
     DiversityPoolSettings pool_settings;
-    pool_settings.min_count             = filter.min_count;
-    pool_settings.min_coverage          = filter.min_coverage;
-    pool_settings.max_coverage          = filter.max_coverage;
-    pool_settings.with_popoolation_bugs = options.with_popoolation_bugs.value;
+    pool_settings.min_count    = filter.min_count;
+    pool_settings.min_coverage = filter.min_coverage;
+    pool_settings.max_coverage = filter.max_coverage;
+    pool_settings.tajima_denominator_policy
+        = options.with_popoolation_bugs.value
+        ? TajimaDenominatorPolicy::kWithPopoolatioBugs
+        : TajimaDenominatorPolicy::kWithoutPopoolatioBugs
+    ;
     std::vector<DiversityPoolCalculator> sample_diversity_calculators;
     for( size_t i = 0; i < sample_names.size(); ++i ) {
         sample_diversity_calculators.emplace_back(

@@ -30,8 +30,8 @@
 #include "genesis/population/plotting/genome_heatmap.hpp"
 #include "genesis/population/plotting/heatmap_colorization.hpp"
 #include "genesis/utils/math/statistics.hpp"
-#include "genesis/utils/tools/color/list_diverging.hpp"
-#include "genesis/utils/tools/color/list_sequential.hpp"
+#include "genesis/utils/color/list_diverging.hpp"
+#include "genesis/utils/color/list_sequential.hpp"
 
 #include <algorithm>
 #include <cassert>

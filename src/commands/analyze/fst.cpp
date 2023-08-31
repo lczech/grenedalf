@@ -26,11 +26,12 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
+#include "genesis/population/functions/fst_pool_calculator.hpp"
 #include "genesis/population/functions/fst_pool_functions.hpp"
 #include "genesis/population/functions/fst_pool_karlsson.hpp"
 #include "genesis/population/functions/fst_pool_kofler.hpp"
+#include "genesis/population/functions/fst_pool_processor.hpp"
 #include "genesis/population/functions/fst_pool_unbiased.hpp"
-#include "genesis/population/functions/fst_pool.hpp"
 #include "genesis/population/functions/functions.hpp"
 #include "genesis/utils/containers/matrix.hpp"
 #include "genesis/utils/containers/matrix/operators.hpp"
