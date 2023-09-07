@@ -174,6 +174,7 @@ void VariantFilterNumericalOptions::add_total_filter_opts_to_app(
     // Add all three types of sample filters.
     add_total_coverage_filter_opts_to_app( sub, true, true, group );
     add_total_snp_filter_opts_to_app(      sub, true, true, group );
+    add_total_snp_count_opts_to_app(       sub, true, true, group );
     add_total_freq_filter_opts_to_app(     sub, group );
 }
 
@@ -248,6 +249,37 @@ void VariantFilterNumericalOptions::add_total_snp_filter_opts_to_app(
     }
 }
 
+void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
+    CLI::App* sub,
+    bool add_total_min_count_for_snp,
+    bool add_total_max_count_for_snp,
+    std::string const& group
+) {
+    // Add min count for snps filter
+    if( add_total_min_count_for_snp ) {
+        total_min_count_for_snp.option = sub->add_flag(
+            "--filter-total-snp-min-count",
+            total_min_count_for_snp.value,
+            "When filtering for positions that are SNPs, use this minimum count (summed across all "
+            "samples) to identify what is considered a SNP. Positions where the counts are below "
+            "this are filtered out."
+        );
+        total_min_count_for_snp.option->group( group );
+    }
+
+    // Add max count for snps filter
+    if( add_total_max_count_for_snp ) {
+        total_max_count_for_snp.option = sub->add_flag(
+            "--filter-total-snp-max-count",
+            total_max_count_for_snp.value,
+            "When filtering for positions that are SNPs, use this maximum count (summed across all "
+            "samples) to identify what is considered a SNP. Positions where the counts are above "
+            "this are filtered out; probably not relevant in practice, but offered for completeness."
+        );
+        total_max_count_for_snp.option->group( group );
+    }
+}
+
 void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
     CLI::App* sub,
     std::string const& group
@@ -256,9 +288,10 @@ void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
     total_min_frequency.option = sub->add_option(
         "--filter-total-min-frequency",
         total_min_frequency.value,
-        "Minimum allele frequency that needs to be achieved. "
+        "Minimum allele frequency that needs to be reached for a position to be used. "
         "Positions where the allele frequency `af` across all samples, or `1 - af`, "
-        "is below this value, are ignored."
+        "is below this value, are ignored. We compute allele frequency based on the counts "
+        "of the reference and alternative base."
     );
     total_min_frequency.option->group( group );
 
@@ -370,6 +403,14 @@ VariantFilterNumericalOptions::get_total_filter(
     }
     if( total_only_biallelic_snps.option && *total_only_biallelic_snps.option ) {
         filter.only_biallelic_snps = total_only_biallelic_snps.value;
+        any_provided = true;
+    }
+    if( total_min_count_for_snp.option && *total_min_count_for_snp.option ) {
+        filter.min_count_for_snp = total_min_count_for_snp.value;
+        any_provided = true;
+    }
+    if( total_max_count_for_snp.option && *total_max_count_for_snp.option ) {
+        filter.max_count_for_snp = total_max_count_for_snp.value;
         any_provided = true;
     }
     if( total_min_frequency.option && *total_min_frequency.option ) {

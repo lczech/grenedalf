@@ -122,6 +122,13 @@ public:
         std::string const& group = "Numerical Filters"
     );
 
+    void add_total_snp_count_opts_to_app(
+        CLI::App* sub,
+        bool add_total_min_count_for_snp = true,
+        bool add_total_max_count_for_snp = true,
+        std::string const& group = "Numerical Filters"
+    );
+
     void add_total_freq_filter_opts_to_app(
         CLI::App* sub,
         std::string const& group = "Numerical Filters"
@@ -213,6 +220,8 @@ public:
     CliOption<size_t> total_max_coverage         = 0;
     CliOption<bool>   total_only_snps            = false;
     CliOption<bool>   total_only_biallelic_snps  = false;
+    CliOption<size_t> total_min_count_for_snp    = 0;
+    CliOption<size_t> total_max_count_for_snp    = 0;
     CliOption<double> total_min_frequency        = 0.0;
 
 private:
