@@ -53,7 +53,9 @@ CLI::Option* VariantFileVcfOptions::add_file_input_opt_to_app_(
         "given, containing the counts of the reference and alternative base. "
         "This assumes that the data that was used to create the VCF file was actually a pool of "
         "individuals (e.g., from pool sequencing) for each sample (column) of the VCF file. "
-        "We then interpret the `AD` field as the allele counts of each pool of individuals."
+        "We then interpret the `AD` field as the allele counts of each pool of individuals. "
+        "Note that only SNP positions are used; positions that contain indels and other non-SNP "
+        "variants are skipped."
     );
 
     return file_input_.option();
@@ -68,8 +70,6 @@ VariantFileVcfOptions::VariantInputIterator VariantFileVcfOptions::get_iterator_
 ) const {
     using namespace genesis::population;
 
-    // Prepare the iterator.
-    // By default, this also already filters for biallelic SNPs.
-    bool const only_biallelic = true;
-    return make_variant_input_iterator_from_pool_vcf_file( filename, only_biallelic );
+    // Prepare the iterator. Simple.
+    return make_variant_input_iterator_from_pool_vcf_file( filename );
 }
