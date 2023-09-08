@@ -99,6 +99,7 @@ void setup_fst( CLI::App& app )
     options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
     options->filter_numerical.add_total_coverage_filter_opts_to_app( sub );
     options->filter_numerical.add_total_snp_filter_opts_to_app( sub, false, true );
+    options->filter_numerical.add_total_snp_count_opts_to_app( sub );
     options->filter_numerical.add_total_freq_filter_opts_to_app( sub );
 
     // We amend the existing biallelic SNP filter option description here.
