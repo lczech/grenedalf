@@ -257,7 +257,7 @@ void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
 ) {
     // Add min count for snps filter
     if( add_total_min_count_for_snp ) {
-        total_min_count_for_snp.option = sub->add_flag(
+        total_min_count_for_snp.option = sub->add_option(
             "--filter-total-snp-min-count",
             total_min_count_for_snp.value,
             "When filtering for positions that are SNPs, use this minimum count (summed across all "
@@ -269,7 +269,7 @@ void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
 
     // Add max count for snps filter
     if( add_total_max_count_for_snp ) {
-        total_max_count_for_snp.option = sub->add_flag(
+        total_max_count_for_snp.option = sub->add_option(
             "--filter-total-snp-max-count",
             total_max_count_for_snp.value,
             "When filtering for positions that are SNPs, use this maximum count (summed across all "
