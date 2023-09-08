@@ -688,9 +688,12 @@ WindowOptions::ChromosomeIterator
 WindowOptions::get_variant_window_view_iterator_chromosomes_(
     genesis::population::VariantInputIterator& input
 ) const {
-    return genesis::population::make_default_chromosome_iterator(
+    assert( variant_input_ );
+    auto it = genesis::population::make_default_chromosome_iterator(
         input.begin(), input.end()
     );
+    it.sequence_dict( variant_input_->get_reference_dict() );
+    return it;
 }
 
 // -------------------------------------------------------------------------
