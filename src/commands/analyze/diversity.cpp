@@ -218,13 +218,13 @@ struct DiversityOutputData
 };
 
 // -------------------------------------------------------------------------
-//     prepare_output_output_data_
+//     prepare_output_data_
 // -------------------------------------------------------------------------
 
 /**
  * @brief Prepare output file and write fixed header fields.
  */
-DiversityOutputData prepare_output_output_data_(
+DiversityOutputData prepare_output_data_(
     DiversityOptions const& options,
     std::vector<std::string> const& sample_names
 ) {
@@ -631,7 +631,7 @@ void run_diversity( DiversityOptions const& options )
     );
 
     // Prepare file output_data and print headers.
-    auto output_data = prepare_output_output_data_( options, sample_names );
+    auto output_data = prepare_output_data_( options, sample_names );
 
     // Prepare pool settings for each sample.
     auto sample_diversity_calculators = get_diversity_calculators_(
