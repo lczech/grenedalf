@@ -54,9 +54,6 @@ void VariantFilterNumericalOptions::add_sample_filter_opts_to_app(
     add_sample_count_filter_opts_to_app(    sub, true, true, group );
     add_sample_coverage_filter_opts_to_app( sub, true, true, group );
     add_sample_snp_filter_opts_to_app(      sub, true, true, group );
-
-    // TODO include?!
-    // CliOption<bool> sample_tolerate_deletions  = false;
 }
 
 
@@ -73,7 +70,9 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
             sample_min_count.value,
             "Minimum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
             "Counts below that are set to zero, and hence ignored as an allele/variant. "
-            "For example, singleton read sequencing errors can be filtered out this way."
+            "For example, singleton read sequencing errors can be filtered out this way. "
+            "This min count is also used for filtering base counts with "
+            "too many deletions, unless `--filter-sample-tolerate-deletions` is set."
         );
         sample_min_count.option->group( group );
     }
@@ -89,6 +88,15 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
         );
         sample_max_count.option->group( group );
     }
+
+    // Add tolerate deletions flag
+    sample_tolerate_deletions.option = sub->add_flag(
+        "--filter-sample-tolerate-deletions",
+        sample_tolerate_deletions.value,
+        "By default, we filter out any samples that have too many deletions (based on "
+        "`--filter-sample-min-count`). With this flag however, such samples are retained."
+    );
+    sample_tolerate_deletions.option->group( group );
 }
 
 void VariantFilterNumericalOptions::add_sample_coverage_filter_opts_to_app(
@@ -251,33 +259,43 @@ void VariantFilterNumericalOptions::add_total_snp_filter_opts_to_app(
 
 void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
     CLI::App* sub,
-    bool add_total_min_count_for_snp,
-    bool add_total_max_count_for_snp,
+    bool add_total_min_count,
+    bool add_total_max_count,
     std::string const& group
 ) {
     // Add min count for snps filter
-    if( add_total_min_count_for_snp ) {
-        total_min_count_for_snp.option = sub->add_option(
-            "--filter-total-snp-min-count",
-            total_min_count_for_snp.value,
+    if( add_total_min_count ) {
+        total_min_count.option = sub->add_option(
+            "--filter-total-min-count",
+            total_min_count.value,
             "When filtering for positions that are SNPs, use this minimum count (summed across all "
             "samples) to identify what is considered a SNP. Positions where the counts are below "
-            "this are filtered out."
+            "this are filtered out. This min count is also used for filtering positions with "
+            "too many deletions, unless `--filter-total-tolerate-deletions` is set."
         );
-        total_min_count_for_snp.option->group( group );
+        total_min_count.option->group( group );
     }
 
     // Add max count for snps filter
-    if( add_total_max_count_for_snp ) {
-        total_max_count_for_snp.option = sub->add_option(
-            "--filter-total-snp-max-count",
-            total_max_count_for_snp.value,
+    if( add_total_max_count ) {
+        total_max_count.option = sub->add_option(
+            "--filter-total-max-count",
+            total_max_count.value,
             "When filtering for positions that are SNPs, use this maximum count (summed across all "
             "samples) to identify what is considered a SNP. Positions where the counts are above "
             "this are filtered out; probably not relevant in practice, but offered for completeness."
         );
-        total_max_count_for_snp.option->group( group );
+        total_max_count.option->group( group );
     }
+
+    // Add tolerate deletions flag
+    total_tolerate_deletions.option = sub->add_flag(
+        "--filter-total-tolerate-deletions",
+        total_tolerate_deletions.value,
+        "By default, we filter out any positions that have too many deletions (based on "
+        "`--filter-total-min-count`). With this flag however, such positions are retained."
+    );
+    total_tolerate_deletions.option->group( group );
 }
 
 void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
@@ -405,16 +423,20 @@ VariantFilterNumericalOptions::get_total_filter(
         filter.only_biallelic_snps = total_only_biallelic_snps.value;
         any_provided = true;
     }
-    if( total_min_count_for_snp.option && *total_min_count_for_snp.option ) {
-        filter.min_count_for_snp = total_min_count_for_snp.value;
+    if( total_min_count.option && *total_min_count.option ) {
+        filter.min_count = total_min_count.value;
         any_provided = true;
     }
-    if( total_max_count_for_snp.option && *total_max_count_for_snp.option ) {
-        filter.max_count_for_snp = total_max_count_for_snp.value;
+    if( total_max_count.option && *total_max_count.option ) {
+        filter.max_count = total_max_count.value;
         any_provided = true;
     }
     if( total_min_frequency.option && *total_min_frequency.option ) {
         filter.min_frequency = total_min_frequency.value;
+        any_provided = true;
+    }
+    if( total_tolerate_deletions.option && *total_tolerate_deletions.option ) {
+        filter.tolerate_deletions = total_tolerate_deletions.value;
         any_provided = true;
     }
 

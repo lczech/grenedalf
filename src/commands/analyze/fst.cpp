@@ -123,7 +123,7 @@ void setup_fst( CLI::App& app )
         "--method",
         options->method.value,
         "FST method to use for the computation.\n(1) The unbiased pool-sequencing statistic "
-        "(in two variants, following the definition of Nei, and the definition of Hudson et al),"
+        "(in two variants, following the definition of Nei, and the definition of Hudson),"
         "\n(2) the statistic by Kofler et al of PoPoolation2, or \n(3) the asymptotically unbiased "
         "estimator of Karlsson et al (which is also implemented in PoPoolation2). "
         "\nAll except for the Karlsson method also require `--pool-sizes` to be provided."
@@ -836,9 +836,9 @@ void run_fst( FstOptions const& options )
     );
     genesis::population::VariantFilter total_filter;
     total_filter.only_snps = true;
-    if( state.method == FstMethod::kKarlsson ) {
-        total_filter.only_biallelic_snps = true;
-    }
+    // if( state.method == FstMethod::kKarlsson ) {
+    //     total_filter.only_biallelic_snps = true;
+    // }
     options.variant_input.add_combined_filter_and_transforms(
         options.filter_numerical.make_total_filter( total_filter )
     );
