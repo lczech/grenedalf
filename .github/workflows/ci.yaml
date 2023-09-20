@@ -138,12 +138,14 @@ jobs:
           - os: ubuntu-22.04
             compiler: gcc-13
             static: "true"
-          - os: macos-11
-            compiler: gcc-13
-            static: "true"
-          - os: macos-12
-            compiler: gcc-13
-            static: "true"
+          # Static is not easy on Mac... https://stackoverflow.com/q/3801011
+          # Deactivated for now.
+          # - os: macos-11
+          #   compiler: gcc-13
+          #   static: "true"
+          # - os: macos-12
+          #   compiler: gcc-13
+          #   static: "true"
 
     # ==========================================================================
     #     Steps
