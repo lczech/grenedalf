@@ -10,13 +10,13 @@ on: [push, pull_request]
 # ==================================================================================================
 
 jobs:
+
+  # ==========================================================================
+  #     CI Matrix
+  # ==========================================================================
+
   ci:
     runs-on: ${{ matrix.os }}
-
-    # ==========================================================================
-    #     Matrix
-    # ==========================================================================
-
     strategy:
       fail-fast: false
 
@@ -49,6 +49,10 @@ jobs:
           - llvm-11
           - llvm-12
           - llvm-13
+
+        static:
+          # We build non static by default, but add a few static builds for distributable binaries
+          - "false"
 
         # -------------------------------------------------------
         #     exclude
@@ -130,6 +134,17 @@ jobs:
           - os: macos-12
             compiler: apple
 
+          # Include the static builds that we want for distributable binaries
+          - os: ubuntu-22.04
+            compiler: gcc-13
+            static: "true"
+          - os: macos-11
+            compiler: gcc-13
+            static: "true"
+          - os: macos-12
+            compiler: gcc-13
+            static: "true"
+
     # ==========================================================================
     #     Steps
     # ==========================================================================
@@ -184,17 +199,19 @@ jobs:
 
       - name: Configure
         run: |
-          # Deactivate OpenMP on MacOS for now. Causes way too much trouble.
-          export GENESIS_USE_OPENMP=ON
-          if [[ "${RUNNER_OS}" == "macOS" ]]; then export GENESIS_USE_OPENMP=OFF; fi
-
           # Need to set the xcode patch here as well, as job steps don't keep status.
           if [[ "${RUNNER_OS}" == "macOS" ]] && [[ "${{ matrix.compiler }}" == gcc* ]]; then
             echo "Patching xcode gcc issues"
             sudo xcode-select --switch /Library/Developer/CommandLineTools
           fi
 
-          cmake -S . -B ./build -DGENESIS_USE_OPENMP=${GENESIS_USE_OPENMP}
+          # For static builds, set the according CMake option
+          export GRENEDALF_BUILD_STATIC=""
+          if [[ "${{ matrix.static }}" == "true" ]]; then
+            export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
+          fi
+
+          cmake -S . -B ./build ${GRENEDALF_BUILD_STATIC}
 
       # -------------------------------------------------------
       #     Build & Test
@@ -217,3 +234,15 @@ jobs:
           fi
 
           cmake --build ./build -- -j 2
+
+      # -------------------------------------------------------
+      #     Upload Binaries
+      # -------------------------------------------------------
+
+      - name: Upload Binaries
+        if: matrix.static == "true"
+        uses: actions/upload-artifact@v3
+        with:
+          name: binary-${{ matrix.os }}
+          path: |
+            bin/grenedalf
