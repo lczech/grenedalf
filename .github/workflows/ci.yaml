@@ -50,10 +50,6 @@ jobs:
           - llvm-12
           - llvm-13
 
-        static:
-          # We build non static by default, but add a few static builds for distributable binaries
-          - "false"
-
         # -------------------------------------------------------
         #     exclude
         # -------------------------------------------------------
@@ -134,19 +130,6 @@ jobs:
           - os: macos-12
             compiler: apple
 
-          # Include the static builds that we want for distributable binaries
-          - os: ubuntu-22.04
-            compiler: gcc-13
-            static: "true"
-          # Static is not easy on Mac... https://stackoverflow.com/q/3801011
-          # Deactivated for now.
-          # - os: macos-11
-          #   compiler: gcc-13
-          #   static: "true"
-          # - os: macos-12
-          #   compiler: gcc-13
-          #   static: "true"
-
     # ==========================================================================
     #     Steps
     # ==========================================================================
@@ -209,7 +192,7 @@ jobs:
 
           # For static builds, set the according CMake option
           export GRENEDALF_BUILD_STATIC=""
-          if [[ "${{ matrix.static }}" == "true" ]]; then
+          if [[ "${{ matrix.os }}" == "ubuntu-22.04" ]] && [[ "${{ matrix.compiler }}" == "gcc-13" ]]; then
             export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
           fi
 
@@ -242,7 +225,7 @@ jobs:
       # -------------------------------------------------------
 
       - name: Upload Binaries
-        if: matrix.static == 'true'
+        if: matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13'
         uses: actions/upload-artifact@v3
         with:
           name: binary-${{ matrix.os }}
