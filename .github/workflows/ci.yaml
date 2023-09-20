@@ -240,7 +240,7 @@ jobs:
       # -------------------------------------------------------
 
       - name: Upload Binaries
-        if: matrix.static == "true"
+        if: matrix.static == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: binary-${{ matrix.os }}
