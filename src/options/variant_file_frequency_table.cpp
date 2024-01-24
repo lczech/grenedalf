@@ -190,7 +190,7 @@ void VariantFileFrequencyTableOptions::add_extra_file_input_opts_to_app_(
         "For example, \"S1.freq\" indicates the frequency column for sample \"S1\". "
         "Note that when the input data contains frequencies, but no reference or alternative base "
         "columns, such as HAF-pipe output tables, we cannot know the bases, and will hence guess. "
-        "To properly set the reference bases, consider providing the `--reference-genome-file` option."
+        "To properly set the reference bases, consider providing the `--reference-genome-fasta-file` option."
     );
     usr_smp_frq_name_.option->group( group );
     usr_smp_frq_name_.option->needs( file_input_.option() );
