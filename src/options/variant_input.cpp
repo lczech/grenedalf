@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -355,11 +355,11 @@ void VariantInputOptions::prepare_iterator_single_file_() const
         "prepare_iterator_single_file_() call to file prepare function did not succeed."
     );
 
-    // Add a visitor that checks chromosome order and length. We need to check order here,
+    // Add an observer that checks chromosome order and length. We need to check order here,
     // as the single iterator does not do this already (as opposed to the parallel one below).
     // Without a dict (when sequence_dict_ is nullptr), this checks lexicographically.
-    iterator_.add_visitor(
-        genesis::population::make_variant_input_iterator_sequence_order_visitor(
+    iterator_.add_observer(
+        genesis::population::make_variant_input_iterator_sequence_order_observer(
             get_reference_dict()
         )
     );
@@ -459,11 +459,11 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
     sample_name_options_.rename_samples( iterator_.data().sample_names );
     sample_name_options_.add_sample_name_filter( iterator_ );
 
-    // Add a visitor that checks chromosome length. We do not need to check order,
+    // Add an observer that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.
     if( get_reference_dict() ) {
-        iterator_.add_visitor(
-            make_variant_input_iterator_sequence_length_visitor( get_reference_dict() )
+        iterator_.add_observer(
+            make_variant_input_iterator_sequence_length_observer( get_reference_dict() )
         );
     }
 
@@ -527,7 +527,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
         iterator.add_transform_filter( func );
     }
 
-    // In addition to the transforms and filters, we here also add a visitor function.
+    // In addition to the transforms and filters, we here also add an observer function.
     // We always print out where the input is at, at the moment. That makes sure that we always
     // get some progress update, which is probably more useful for the user than waiting too long
     // without any.
@@ -535,7 +535,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     // chromosomes, so that they won't be printed here. We use lambda capture by value to create
     // a copy of current_chr that is kept in the lambda, and updated there. We are not in C++14 yet.
     std::string current_chr;
-    iterator.add_visitor(
+    iterator.add_observer(
         [ current_chr, this ]( Variant const& variant ) mutable {
             ++num_positions_;
             if( current_chr != variant.chromosome ) {
@@ -549,7 +549,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     // If we have a reference genome, we also check that its bases match what we find in the
     // input files, and report if that's not fitting.
     if( get_reference_genome() ) {
-        iterator.add_visitor(
+        iterator.add_observer(
             [ this ]( Variant const& variant ) mutable {
                 auto const var_base = genesis::utils::to_upper( variant.reference_base );
                 auto const ref_base = get_reference_genome()->get_base(

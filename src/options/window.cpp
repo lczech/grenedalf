@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -345,7 +345,7 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
 
     // Add logging to the iterator, and return it.
     using VariantWindowType = genesis::population::Window<genesis::population::Variant>;
-    result->add_visitor([ this ]( VariantWindowType const& window ){
+    result->add_observer([ this ]( VariantWindowType const& window ){
         ++num_windows_;
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"
@@ -442,7 +442,7 @@ std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_vie
 
     // Add logging to the iterator, and return it.
     using VariantWindowViewType = genesis::population::WindowView<genesis::population::Variant>;
-    result->add_visitor([ this ]( VariantWindowViewType const& window ){
+    result->add_observer([ this ]( VariantWindowViewType const& window ){
         ++num_windows_;
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"
