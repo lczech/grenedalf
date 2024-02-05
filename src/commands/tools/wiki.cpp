@@ -585,6 +585,7 @@ void make_wiki_sidebar( WikiOptions const& options )
 
     // Add standard entries
     os << "[Home](../wiki)\n\n";
+    os << "[Build](../wiki/Build)\n\n";
 
     // Get all top level commands.
     auto subcomms = get_sorted_subcommands( options.app );

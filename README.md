@@ -31,49 +31,7 @@ is highly appreciated!
 Setup
 -------------------
 
-Build system requirements:
-
-  * [Make](https://www.gnu.org/software/make/), [autotools](https://en.wikipedia.org/wiki/GNU_Autotools)
-    (i.e., `autoconf` and `automake`), and [CMake](https://cmake.org/) 3.1 or higher.
-  * A fairly up-to-date C++11 compiler, e.g.,
-    [clang++ 5](http://clang.llvm.org/) or [GCC 7](https://gcc.gnu.org/), or higher<br />
-    (older versions may work as well, but we do not test them any more).
-  * There are some further compression library requirements, such as `libz`, `libbz2`, `liblzma`,
-    and `libdeflate`, needed for compressed file support by [htslib](https://www.htslib.org/),
-    which we internally use for `sam`/`bam`/`cram` and `VCF` reading.
-    Usually, they should already be available on Unix/Linux/MacOS systems though.
-    We include them below anyway, just in case.
-
-To install these, run:
-
-  * On MacOS with [homebrew](https://brew.sh/):
-    ~~~.sh
-    brew install make cmake autoconf automake libdeflate coreutils
-    ~~~
-  * On Ubuntu and other Debian systems:
-    ~~~.sh
-    apt-get install build-essential cmake autoconf automake zlib1g-dev libbz2-dev liblzma-dev libtinfo5
-    ~~~
-  * On computer clusters, where you usually do not have the rights to install these tools
-    directly, try the `module load` system (or equivalent for your cluster) to load sufficiently
-    recent versions of the build tools.
-
-This works in our [CI tests](https://github.com/lczech/grenedalf/actions);
-if it does not work for you, please open an [issue](https://github.com/lczech/grenedalf/issues).
-
-Then, to build grenedalf on your machine, run:
-
-~~~.sh
-git clone --recursive https://github.com/lczech/grenedalf.git
-cd grenedalf
-make
-~~~
-
-You can also use the green "Code" button above or
-[click here](https://github.com/lczech/grenedalf/archive/master.zip) to download the source
-as a zip. Unpack, and call `make` in the main directory to build everything.
-
-After building, the executable is stored in the `bin` directory, and used as below.
+We recommend to first try the pre-compiled binaries of the latest [Release](https://github.com/lczech/grenedalf/releases), by downloading the binary for your system from the "Assets" list below the release. If that does not work, grenedalf can be build from source as follows. If that does not work, grenedalf can be build from source as described [here](https://github.com/lczech/grenedalf/wiki/Build).
 
 Usage and Documentation
 -------------------
