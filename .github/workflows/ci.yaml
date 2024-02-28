@@ -110,6 +110,10 @@ jobs:
             compiler: llvm-12
           - os: macos-11
             compiler: llvm-13
+          - os: macos-11
+            compiler: llvm-16
+          - os: macos-11
+            compiler: llvm-17
           - os: macos-12
             compiler: llvm-5
           - os: macos-12
@@ -255,7 +259,7 @@ jobs:
 
       - name: Upload Logs
         if: always()
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4
         with:
           name: logs-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
@@ -267,7 +271,7 @@ jobs:
 
       - name: Upload Binaries
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}
           path: |
