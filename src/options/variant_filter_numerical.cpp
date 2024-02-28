@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -83,7 +83,7 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
             "--filter-sample-max-count",
             sample_max_count.value,
             "Maximum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
-            "Counts abpve that are set to zero, and hence ignored as an allele/variant. "
+            "Counts above that are set to zero, and hence ignored as an allele/variant. "
             "For example, spuriously high read counts can be filtered out this way."
         );
         sample_max_count.option->group( group );
