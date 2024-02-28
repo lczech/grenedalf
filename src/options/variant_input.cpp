@@ -37,6 +37,7 @@
 #include "genesis/population/functions/variant_input_iterator.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/core/info.hpp"
 #include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/options.hpp"
 #include "genesis/utils/core/std.hpp"
@@ -129,8 +130,8 @@ void VariantInputOptions::add_input_files_opts_to_app(
         "--multi-file-locus-set",
         multi_file_loci_set_.value,
         "When multiple input files are provided, select whether the union of all their loci is "
-        "used, or their intersection. For their union, input files that do not have data at a "
-        "particular locus are considered to have zero coverage at that locus. "
+        "used (outer join), or their intersection (inner join). For their union, input files that "
+        "do not have data at a particular locus are considered to have zero coverage at that locus. "
         "Note that we allow to use multiple input files even with different file types."
     );
     multi_file_loci_set_.option->group( group );
@@ -213,6 +214,15 @@ void VariantInputOptions::add_combined_filter_and_transforms(
 //      Reporting Functions
 // =================================================================================================
 
+size_t VariantInputOptions::get_input_file_count() const
+{
+    size_t file_count = 0;
+    for( auto const& input_file : input_files_ ) {
+        file_count += input_file->get_file_input_options().file_count();
+    }
+    return file_count;
+}
+
 void VariantInputOptions::print_report() const
 {
     // If phrasing here is changed, it should also be changed in WindowOptions::print_report()
@@ -232,10 +242,10 @@ void VariantInputOptions::print_report() const
 // =================================================================================================
 
 // -------------------------------------------------------------------------
-//     prepare_
+//     prepare_inputs_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_() const
+void VariantInputOptions::prepare_inputs_() const
 {
     // Checks for internal correct setup
     if( static_cast<bool>( iterator_ )) {
@@ -251,9 +261,6 @@ void VariantInputOptions::prepare_() const
     for( auto const& input_file : input_files_ ) {
         input_file->add_reference_genome( reference_genome_options_.get_reference_genome() );
     }
-
-    // Then, prepare the iterator, either for a single, or for multiple input files.
-    prepare_iterator_();
 }
 
 // -------------------------------------------------------------------------
@@ -266,14 +273,29 @@ void VariantInputOptions::prepare_iterator_() const
     using namespace genesis::population;
     using namespace genesis::utils;
 
+    // Checks for internal correct setup
+    if( static_cast<bool>( iterator_ )) {
+        // Nothing to be done. We already prepared the data.
+        return;
+    }
+
+    // Get and check the number of input files provided.
+    size_t const file_count = get_input_file_count();
+    size_t const max_file_count = genesis::utils::info_max_file_count();
+    size_t const file_count_margin = 10;
+    if( max_file_count > 0 && file_count > max_file_count - file_count_margin ) {
+        LOG_WARN << "In total, " <<  file_count << " input files are provided. However, the system "
+                 << "limit for the number of concurrently opened files is " << max_file_count
+                 << ( file_count <= max_file_count
+                      ? ", leaving not much margin for other needed files such as outputs. "
+                      : ". "
+                  ) << "The command might hence fail. If that happens, process your files in "
+                  << "batches, or merge them into fewer files first.";
+    }
+
     // Check how many files are given. If it is a single one, we just use that for the input
     // iterator, which is faster than piping it through a parallel iterator. For multiple files,
     // we create a parallel iterator.
-    size_t file_count = 0;
-    for( auto const& input_file : input_files_ ) {
-        file_count += input_file->get_file_input_options().file_count();
-    }
-
     // Set up iterator depending on how many files we found in total across all inputs.
     if( file_count == 0 ) {
         throw CLI::ValidationError(
@@ -288,6 +310,55 @@ void VariantInputOptions::prepare_iterator_() const
 
     // Some user output.
     LOG_MSG1 << "Processing " << sample_names().size()
+             << " sample" << ( sample_names().size() == 1 ? "" : "s" );
+    for( auto const& sn : sample_names() ) {
+        LOG_MSG2 << " - " << sn;
+    }
+    LOG_MSG1;
+    if( contains_duplicates( sample_names() )) {
+        LOG_WARN << "The input contains duplicate sample names. Some grenedalf commands can work "
+                 << "with that internally, other not (and will then fail). Either way, this will "
+                 << "make working with the output more difficult downstream, and we recommend "
+                 << "to clean up the names first. "
+                 << "Use verbose output (`--verbose`) to show a list of all sample names.";
+        LOG_MSG1;
+    }
+}
+
+// -------------------------------------------------------------------------
+//     prepare_iterator_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::prepare_iterator_( size_t first, size_t last ) const
+{
+    using namespace genesis;
+    using namespace genesis::population;
+    using namespace genesis::utils;
+
+    // Boundary checks, just in case. Should be done correctly internally already.
+    size_t const file_count = get_input_file_count();
+    if( first >= file_count || last > file_count || first >= last ) {
+        throw std::logic_error( "Internal error: Requesting invalid range of file iterators." );
+    }
+    assert( last - first > 0 );
+
+    // Check how many files are given. Other than in the base class, we here always create a parallel
+    // iterator. We do this also in the edge case that we only want a range of files which happens
+    // to be of size one (last-first==1), as that should be rare, and avoids duplicating special
+    // range code for the single file function.
+    if( file_count == 0 ) {
+        throw CLI::ValidationError(
+            "Input sources", "At least one input file has to be provided."
+        );
+    } else {
+        prepare_iterator_multiple_files_( first, last );
+    }
+    // assert( iterator_ );
+
+    // Some user output.
+    LOG_MSG1 << "Processing batch of " << ( last - first ) << " input file"
+             << ( last - first == 1 ? "" : "s" ) << " [ " << ( first + 1 ) << ", " << last << " ]"
+             << " with " << sample_names().size()
              << " sample" << ( sample_names().size() == 1 ? "" : "s" );
     for( auto const& sn : sample_names() ) {
         LOG_MSG2 << " - " << sn;
@@ -428,6 +499,73 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
     internal_check(
         file_count > 1, "prepare_iterator_multiple_files_() called with just one file provided"
     );
+
+    // We here split the second step of turning the parallel iteratr into an actual iterator
+    // into a separate function, solely so that the VariantInputOptionsRange class that derives
+    // from this for processing ranges of input files can re-use that function.
+    prepare_iterator_from_parallel_iterator_( std::move( parallel_it ));
+}
+
+// -------------------------------------------------------------------------
+//     prepare_iterator_multiple_files_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::prepare_iterator_multiple_files_( size_t first, size_t last ) const
+{
+    using namespace genesis;
+    using namespace genesis::population;
+    using namespace genesis::utils;
+
+    // Assert correct usage.
+    size_t const file_count = get_input_file_count();
+    internal_check(
+        first < last && first < file_count && last <= file_count,
+        "Invalid subset for multiple file range."
+    );
+
+    // Get whether the user wants the union or intersection of all parallel input loci.
+    auto const contribution = get_enum_map_value(
+        multi_file_contribution_type_map_, multi_file_loci_set_.value
+    );
+
+    // Make a parallel input iterator, and add all input from all file formats to it,
+    // using the same contribution type for all of them, which either results in the union
+    // or the intersection of all input loci. See VariantParallelInputIterator for details.
+    // As we only want to use a range of the input files, subset accordingly.
+    // We cannot simply select the range of files directly, as they are spread across diffrent
+    // input file types, which each could have a varying number of files provided. It's easier
+    // to just loop through all of them, than to try to select sub-ranges on that.
+    size_t input_count = 0;
+    VariantParallelInputIterator parallel_it;
+    for( auto const& input_file : input_files_ ) {
+        for( auto const& file : input_file->get_file_input_options().file_paths() ) {
+            if( input_count >= first && input_count < last ) {
+                parallel_it.add_variant_input_iterator(
+                    input_file->get_iterator( file ), contribution
+                );
+            }
+            ++input_count;
+        }
+    }
+
+    // Check that we have the correct range.
+    internal_check( input_count == file_count, "Invalid input file count." );
+    internal_check( parallel_it.input_size() == last - first, "Invalid input file subset." );
+
+    // Now turn the parallel iterator into the type that we want, with all additional settings
+    // applied as well. This function is provided by the base class, so that we do not have to
+    // duplicate it here.
+    prepare_iterator_from_parallel_iterator_( std::move( parallel_it ));
+}
+
+// -------------------------------------------------------------------------
+//     prepare_iterator_from_parallel_iterator_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::prepare_iterator_from_parallel_iterator_(
+     genesis::population::VariantParallelInputIterator&& parallel_it
+) const {
+    using namespace genesis::population;
 
     // If a sequence dict in some format was provided, we use it for the iterator,
     // so that the chromosome order can be used correctly. If not provided, nullptr is also okay.

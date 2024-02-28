@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -162,7 +162,8 @@ public:
      */
     std::vector<std::string> const& sample_names() const
     {
-        prepare_();
+        prepare_inputs_();
+        prepare_iterator_();
         return iterator_.data().sample_names;
     }
 
@@ -173,13 +174,39 @@ public:
      */
     VariantInputIterator& get_iterator() const
     {
-        prepare_();
+        prepare_inputs_();
+        prepare_iterator_();
+        return iterator_;
+    }
+
+    /**
+     * @brief Get an iterator over the positions in the input files, for a subset of the files.
+     *
+     * This takes care of any filtering of samples, chromosomes, and positions. It also takes a
+     * range of input file numbers, first and last (past-the-end), and only those files are used
+     * to create the iterator. This is needed if more files are provided than can be opened
+     * simultaneously (typically, ~1000 on Unix systems), and is used in the merge command for
+     * instance. Use get_input_file_count() to get the valid range of numbers to be provided here.
+     *
+     * The above get_iterator() function checks whether we already prepared the iterator, and
+     * does not prepare it again in that case. By its intended use case, this overload here however
+     * works differently, and discards the currently prepared iterator, and prepares a new one.
+     */
+    VariantInputIterator& get_iterator( size_t first, size_t last ) const
+    {
+        prepare_inputs_();
+        prepare_iterator_( first, last );
         return iterator_;
     }
 
     // -------------------------------------------------------------------------
     //     Reporting Functions
     // -------------------------------------------------------------------------
+
+    /**
+     * @brief Get the number of input files.
+     */
+    size_t get_input_file_count() const;
 
     /**
      * @brief Get the number of chromosomes that have been processed in total.
@@ -206,12 +233,19 @@ public:
     //     Internal Helpers
     // -------------------------------------------------------------------------
 
-private:
+protected:
 
-    void prepare_() const;
+    void prepare_inputs_() const;
     void prepare_iterator_() const;
+    void prepare_iterator_( size_t first, size_t last ) const;
     void prepare_iterator_single_file_() const;
     void prepare_iterator_multiple_files_() const;
+    void prepare_iterator_multiple_files_( size_t first, size_t last ) const;
+    void prepare_iterator_from_parallel_iterator_(
+        genesis::population::VariantParallelInputIterator&&
+    ) const;
+
+private:
 
     /**
      * @brief Add filters and transformations that are to be applied to each input individually.
