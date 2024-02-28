@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ public:
 
     void add_sample_name_opts_to_app(
         CLI::App* sub,
-        std::string const& group = "Sample Names and Filters"
+        std::string const& group = "Sample Names, Groups, and Filters"
     );
 
     // -------------------------------------------------------------------------
@@ -73,7 +73,8 @@ public:
 
     void rename_samples( std::vector<std::string>& sample_names ) const;
 
-    void add_sample_name_filter( genesis::population::VariantInputStream& iterator ) const;
+    void add_sample_name_filter( genesis::population::VariantInputStream& stream ) const;
+    void apply_sample_group_merging( genesis::population::VariantInputStream& stream ) const;
 
 private:
 
@@ -89,6 +90,7 @@ private:
     CliOption<std::string> rename_samples_ = "";
     CliOption<std::string> filter_samples_include_ = "";
     CliOption<std::string> filter_samples_exclude_ = "";
+    CliOption<std::string> sample_group_merge_table_file_ = "";
 
 };
 

@@ -416,6 +416,7 @@ void VariantInputOptions::prepare_stream_single_file_() const
     // sample names and numbers.
     sample_name_options_.rename_samples( stream_.data().sample_names );
     sample_name_options_.add_sample_name_filter( stream_ );
+    sample_name_options_.apply_sample_group_merging( stream_ );
 
     // Copy over the sample names from the stream, so that they are accessible.
     if( sample_names().empty() ) {
@@ -596,6 +597,7 @@ void VariantInputOptions::prepare_stream_from_parallel_stream_(
     // sample names and numbers.
     sample_name_options_.rename_samples( stream_.data().sample_names );
     sample_name_options_.add_sample_name_filter( stream_ );
+    sample_name_options_.apply_sample_group_merging( stream_ );
 
     // Add an observer that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.

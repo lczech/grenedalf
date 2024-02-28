@@ -96,6 +96,24 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
     // Include and exclude are mutually exclusive.
     filter_samples_include_.option->excludes( filter_samples_exclude_.option );
     filter_samples_exclude_.option->excludes( filter_samples_include_.option );
+
+    // We allow to in-place merge samples that the user determines belong to the same group.
+    sample_group_merge_table_file_.option = sub->add_option(
+        "--sample-group-merge-table-file",
+        sample_group_merge_table_file_.value,
+        "When the input contains multiple samples (either within a single input file, or by "
+        "providing multiple input files), these can be grouped into new samples, by summing up "
+        "their nucleotide base counts at each position. This has essentially the same effect as "
+        "having merged the raw fastq files or the mapped sam/bam files of the samples, that is, "
+        "all reads from those samples are treated as if they were a single sample. "
+        "For this grouping, the option takes a simple table file (comma- or tab-separated), "
+        "with the sample names (potentially after the above renaming) in the first column, "
+        "and their assigned group names in the second column. "
+        "All samples in the same group are then merged into a grouped sample, and the group names "
+        "are used as the new sample names for the output."
+    );
+    sample_group_merge_table_file_.option->group( group );
+    sample_group_merge_table_file_.option->check( CLI::ExistingFile );
 }
 
 // =================================================================================================
@@ -258,6 +276,57 @@ void VariantSampleNamesOptions::add_sample_name_filter(
         }
     }
     stream.data().sample_names = new_sample_names;
+}
+
+// -------------------------------------------------------------------------
+//     apply_sample_group_merging
+// -------------------------------------------------------------------------
+
+void VariantSampleNamesOptions::apply_sample_group_merging(
+    genesis::population::VariantInputStream& stream
+) const {
+    using namespace genesis::utils;
+
+    // If the option is not set or used, we do no grouping.
+    if( ! sample_group_merge_table_file_.option || ! *sample_group_merge_table_file_.option ) {
+        return;
+    }
+
+    // Read the file line by line and process.
+    auto const lines = file_read_lines( sample_group_merge_table_file_.value );
+    std::unordered_map<std::string, std::string> sample_name_to_group;
+    for( size_t i = 0; i < lines.size(); ++i ) {
+        auto const& line = lines[i];
+
+        // Dissect the line and see if we got a sample name and a group name.
+        auto const pair = split( line, ",\t", false );
+        if( pair.size() != 2 ) {
+            throw CLI::ValidationError(
+                sample_group_merge_table_file_.option->get_name() + "(" +
+                sample_group_merge_table_file_.value + ")",
+                "Invalid sample grouping file that contains an invalid line at " +
+                std::to_string( i + 1 ) + " not consisting of a sample name and a group name."
+            );
+        }
+
+        // For name value pairs, do a duplicate check first...
+        if( sample_name_to_group.count( pair[0] ) > 0 ) {
+            throw CLI::ValidationError(
+                sample_group_merge_table_file_.option->get_name() + "(" +
+                sample_group_merge_table_file_.value + ")",
+                "Invalid line that contains duplicate sample names (line " +
+                std::to_string( i + 1 ) + "): \"" + pair[0] + "\""
+            );
+        }
+
+        // ... then add the entry to the map.
+        assert( sample_name_to_group.count( pair[0] ) == 0 );
+        sample_name_to_group[ pair[0] ] = pair[1];
+    }
+
+    // We inline replace the stream with a new one, that captures the existing one
+    // in its lambda capture internally.
+    stream = make_variant_merging_input_stream( stream, sample_name_to_group );
 }
 
 // -------------------------------------------------------------------------
