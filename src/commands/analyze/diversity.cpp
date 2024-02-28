@@ -646,7 +646,7 @@ void run_diversity( DiversityOptions const& options )
     // Iterate the file and compute per-window diversitye measures.
     // We run the samples in parallel, storing their results before writing to the output file.
     // For now, we compute all of them, in not the very most efficient way, but the easiest.
-    auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
+    auto window_it = options.window.get_variant_window_view_stream( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto& window = *cur_it;
 

@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,9 +43,6 @@ void GlobalOptions::initialize( int const argc, char const* const* argv )
     if( opt_threads.value == 0 ) {
         opt_threads.value = 1;
     }
-
-    // Set number of threads for genesis.
-    genesis::utils::Options::get().number_of_threads( opt_threads.value );
 
     // Set verbosity to max, just in case.
     genesis::utils::Logging::max_level( genesis::utils::Logging::LoggingLevel::kDebug4 );
@@ -122,14 +119,7 @@ void GlobalOptions::run_global()
         opt_threads.value = 1;
     }
 
-    // Set number of threads for genesis. At the moment, this only sets the number of threads
-    // to use for OpenMP. We might refactor this in the future, to not use OpenMP any more,
-    // because users had trouble getting it to compile, and instead use our own multi-threading
-    // solution using a global thread pool for all CPU-heavy computation. See below for that pool;
-    // once we have refactored everything to use that pool, this comment here will be outdated...
-    genesis::utils::Options::get().number_of_threads( opt_threads.value );
-
-    // At the moment, we use a thread pool for the LambdaIterator of the VariantInputOptions
+    // At the moment, we use a thread pool for the Generic Input Stream of the VariantInputOptions
     // reading (but only for that, see comment above as well), because otherwise each input file
     // spawns a separate thread, which could be hundreds  or a thousand threads all trying to
     // get CPU time to parse their file at the same time... which would invalidate all thread

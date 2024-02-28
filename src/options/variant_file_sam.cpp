@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/formats/sam_flags.hpp"
-#include "genesis/population/formats/sam_variant_input_iterator.hpp"
+#include "genesis/population/formats/sam_variant_input_stream.hpp"
 
 #include <cassert>
 #include <unordered_set>
@@ -149,13 +149,13 @@ CLI::Option* VariantFileSamOptions::add_file_input_opt_to_app_(
 //      Run Functions
 // =================================================================================================
 
-VariantFileSamOptions::VariantInputIterator VariantFileSamOptions::get_iterator_(
+VariantFileSamOptions::VariantInputStream VariantFileSamOptions::get_stream_(
     std::string const& filename
 ) const {
     using namespace genesis::population;
 
     // Prepare the reader with all its settings.
-    SamVariantInputIterator reader;
+    SamVariantInputStream reader;
     reader.min_map_qual( sam_min_map_qual_.value );
     reader.min_base_qual( sam_min_base_qual_.value );
     reader.split_by_rg( sam_split_by_rg_.value );
@@ -164,6 +164,6 @@ VariantFileSamOptions::VariantInputIterator VariantFileSamOptions::get_iterator_
     reader.flags_exclude_all( string_to_sam_flag( sam_flags_exclude_all_.value ));
     reader.flags_exclude_any( string_to_sam_flag( sam_flags_exclude_any_.value ));
 
-    // Make an iterator.
-    return make_variant_input_iterator_from_sam_file( filename, reader );
+    // Make an stream.
+    return make_variant_input_stream_from_sam_file( filename, reader );
 }

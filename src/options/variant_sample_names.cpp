@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/variant_input_iterator.hpp"
+#include "genesis/population/functions/variant_input_stream.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -207,7 +207,7 @@ void VariantSampleNamesOptions::rename_samples( std::vector<std::string>& sample
 // -------------------------------------------------------------------------
 
 void VariantSampleNamesOptions::add_sample_name_filter(
-    genesis::population::VariantInputIterator& iterator
+    genesis::population::VariantInputStream& stream
 ) const {
     using namespace genesis::population;
 
@@ -217,7 +217,7 @@ void VariantSampleNamesOptions::add_sample_name_filter(
     }
 
     // Make filters as required.
-    auto const& sample_names = iterator.data().sample_names;
+    auto const& sample_names = stream.data().sample_names;
     std::vector<bool> sample_filter;
     if( ! filter_samples_include_.value.empty() ) {
         auto const list = process_sample_name_list_option_( filter_samples_include_.value );
@@ -245,8 +245,8 @@ void VariantSampleNamesOptions::add_sample_name_filter(
             << sample_filter.size() << " being used.";
 
     // Now add the transform that does the actual filtering.
-    iterator.add_transform(
-        make_variant_input_iterator_sample_name_filter_transform( sample_filter )
+    stream.add_transform(
+        make_variant_input_stream_sample_name_filter_transform( sample_filter )
     );
 
     // We also need to re-set the sample names, so that they only contain the used ones.
@@ -257,7 +257,7 @@ void VariantSampleNamesOptions::add_sample_name_filter(
             new_sample_names.push_back( sample_names[i] );
         }
     }
-    iterator.data().sample_names = new_sample_names;
+    stream.data().sample_names = new_sample_names;
 }
 
 // -------------------------------------------------------------------------

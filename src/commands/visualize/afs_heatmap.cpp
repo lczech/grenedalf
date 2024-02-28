@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -449,7 +449,7 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
     // which makes it a bit wasteful to copy everything into a window first, but makes handling
     // of the surrounding code (of keeping track of positions etc) so much easier.
     // Might optimize in the future.
-    auto window_it = options.window.get_variant_window_iterator( options.variant_input );
+    auto window_it = options.window.get_variant_window_stream( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
 

@@ -31,10 +31,10 @@
 #include "options/variant_file_vcf.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/variant_parallel_input_iterator.hpp"
+#include "genesis/population/streams/variant_parallel_input_stream.hpp"
 #include "genesis/population/functions/filter_transform.hpp"
 #include "genesis/population/functions/functions.hpp"
-#include "genesis/population/functions/variant_input_iterator.hpp"
+#include "genesis/population/functions/variant_input_stream.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/core/info.hpp"
@@ -54,15 +54,15 @@
 //      Enum Mapping
 // =================================================================================================
 
-// Translate strings to enums for the VariantParallelInputIterator.
+// Translate strings to enums for the VariantParallelInputStream.
 // As described below, we simplify this from the more complex and more powerful approach that is
-// offered by VariantParallelInputIterator to just the choice of union or intersection of all
+// offered by VariantParallelInputStream to just the choice of union or intersection of all
 // input loci when having multiple input files, in order to keep the command line interface simple.
 std::vector<
-    std::pair<std::string, genesis::population::VariantParallelInputIterator::ContributionType>
+    std::pair<std::string, genesis::population::VariantParallelInputStream::ContributionType>
 > const multi_file_contribution_type_map_ = {
-    { "union",        genesis::population::VariantParallelInputIterator::ContributionType::kCarrying },
-    { "intersection", genesis::population::VariantParallelInputIterator::ContributionType::kFollowing }
+    { "union",        genesis::population::VariantParallelInputStream::ContributionType::kCarrying },
+    { "intersection", genesis::population::VariantParallelInputStream::ContributionType::kFollowing }
 };
 
 // =================================================================================================
@@ -122,7 +122,7 @@ void VariantInputOptions::add_input_files_opts_to_app(
         input_file->add_file_input_opt_to_app( sub );
     }
 
-    // Multi file set operation. In the VariantParallelInputIterator, we have a different way
+    // Multi file set operation. In the VariantParallelInputStream, we have a different way
     // of expressing which loci of which input source to visit, but that would be way too complex
     // to specify via a command line interface. So, at least for now, we simply boil it down
     // to either the union of all loci, or their intersection.
@@ -139,10 +139,10 @@ void VariantInputOptions::add_input_files_opts_to_app(
         CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
     );
 
-    // Hidden options to set the LambdaIterator block sizes for speed.
+    // Hidden options to set the Generic Input Stream block sizes for speed.
 
-    // First for the main block size of the iterator that is collecing all Variants,
-    // which is either a single file, or the parallel input iterator over multiple files.
+    // First for the main block size of the stream that is collecing all Variants,
+    // which is either a single file, or the parallel input stream over multiple files.
     iterator_block_size_.option = sub->add_option(
         "--block-size",
         iterator_block_size_.value,
@@ -151,8 +151,8 @@ void VariantInputOptions::add_input_files_opts_to_app(
     );
     iterator_block_size_.option->group( "" );
 
-    // Second for the inner iterators of _all_ input files when using the parallel input
-    // iterator over multiple files. This will spawn a thread for each input file if set to > 0.
+    // Second for the inner streams of _all_ input files when using the parallel input
+    // stream over multiple files. This will spawn a thread for each input file if set to > 0.
     parallel_block_size_.option = sub->add_option(
         "--parallel-block-size",
         parallel_block_size_.value,
@@ -172,7 +172,7 @@ void VariantInputOptions::add_individual_filter_and_transforms(
     std::function<bool(genesis::population::Variant&)> const& func
 ) const {
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ )) {
+    if( static_cast<bool>( stream_ )) {
         throw std::domain_error(
             "Internal error: Calling add_individual_filter_and_transforms() "
             "after input source iteration has already been started."
@@ -181,7 +181,7 @@ void VariantInputOptions::add_individual_filter_and_transforms(
 
     // Do not add a filter if the function is empty.
     // This can happen with the numerical filters - if the user did not provide any filter options,
-    // we do not need to add it to the input iterator here.
+    // we do not need to add it to the input stream here.
     if( !func ) {
         return;
     }
@@ -193,7 +193,7 @@ void VariantInputOptions::add_combined_filter_and_transforms(
     std::function<bool(genesis::population::Variant&)> const& func
 ) const {
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ )) {
+    if( static_cast<bool>( stream_ )) {
         throw std::domain_error(
             "Internal error: Calling add_combined_filter_and_transforms() "
             "after input source iteration has already been started."
@@ -202,7 +202,7 @@ void VariantInputOptions::add_combined_filter_and_transforms(
 
     // Do not add a filter if the function is empty.
     // This can happen with the numerical filters - if the user did not provide any filter options,
-    // we do not need to add it to the input iterator here.
+    // we do not need to add it to the input stream here.
     if( !func ) {
         return;
     }
@@ -238,7 +238,7 @@ void VariantInputOptions::print_report() const
 }
 
 // =================================================================================================
-//      Iterator Setup
+//      Stream Setup
 // =================================================================================================
 
 // -------------------------------------------------------------------------
@@ -248,14 +248,14 @@ void VariantInputOptions::print_report() const
 void VariantInputOptions::prepare_inputs_() const
 {
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ )) {
+    if( static_cast<bool>( stream_ )) {
         // Nothing to be done. We already prepared the data.
         return;
     }
 
-    // First prepare the reference genome and dict, as this might be needed by the iterator.
+    // First prepare the reference genome and dict, as this might be needed by the steam.
     // Very hacky... at the moment, only the Frequency Table Input actually makes use of this,
-    // but we somehow need to get the ref genome to it before we initialize its iterator...
+    // but we somehow need to get the ref genome to it before we initialize its stream...
     // So we do this here, and in order to avoid ugly casting of our different input file types,
     // we just "set" the ref genome for all, which is a dummy function for all other types.
     for( auto const& input_file : input_files_ ) {
@@ -264,17 +264,17 @@ void VariantInputOptions::prepare_inputs_() const
 }
 
 // -------------------------------------------------------------------------
-//     prepare_iterator_
+//     prepare_stream_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_iterator_() const
+void VariantInputOptions::prepare_stream_() const
 {
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::utils;
 
     // Checks for internal correct setup
-    if( static_cast<bool>( iterator_ )) {
+    if( static_cast<bool>( stream_ )) {
         // Nothing to be done. We already prepared the data.
         return;
     }
@@ -294,19 +294,19 @@ void VariantInputOptions::prepare_iterator_() const
     }
 
     // Check how many files are given. If it is a single one, we just use that for the input
-    // iterator, which is faster than piping it through a parallel iterator. For multiple files,
-    // we create a parallel iterator.
-    // Set up iterator depending on how many files we found in total across all inputs.
+    // stream, which is faster than piping it through a parallel stream. For multiple files,
+    // we create a parallel stream.
+    // Set up stream depending on how many files we found in total across all inputs.
     if( file_count == 0 ) {
         throw CLI::ValidationError(
             "Input sources", "At least one input file has to be provided."
         );
     } else if( file_count == 1 ) {
-        prepare_iterator_single_file_();
+        prepare_stream_single_file_();
     } else {
-        prepare_iterator_multiple_files_();
+        prepare_stream_multiple_files_();
     }
-    assert( iterator_ );
+    assert( stream_ );
 
     // Some user output.
     LOG_MSG1 << "Processing " << sample_names().size()
@@ -326,10 +326,10 @@ void VariantInputOptions::prepare_iterator_() const
 }
 
 // -------------------------------------------------------------------------
-//     prepare_iterator_
+//     prepare_stream_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_iterator_( size_t first, size_t last ) const
+void VariantInputOptions::prepare_stream_( size_t first, size_t last ) const
 {
     using namespace genesis;
     using namespace genesis::population;
@@ -338,12 +338,12 @@ void VariantInputOptions::prepare_iterator_( size_t first, size_t last ) const
     // Boundary checks, just in case. Should be done correctly internally already.
     size_t const file_count = get_input_file_count();
     if( first >= file_count || last > file_count || first >= last ) {
-        throw std::logic_error( "Internal error: Requesting invalid range of file iterators." );
+        throw std::logic_error( "Internal error: Requesting invalid range of file streams." );
     }
     assert( last - first > 0 );
 
     // Check how many files are given. Other than in the base class, we here always create a parallel
-    // iterator. We do this also in the edge case that we only want a range of files which happens
+    // stream. We do this also in the edge case that we only want a range of files which happens
     // to be of size one (last-first==1), as that should be rare, and avoids duplicating special
     // range code for the single file function.
     if( file_count == 0 ) {
@@ -351,9 +351,9 @@ void VariantInputOptions::prepare_iterator_( size_t first, size_t last ) const
             "Input sources", "At least one input file has to be provided."
         );
     } else {
-        prepare_iterator_multiple_files_( first, last );
+        prepare_stream_multiple_files_( first, last );
     }
-    // assert( iterator_ );
+    // assert( stream_ );
 
     // Some user output.
     LOG_MSG1 << "Processing batch of " << ( last - first ) << " input file"
@@ -375,15 +375,15 @@ void VariantInputOptions::prepare_iterator_( size_t first, size_t last ) const
 }
 
 // -------------------------------------------------------------------------
-//     prepare_iterator_single_file_
+//     prepare_stream_single_file_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_iterator_single_file_() const
+void VariantInputOptions::prepare_stream_single_file_() const
 {
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
-        ! static_cast<bool>( iterator_ ),
-        "prepare_iterator_single_file_() called in an invalid context."
+        ! static_cast<bool>( stream_ ),
+        "prepare_stream_single_file_() called in an invalid context."
     );
 
     // Get the input file as a pointer, using the one input that the user provided,
@@ -395,42 +395,42 @@ void VariantInputOptions::prepare_iterator_single_file_() const
                 provided_input_file = input_file.get();
             } else {
                 internal_check(
-                    false, "prepare_iterator_single_file_() called with more than one file provided"
+                    false, "prepare_stream_single_file_() called with more than one file provided"
                 );
             }
         }
     }
     internal_check(
-        provided_input_file, "prepare_iterator_single_file_() called with no file provided"
+        provided_input_file, "prepare_stream_single_file_() called with no file provided"
     );
 
-    // Prepare the iterator depending on the input file format, using the pointer.
+    // Prepare the stream depending on the input file format, using the pointer.
     assert( provided_input_file );
     assert( provided_input_file->get_file_input_options().file_count() == 1 );
-    iterator_ = provided_input_file->get_iterator(
+    stream_ = provided_input_file->get_stream(
         provided_input_file->get_file_input_options().file_paths()[0]
     );
 
     // Apply sample renaming and filtering. We need to do this here first, before processing
     // any other filters and transforms, to make sure that they all see the correct
     // sample names and numbers.
-    sample_name_options_.rename_samples( iterator_.data().sample_names );
-    sample_name_options_.add_sample_name_filter( iterator_ );
+    sample_name_options_.rename_samples( stream_.data().sample_names );
+    sample_name_options_.add_sample_name_filter( stream_ );
 
-    // Copy over the sample names from the iterator, so that they are accessible.
+    // Copy over the sample names from the stream, so that they are accessible.
     if( sample_names().empty() ) {
         throw std::runtime_error( "Invalid input file that does not contain any samples." );
     }
     internal_check(
-        static_cast<bool>( iterator_ ),
-        "prepare_iterator_single_file_() call to file prepare function did not succeed."
+        static_cast<bool>( stream_ ),
+        "prepare_stream_single_file_() call to file prepare function did not succeed."
     );
 
     // Add an observer that checks chromosome order and length. We need to check order here,
-    // as the single iterator does not do this already (as opposed to the parallel one below).
+    // as the single stream does not do this already (as opposed to the parallel one below).
     // Without a dict (when sequence_dict_ is nullptr), this checks lexicographically.
-    iterator_.add_observer(
-        genesis::population::make_variant_input_iterator_sequence_order_observer(
+    stream_.add_observer(
+        genesis::population::make_variant_input_stream_sequence_order_observer(
             get_reference_dict()
         )
     );
@@ -439,32 +439,32 @@ void VariantInputOptions::prepare_iterator_single_file_() const
     // need to refactor, rename, and add a filter for each sample.
     // we want:
     //  - filter for each input source (to skip regions etc), taking a variant
-    //  - filter for combined variant of the final iterator, eg for ref base guessing
+    //  - filter for combined variant of the final stream, eg for ref base guessing
     //  - filter for each BaseCounts, eg for min coverage per sample
-    add_individual_filters_and_transforms_to_iterator_( iterator_ );
-    add_combined_filters_and_transforms_to_iterator_( iterator_ );
+    add_individual_filters_and_transforms_to_stream_( stream_ );
+    add_combined_filters_and_transforms_to_stream_( stream_ );
 
-    // Set the thread pool of the LambdaIterator to be used. We want to use the global thread pool
+    // Set the thread pool of the Generic Input Stream to be used. We want to use the global thread pool
     // here, as otherwise, each input file would spawn it's own thread, which could easily go into
     // the hundreds or more, and hence lead to slowdown due to blocking issues, or even problems
     // on clusters that monitor CPU usage. Well, not for a single file, but still, better to
     // use the global pool. This is more relevant for multiple files, see below.
-    iterator_.thread_pool( global_options.thread_pool() );
+    stream_.thread_pool( global_options.thread_pool() );
 
-    // Set the buffer block size of the iterator, for multi-threaded processing speed.
+    // Set the buffer block size of the stream, for multi-threaded processing speed.
     // Needs to be tested - might give more or less advantage depending on setting.
-    iterator_.block_size( iterator_block_size_.value );
+    stream_.block_size( iterator_block_size_.value );
 
     // TODO also add filters depending on file type. sam pileup and sync might need
     // biallelic snp filters (using the merged variants filter type setting), while vcf might not?!
-    // or has it already set below or in the variant input iterator - need to check.
+    // or has it already set below or in the variant input stream - need to check.
 }
 
 // -------------------------------------------------------------------------
-//     prepare_iterator_multiple_files_
+//     prepare_stream_multiple_files_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_iterator_multiple_files_() const
+void VariantInputOptions::prepare_stream_multiple_files_() const
 {
     using namespace genesis;
     using namespace genesis::population;
@@ -472,8 +472,8 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
 
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
-        ! static_cast<bool>( iterator_ ),
-        "prepare_iterator_multiple_files_() called in an invalid context."
+        ! static_cast<bool>( stream_ ),
+        "prepare_stream_multiple_files_() called in an invalid context."
     );
 
     // Get whether the user wants the union or intersection of all parallel input loci.
@@ -481,15 +481,15 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
         multi_file_contribution_type_map_, multi_file_loci_set_.value
     );
 
-    // Make a parallel input iterator, and add all input from all file formats to it,
+    // Make a parallel input stream, and add all input from all file formats to it,
     // using the same contribution type for all of them, which either results in the union
-    // or the intersection of all input loci. See VariantParallelInputIterator for details.
+    // or the intersection of all input loci. See VariantParallelInputStream for details.
     size_t file_count = 0;
-    VariantParallelInputIterator parallel_it;
+    VariantParallelInputStream parallel_stream;
     for( auto const& input_file : input_files_ ) {
         for( auto const& file : input_file->get_file_input_options().file_paths() ) {
-            parallel_it.add_variant_input_iterator(
-                input_file->get_iterator( file ), contribution
+            parallel_stream.add_variant_input_stream(
+                input_file->get_stream( file ), contribution
             );
             ++file_count;
         }
@@ -497,20 +497,20 @@ void VariantInputOptions::prepare_iterator_multiple_files_() const
 
     // Check that we have multiple input files.
     internal_check(
-        file_count > 1, "prepare_iterator_multiple_files_() called with just one file provided"
+        file_count > 1, "prepare_stream_multiple_files_() called with just one file provided"
     );
 
-    // We here split the second step of turning the parallel iteratr into an actual iterator
+    // We here split the second step of turning the parallel iteratr into an actual stream
     // into a separate function, solely so that the VariantInputOptionsRange class that derives
     // from this for processing ranges of input files can re-use that function.
-    prepare_iterator_from_parallel_iterator_( std::move( parallel_it ));
+    prepare_stream_from_parallel_stream_( std::move( parallel_stream ));
 }
 
 // -------------------------------------------------------------------------
-//     prepare_iterator_multiple_files_
+//     prepare_stream_multiple_files_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_iterator_multiple_files_( size_t first, size_t last ) const
+void VariantInputOptions::prepare_stream_multiple_files_( size_t first, size_t last ) const
 {
     using namespace genesis;
     using namespace genesis::population;
@@ -528,20 +528,20 @@ void VariantInputOptions::prepare_iterator_multiple_files_( size_t first, size_t
         multi_file_contribution_type_map_, multi_file_loci_set_.value
     );
 
-    // Make a parallel input iterator, and add all input from all file formats to it,
+    // Make a parallel input stream, and add all input from all file formats to it,
     // using the same contribution type for all of them, which either results in the union
-    // or the intersection of all input loci. See VariantParallelInputIterator for details.
+    // or the intersection of all input loci. See VariantParallelInputStream for details.
     // As we only want to use a range of the input files, subset accordingly.
     // We cannot simply select the range of files directly, as they are spread across diffrent
     // input file types, which each could have a varying number of files provided. It's easier
     // to just loop through all of them, than to try to select sub-ranges on that.
     size_t input_count = 0;
-    VariantParallelInputIterator parallel_it;
+    VariantParallelInputStream parallel_stream;
     for( auto const& input_file : input_files_ ) {
         for( auto const& file : input_file->get_file_input_options().file_paths() ) {
             if( input_count >= first && input_count < last ) {
-                parallel_it.add_variant_input_iterator(
-                    input_file->get_iterator( file ), contribution
+                parallel_stream.add_variant_input_stream(
+                    input_file->get_stream( file ), contribution
                 );
             }
             ++input_count;
@@ -550,72 +550,72 @@ void VariantInputOptions::prepare_iterator_multiple_files_( size_t first, size_t
 
     // Check that we have the correct range.
     internal_check( input_count == file_count, "Invalid input file count." );
-    internal_check( parallel_it.input_size() == last - first, "Invalid input file subset." );
+    internal_check( parallel_stream.input_size() == last - first, "Invalid input file subset." );
 
-    // Now turn the parallel iterator into the type that we want, with all additional settings
+    // Now turn the parallel stream into the type that we want, with all additional settings
     // applied as well. This function is provided by the base class, so that we do not have to
     // duplicate it here.
-    prepare_iterator_from_parallel_iterator_( std::move( parallel_it ));
+    prepare_stream_from_parallel_stream_( std::move( parallel_stream ));
 }
 
 // -------------------------------------------------------------------------
-//     prepare_iterator_from_parallel_iterator_
+//     prepare_stream_from_parallel_stream_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::prepare_iterator_from_parallel_iterator_(
-     genesis::population::VariantParallelInputIterator&& parallel_it
+void VariantInputOptions::prepare_stream_from_parallel_stream_(
+     genesis::population::VariantParallelInputStream&& parallel_stream
 ) const {
     using namespace genesis::population;
 
-    // If a sequence dict in some format was provided, we use it for the iterator,
+    // If a sequence dict in some format was provided, we use it for the stream,
     // so that the chromosome order can be used correctly. If not provided, nullptr is also okay.
     // We check chromosome length below as well.
-    parallel_it.sequence_dict( get_reference_dict() );
+    parallel_stream.sequence_dict( get_reference_dict() );
 
     // Go through all sources again, build the sample names list from them,
     // and add the individual samples filters to all of them, e.g., so that regions are filtered
-    // before the data even reaches the parallel iterator. Faster!
-    for( auto& input : parallel_it.inputs() ) {
-        add_individual_filters_and_transforms_to_iterator_( input );
+    // before the data even reaches the parallel stream. Faster!
+    for( auto& input : parallel_stream.inputs() ) {
+        add_individual_filters_and_transforms_to_stream_( input );
 
         // Following the reasoning from above: we need to use the global thread pool,
         // as otherwise reading hundreds of files will spawn too many threads, which is not good.
         input.thread_pool( global_options.thread_pool() );
 
-        // Also set the buffer block size of the iterator, using the second buffer size option
-        // that is used for the inner iterators of parallel input.
+        // Also set the buffer block size of the stream, using the second buffer size option
+        // that is used for the inner streams of parallel input.
         // Needs to be tested - might give more or less advantage depending on setting.
         input.block_size( parallel_block_size_.value );
     }
 
-    // Finally, create the parallel iterator.
-    iterator_ = make_variant_input_iterator_from_variant_parallel_input_iterator( parallel_it );
+    // Finally, create the parallel stream.
+    stream_ = make_variant_input_stream_from_variant_parallel_input_stream( parallel_stream );
 
     // Apply sample renaming and filtering. We need to do this here first, before processing
     // any other filters and transforms, to make sure that they all see the correct
     // sample names and numbers.
-    sample_name_options_.rename_samples( iterator_.data().sample_names );
-    sample_name_options_.add_sample_name_filter( iterator_ );
+    sample_name_options_.rename_samples( stream_.data().sample_names );
+    sample_name_options_.add_sample_name_filter( stream_ );
 
     // Add an observer that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.
     if( get_reference_dict() ) {
-        iterator_.add_observer(
-            make_variant_input_iterator_sequence_length_observer( get_reference_dict() )
+        stream_.add_observer(
+            make_variant_input_stream_sequence_length_observer( get_reference_dict() )
         );
     }
 
     // Add the filters and transformations that are to be applied to all samples combined.
-    add_combined_filters_and_transforms_to_iterator_( iterator_ );
+    add_combined_filters_and_transforms_to_stream_( stream_ );
 
-    // We also need to set the thread pool of the parallel input iterator itself,
+    // We also need to set the thread pool of the parallel input stream itself,
     // for the same reasons as described above.
-    iterator_.thread_pool( global_options.thread_pool() );
+    stream_.thread_pool( global_options.thread_pool() );
 
-    // Set the buffer block size of the iterator, for multi-threaded speed.
-    // We only buffer the final parallel iterator, and not its individual sources,
+    // Set the buffer block size of the stream, for multi-threaded speed.
+    // We only buffer the final parallel stream, and not its individual sources,
     // in order to not keep too many threads from spawning... Might need testing and refinement.
-    iterator_.block_size( iterator_block_size_.value );
+    stream_.block_size( iterator_block_size_.value );
 }
 
 // =================================================================================================
@@ -623,11 +623,11 @@ void VariantInputOptions::prepare_iterator_from_parallel_iterator_(
 // =================================================================================================
 
 // -------------------------------------------------------------------------
-//     add_individual_filters_and_transforms_to_iterator_
+//     add_individual_filters_and_transforms_to_stream_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::add_individual_filters_and_transforms_to_iterator_(
-    genesis::population::VariantInputIterator& iterator
+void VariantInputOptions::add_individual_filters_and_transforms_to_stream_(
+    genesis::population::VariantInputStream& stream
 ) const {
     using namespace genesis::population;
 
@@ -637,21 +637,21 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_iterator_(
 
     // Add the genome region list as a filter.
     if( region_filter_options_.get_region_filter() ) {
-        iterator.add_filter( make_filter_by_region( region_filter_options_.get_region_filter() ));
+        stream.add_filter( make_filter_by_region( region_filter_options_.get_region_filter() ));
     }
 
     // Add the addtional filters and transformations that might have been set by the commands.
     for( auto const& func : individual_filters_and_transforms_ ) {
-        iterator.add_transform_filter( func );
+        stream.add_transform_filter( func );
     }
 }
 
 // -------------------------------------------------------------------------
-//     add_combined_filters_and_transforms_to_iterator_
+//     add_combined_filters_and_transforms_to_stream_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
-    genesis::population::VariantInputIterator& iterator
+void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
+    genesis::population::VariantInputStream& stream
 ) const {
     using namespace genesis::population;
 
@@ -662,7 +662,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
 
     // Add the addtional filters and transformations that might have been set by the commands.
     for( auto const& func : combined_filters_and_transforms_ ) {
-        iterator.add_transform_filter( func );
+        stream.add_transform_filter( func );
     }
 
     // In addition to the transforms and filters, we here also add an observer function.
@@ -673,7 +673,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     // chromosomes, so that they won't be printed here. We use lambda capture by value to create
     // a copy of current_chr that is kept in the lambda, and updated there. We are not in C++14 yet.
     std::string current_chr;
-    iterator.add_observer(
+    stream.add_observer(
         [ current_chr, this ]( Variant const& variant ) mutable {
             ++num_positions_;
             if( current_chr != variant.chromosome ) {
@@ -687,7 +687,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_iterator_(
     // If we have a reference genome, we also check that its bases match what we find in the
     // input files, and report if that's not fitting.
     if( get_reference_genome() ) {
-        iterator.add_observer(
+        stream.add_observer(
             [ this ]( Variant const& variant ) mutable {
                 auto const var_base = genesis::utils::to_upper( variant.reference_base );
                 auto const ref_base = get_reference_genome()->get_base(

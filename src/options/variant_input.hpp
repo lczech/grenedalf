@@ -33,11 +33,11 @@
 #include "options/variant_reference_genome.hpp"
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/streams/variant_input_stream.hpp"
 #include "genesis/population/variant.hpp"
 #include "genesis/sequence/reference_genome.hpp"
 #include "genesis/sequence/sequence_dict.hpp"
-#include "genesis/utils/containers/lambda_iterator.hpp"
+#include "genesis/utils/containers/generic_input_stream.hpp"
 #include "genesis/utils/containers/range.hpp"
 
 #include <functional>
@@ -63,7 +63,7 @@ public:
     // -------------------------------------------------------------------------
 
     using Variant = genesis::population::Variant;
-    using VariantInputIterator = genesis::population::VariantInputIterator;
+    using VariantInputStream = genesis::population::VariantInputStream;
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
@@ -118,7 +118,7 @@ public:
      *
      * These can be added by the commands as needed for their processing, and are executed
      * on each input source. The function has to be called before calling any of the run functions,
-     * i.e., sample_names() or get_iterator().
+     * i.e., sample_names() or get_stream().
      *
      * We always add the regions filter interally here alreay as the first filter per source,
      * as this is one that is provided in this class here already, and hence offered to all
@@ -127,13 +127,13 @@ public:
     void add_individual_filter_and_transforms( std::function<bool(Variant&)> const& func ) const;
 
     /**
-     * @brief Transformations and filters for the compbined input VariantInputIterator.
+     * @brief Transformations and filters for the compbined input VariantInputStream.
      *
      * These can be added by the commands as needed for their processing, and are executed
      * on the combined input; if only a single file is provided as input by the user,
      * both the individual and these combined functions are applied to that.
      * The function has to be called before calling any of the run functions,
-     * i.e., sample_names() or get_iterator().
+     * i.e., sample_names() or get_stream().
      */
     void add_combined_filter_and_transforms( std::function<bool(Variant&)> const& func ) const;
 
@@ -163,40 +163,40 @@ public:
     std::vector<std::string> const& sample_names() const
     {
         prepare_inputs_();
-        prepare_iterator_();
-        return iterator_.data().sample_names;
+        prepare_stream_();
+        return stream_.data().sample_names;
     }
 
     /**
-     * @brief Get an iterator over the positions in the input file.
+     * @brief Get a stream over the positions in the input file.
      *
      * This takes care of any filtering of samples, chromosomes, and positions.
      */
-    VariantInputIterator& get_iterator() const
+    VariantInputStream& get_stream() const
     {
         prepare_inputs_();
-        prepare_iterator_();
-        return iterator_;
+        prepare_stream_();
+        return stream_;
     }
 
     /**
-     * @brief Get an iterator over the positions in the input files, for a subset of the files.
+     * @brief Get a stream over the positions in the input files, for a subset of the files.
      *
      * This takes care of any filtering of samples, chromosomes, and positions. It also takes a
      * range of input file numbers, first and last (past-the-end), and only those files are used
-     * to create the iterator. This is needed if more files are provided than can be opened
+     * to create the stream. This is needed if more files are provided than can be opened
      * simultaneously (typically, ~1000 on Unix systems), and is used in the merge command for
      * instance. Use get_input_file_count() to get the valid range of numbers to be provided here.
      *
-     * The above get_iterator() function checks whether we already prepared the iterator, and
+     * The above get_stream() function checks whether we already prepared the stream, and
      * does not prepare it again in that case. By its intended use case, this overload here however
-     * works differently, and discards the currently prepared iterator, and prepares a new one.
+     * works differently, and discards the currently prepared stream, and prepares a new one.
      */
-    VariantInputIterator& get_iterator( size_t first, size_t last ) const
+    VariantInputStream& get_stream( size_t first, size_t last ) const
     {
         prepare_inputs_();
-        prepare_iterator_( first, last );
-        return iterator_;
+        prepare_stream_( first, last );
+        return stream_;
     }
 
     // -------------------------------------------------------------------------
@@ -236,13 +236,13 @@ public:
 protected:
 
     void prepare_inputs_() const;
-    void prepare_iterator_() const;
-    void prepare_iterator_( size_t first, size_t last ) const;
-    void prepare_iterator_single_file_() const;
-    void prepare_iterator_multiple_files_() const;
-    void prepare_iterator_multiple_files_( size_t first, size_t last ) const;
-    void prepare_iterator_from_parallel_iterator_(
-        genesis::population::VariantParallelInputIterator&&
+    void prepare_stream_() const;
+    void prepare_stream_( size_t first, size_t last ) const;
+    void prepare_stream_single_file_() const;
+    void prepare_stream_multiple_files_() const;
+    void prepare_stream_multiple_files_( size_t first, size_t last ) const;
+    void prepare_stream_from_parallel_stream_(
+        genesis::population::VariantParallelInputStream&&
     ) const;
 
 private:
@@ -250,15 +250,15 @@ private:
     /**
      * @brief Add filters and transformations that are to be applied to each input individually.
      */
-    void add_individual_filters_and_transforms_to_iterator_(
-        VariantInputIterator& iterator
+    void add_individual_filters_and_transforms_to_stream_(
+        VariantInputStream& stream
     ) const;
 
     /**
      * @brief Add filters and transformations that are to be applied to the combined sample.
      */
-    void add_combined_filters_and_transforms_to_iterator_(
-        VariantInputIterator& iterator
+    void add_combined_filters_and_transforms_to_stream_(
+        VariantInputStream& stream
     ) const;
 
     // -------------------------------------------------------------------------
@@ -277,7 +277,7 @@ private:
     std::vector<std::unique_ptr<VariantFileOptions>> input_files_;
     CliOption<std::string> multi_file_loci_set_ = "union";
 
-    // Hidden options to set the LambdaIterator block size for speed.
+    // Hidden options to set the Generic Input Stream block size for speed.
     CliOption<size_t> iterator_block_size_ = 8192;
     CliOption<size_t> parallel_block_size_ = 4096;
 
@@ -290,7 +290,7 @@ private:
 
     // Transformations and filters, can be added by the commands as needed for their processing.
     // The individual is applied per input source, and the compbined is applied on the whole
-    // VariantInputIterator at the end; if only a single file is provided as input by the user,
+    // VariantInputStream at the end; if only a single file is provided as input by the user,
     // both are applied to that.
     // We make them mutable, so that these filters/transformations can be added at runtime
     // of the command. Doesn't really matter - we could add them in the setup of the command
@@ -304,11 +304,11 @@ private:
 
     // We have different input data formats, but want to convert all of them to our `Variant` type.
     // Working with a statically typed language, this is a bit tricky, so let's introduce a level of
-    // abstraction that gives us an iterator over Variants that type-erases the input data format
+    // abstraction that gives us a stream over Variants that type-erases the input data format
     // by using a std::function with a lambda that simply returns Variant objects.
-    // The `VariantInputIterator` takes care of all of this, and just gives us an iterable,
+    // The `VariantInputStream` takes care of all of this, and just gives us an iterable,
     // yielding a Variant for each position.
-    mutable VariantInputIterator iterator_;
+    mutable VariantInputStream stream_;
 
     // Counts, for reporting: How many chr and pos have we seen,
     // and if we have a ref genome fasta, did we see any mismatching bases?

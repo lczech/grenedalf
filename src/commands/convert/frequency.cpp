@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -260,7 +260,7 @@ void run_frequency( FrequencyOptions const& options )
     size_t line_cnt = 0;
     size_t skip_cnt = 0;
     size_t tot_off_cnt = 0;
-    for( auto const& variant : options.variant_input.get_iterator() ) {
+    for( auto const& variant : options.variant_input.get_stream() ) {
         ++line_cnt;
 
         // User output, so that we can see that something is happing.

@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/vcf_input_iterator.hpp"
+#include "genesis/population/formats/vcf_input_stream.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -65,11 +65,11 @@ CLI::Option* VariantFileVcfOptions::add_file_input_opt_to_app_(
 //      Run Functions
 // =================================================================================================
 
-VariantFileVcfOptions::VariantInputIterator VariantFileVcfOptions::get_iterator_(
+VariantFileVcfOptions::VariantInputStream VariantFileVcfOptions::get_stream_(
     std::string const& filename
 ) const {
     using namespace genesis::population;
 
-    // Prepare the iterator. Simple.
-    return make_variant_input_iterator_from_pool_vcf_file( filename );
+    // Prepare the stream. Simple.
+    return make_variant_input_stream_from_pool_vcf_file( filename );
 }

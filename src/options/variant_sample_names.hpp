@@ -28,7 +28,7 @@
 
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/streams/variant_input_stream.hpp"
 #include "genesis/population/variant.hpp"
 
 #include <string>
@@ -73,7 +73,7 @@ public:
 
     void rename_samples( std::vector<std::string>& sample_names ) const;
 
-    void add_sample_name_filter( genesis::population::VariantInputIterator& iterator ) const;
+    void add_sample_name_filter( genesis::population::VariantInputStream& iterator ) const;
 
 private:
 

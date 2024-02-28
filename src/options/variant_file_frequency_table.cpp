@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/frequency_table_input_iterator.hpp"
+#include "genesis/population/formats/frequency_table_input_stream.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -219,13 +219,13 @@ char VariantFileFrequencyTableOptions::get_separator_char_() const
     return translate_separator_char( separator_char_ );
 }
 
-VariantFileFrequencyTableOptions::VariantInputIterator VariantFileFrequencyTableOptions::get_iterator_(
+VariantFileFrequencyTableOptions::VariantInputStream VariantFileFrequencyTableOptions::get_stream_(
     std::string const& filename
 ) const {
     using namespace genesis::population;
 
     // Prepare the reader with our settings. Sep char is set twice - not needed, but okay.
-    FrequencyTableInputIterator reader;
+    FrequencyTableInputStream reader;
     reader.separator_char( get_separator_char_() );
     reader.frequency_is_ref( frequency_is_ref_.value );
     if( *int_factor_.option ) {
@@ -261,8 +261,8 @@ VariantFileFrequencyTableOptions::VariantInputIterator VariantFileFrequencyTable
         reader.header_sample_coverage_substring( usr_smp_cov_name_.value );
     }
 
-    // Prepare the iterator.
-    return make_variant_input_iterator_from_frequency_table_file(
+    // Prepare the stream.
+    return make_variant_input_stream_from_frequency_table_file(
         filename, get_separator_char_(), reader
     );
 }

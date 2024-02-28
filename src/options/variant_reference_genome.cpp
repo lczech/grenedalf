@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/variant_input_iterator.hpp"
+#include "genesis/population/functions/variant_input_stream.hpp"
 #include "genesis/sequence/formats/fasta_reader.hpp"
 #include "genesis/sequence/functions/dict.hpp"
 #include "genesis/utils/core/fs.hpp"

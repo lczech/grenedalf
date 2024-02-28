@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #include "options/file_input.hpp"
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/streams/variant_input_stream.hpp"
 #include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
 #include "genesis/sequence/reference_genome.hpp"
@@ -58,7 +58,7 @@ public:
 
     using Variant = genesis::population::Variant;
     using GenomeLocusSet = genesis::population::GenomeLocusSet;
-    using VariantInputIterator = genesis::population::VariantInputIterator;
+    using VariantInputStream = genesis::population::VariantInputStream;
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
@@ -106,11 +106,11 @@ public:
     }
 
     /**
-     * @brief Get the iterator for one of the files, parsing it as the file type that
+     * @brief Get the stream for one of the files, parsing it as the file type that
      * the derived class is for.
      */
-    VariantInputIterator get_iterator( std::string const& filename ) const {
-        return get_iterator_( filename );
+    VariantInputStream get_stream( std::string const& filename ) const {
+        return get_stream_( filename );
     }
 
     // -------------------------------------------------------------------------
@@ -133,7 +133,7 @@ protected:
 
     virtual std::string get_default_group_name_() const = 0;
 
-    virtual VariantInputIterator get_iterator_( std::string const& filename ) const = 0;
+    virtual VariantInputStream get_stream_( std::string const& filename ) const = 0;
 
     // -------------------------------------------------------------------------
     //     Option Members

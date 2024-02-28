@@ -873,7 +873,7 @@ void run_fst( FstOptions const& options )
     //     Main Loop
     // -------------------------------------------------------------------------
 
-    auto window_it = options.window.get_variant_window_view_iterator( options.variant_input );
+    auto window_it = options.window.get_variant_window_view_stream( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
         auto const& window = *cur_it;
 

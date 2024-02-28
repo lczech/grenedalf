@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,16 +29,16 @@
 #include "tools/cli_option.hpp"
 #include "options/variant_input.hpp"
 
-#include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/streams/variant_input_stream.hpp"
 #include "genesis/population/variant.hpp"
-#include "genesis/population/window/base_window_iterator.hpp"
+#include "genesis/population/window/base_window_stream.hpp"
 #include "genesis/population/window/base_window.hpp"
-#include "genesis/population/window/chromosome_iterator.hpp"
-#include "genesis/population/window/region_window_iterator.hpp"
-#include "genesis/population/window/sliding_entries_window_iterator.hpp"
-#include "genesis/population/window/sliding_interval_window_iterator.hpp"
-#include "genesis/population/window/variant_window_iterator.hpp"
-#include "genesis/population/window/window_view_iterator.hpp"
+#include "genesis/population/window/chromosome_stream.hpp"
+#include "genesis/population/window/region_window_stream.hpp"
+#include "genesis/population/window/sliding_entries_window_stream.hpp"
+#include "genesis/population/window/sliding_interval_window_stream.hpp"
+#include "genesis/population/window/variant_window_stream.hpp"
+#include "genesis/population/window/window_view_stream.hpp"
 #include "genesis/population/window/window_view.hpp"
 #include "genesis/population/window/window.hpp"
 
@@ -63,20 +63,20 @@ using VariantWindow = ::genesis::population::Window<::genesis::population::Varia
 using VariantWindowView = ::genesis::population::WindowView<::genesis::population::Variant>;
 
 /**
- * @brief Generic Window Iterator type that we are using throughout grenedalf.
+ * @brief Generic Window Stream type that we are using throughout grenedalf.
  *
- * We use the base class for types of window iterators here,
+ * We use the base class for types of window streams here,
  * meaning that this type has to be used through pointers.
  */
-using VariantWindowIterator = ::genesis::population::VariantWindowIterator;
+using VariantWindowStream = ::genesis::population::VariantWindowStream;
 
 /**
- * @brief Generic Window View Iterator type that we are using throughout grenedalf.
+ * @brief Generic Window View Stream type that we are using throughout grenedalf.
  *
- * We use the base class for types of window iterators here,
+ * We use the base class for types of window streams here,
  * meaning that this type has to be used through pointers.
  */
-using VariantWindowViewIterator = ::genesis::population::VariantWindowViewIterator;
+using VariantWindowViewStream = ::genesis::population::VariantWindowViewStream;
 
 // =================================================================================================
 //      Window Options
@@ -104,23 +104,23 @@ public:
     };
 
     // Same as the above global typedefs, just to have them here as well.
-    using VariantWindowIterator = genesis::population::VariantWindowIterator;
-    using VariantWindowViewIterator = genesis::population::VariantWindowViewIterator;
+    using VariantWindowStream = genesis::population::VariantWindowStream;
+    using VariantWindowViewStream = genesis::population::VariantWindowViewStream;
 
-    // Typedefs for the Window-based iterators.
-    using VariantSlidingIntervalWindowIterator = genesis::population::SlidingIntervalWindowIterator<
-        genesis::population::VariantInputIterator::Iterator
+    // Typedefs for the Window-based streams.
+    using VariantSlidingIntervalWindowStream = genesis::population::SlidingIntervalWindowStream<
+        genesis::population::VariantInputStream::Iterator
     >;
-    using VariantSlidingEntriesWindowIterator = genesis::population::SlidingEntriesWindowIterator<
-        genesis::population::VariantInputIterator::Iterator
+    using VariantSlidingEntriesWindowStream = genesis::population::SlidingEntriesWindowStream<
+        genesis::population::VariantInputStream::Iterator
     >;
-    using VariantRegionWindowIterator = genesis::population::RegionWindowIterator<
-        genesis::population::VariantInputIterator::Iterator
+    using VariantRegionWindowStream = genesis::population::RegionWindowStream<
+        genesis::population::VariantInputStream::Iterator
     >;
 
-    // Typedefs for the WindowView-based iterators.
-    using ChromosomeIterator = genesis::population::ChromosomeIterator<
-        genesis::population::VariantInputIterator::Iterator
+    // Typedefs for the WindowView-based streams.
+    using ChromosomeStream = genesis::population::ChromosomeStream<
+        genesis::population::VariantInputStream::Iterator
     >;
 
     // -------------------------------------------------------------------------
@@ -143,20 +143,20 @@ public:
     /**
      * @brief Add options for selecting the windowing approach to a command.
      *
-     * For efficiency reasons, genesis offers two types of iterators over windows: WindowIterator
-     * and WindowViewIterator. The first one yields Windows that keep all their data in memory,
+     * For efficiency reasons, genesis offers two types of streams over windows: WindowStream
+     * and WindowViewStream. The first one yields Windows that keep all their data in memory,
      * while the second one only points to existing data withing storing it, and is hence more
      * suitable for example when iterating a whole chromosome as a window.
      *
      * This means, we here also need to make this distinction. Some algorithms might need to iterate
      * a window multiple times in order to compute their thing, which means that all the data has
      * to be in memory (or we'd have to read the file multiple times... but that's not supported
-     * at the moment). Hence, for these types of algorithms, we can only use the WindowIterator.
+     * at the moment). Hence, for these types of algorithms, we can only use the WindowStream.
      *
      * For other algorithms that only need to stream through the data once, we can also offer the
-     * WindowViewIterator types (at the time of writing: whole chromosomes, and the whole genome).
+     * WindowViewStream types (at the time of writing: whole chromosomes, and the whole genome).
      *
-     * Depending on the choice here, WindowViewIterator types are added and available, or not,
+     * Depending on the choice here, WindowViewStream types are added and available, or not,
      * for the command where this class is used.
      */
     void add_window_opts_to_app(
@@ -175,26 +175,26 @@ public:
     WindowType window_type() const;
 
     /**
-     * @brief Get a Window iterator over Variants, using the @p input to get its data from.
+     * @brief Get a Window stream over Variants, using the @p input to get its data from.
      *
-     * This is meant to be called with the get_iterator() function of the VariantInputOptions class.
+     * This is meant to be called with the get_stream() function of the VariantInputOptions class.
      *
      * It is only suppored if add_window_opts_to_app() above had been called with
-     * `include_window_view_types = false`, as otherwise, Window View based iterators might be
-     * requested by the user, which however cannot be packed into a VariantWindowIterator.
-     * For this, use get_variant_window_view_iterator() instead, which wraps both types of
-     * iterators into the same, namely into WindowViewIterator.
+     * `include_window_view_types = false`, as otherwise, Window View based streams might be
+     * requested by the user, which however cannot be packed into a VariantWindowStream.
+     * For this, use get_variant_window_view_stream() instead, which wraps both types of
+     * streams into the same, namely into WindowViewStream.
      */
-    std::unique_ptr<VariantWindowIterator> get_variant_window_iterator(
+    std::unique_ptr<VariantWindowStream> get_variant_window_stream(
         VariantInputOptions const& variant_input
     ) const;
 
     /**
-     * @brief Get a Window View iterator over Variants, using the @p input to get its data from.
+     * @brief Get a Window View stream over Variants, using the @p input to get its data from.
      *
-     * This is meant to be called with the get_iterator() function of the VariantInputOptions class.
+     * This is meant to be called with the get_stream() function of the VariantInputOptions class.
      */
-    std::unique_ptr<VariantWindowViewIterator> get_variant_window_view_iterator(
+    std::unique_ptr<VariantWindowViewStream> get_variant_window_view_stream(
         VariantInputOptions const& variant_input
     ) const;
 
@@ -226,28 +226,28 @@ private:
 
     void check_options_() const;
 
-    VariantSlidingIntervalWindowIterator get_variant_window_iterator_sliding_(
-        genesis::population::VariantInputIterator& input
+    VariantSlidingIntervalWindowStream get_variant_window_stream_sliding_(
+        genesis::population::VariantInputStream& input
     ) const;
 
-    VariantSlidingEntriesWindowIterator get_variant_window_iterator_queue_(
-        genesis::population::VariantInputIterator& input
+    VariantSlidingEntriesWindowStream get_variant_window_stream_queue_(
+        genesis::population::VariantInputStream& input
     ) const;
 
-    VariantSlidingIntervalWindowIterator get_variant_window_iterator_single_(
-        genesis::population::VariantInputIterator& input
+    VariantSlidingIntervalWindowStream get_variant_window_stream_single_(
+        genesis::population::VariantInputStream& input
     ) const;
 
-    VariantRegionWindowIterator get_variant_window_iterator_regions_(
-        genesis::population::VariantInputIterator& input
+    VariantRegionWindowStream get_variant_window_stream_regions_(
+        genesis::population::VariantInputStream& input
     ) const;
 
-    ChromosomeIterator get_variant_window_view_iterator_chromosomes_(
-        genesis::population::VariantInputIterator& input
+    ChromosomeStream get_variant_window_view_stream_chromosomes_(
+        genesis::population::VariantInputStream& input
     ) const;
 
-    ChromosomeIterator get_variant_window_view_iterator_genome_(
-        genesis::population::VariantInputIterator& input
+    ChromosomeStream get_variant_window_view_stream_genome_(
+        genesis::population::VariantInputStream& input
     ) const;
 
     // -------------------------------------------------------------------------

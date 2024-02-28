@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,8 @@
 
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/formats/variant_input_iterator.hpp"
+#include "genesis/population/streams/variant_input_stream.hpp"
+#include "genesis/population/functions/variant_input_stream.hpp"
 #include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
 
@@ -54,7 +55,7 @@ public:
 
     using Variant = genesis::population::Variant;
     using GenomeLocusSet = genesis::population::GenomeLocusSet;
-    using VariantInputIterator = genesis::population::VariantInputIterator;
+    using VariantInputStream = genesis::population::VariantInputStream;
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five

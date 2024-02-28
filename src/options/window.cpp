@@ -81,9 +81,9 @@ void WindowOptions::add_window_opts_to_app(
     window_type_.option->group( group );
     window_type_.option->required();
 
-    // The distinction between the two window iterator types boils down to just allowing the
-    // WindowView iterators to be specified as a type here or not. At the moment, none of them
-    // (i.e., ChromosomeIterator) offer any extra options anyway. If that changes, we will need to
+    // The distinction between the two window stream types boils down to just allowing the
+    // WindowView streams to be specified as a type here or not. At the moment, none of them
+    // (i.e., ChromosomeStream) offer any extra options anyway. If that changes, we will need to
     // also conditionally add these extra options, as done for example for the interval windows below.
     if( include_window_view_types_ ) {
         window_type_.option->transform(
@@ -282,53 +282,53 @@ WindowOptions::WindowType WindowOptions::window_type() const
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_iterator
+//     get_variant_window_stream
 // -------------------------------------------------------------------------
 
-std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterator(
+std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
     VariantInputOptions const& variant_input
 ) const {
 
     // Safety check. If this is set, we've made a mistake in a command setup,
-    // by adding both the Window and Window View iterators, but requesting the Window iteratre here,
+    // by adding both the Window and Window View streams, but requesting the Window stream here,
     // which is not available in this situation.
     if( include_window_view_types_ ) {
         throw std::domain_error(
-            "Internal error: Cannot use Window Iterator when Window View Iterators are available."
+            "Internal error: Cannot use Window Stream when Window View Streams are available."
         );
     }
 
     // Check that no extra options were provided.
     check_options_();
 
-    // Get the input iterator, and store the options for the report later.
-    auto& input_iterator = variant_input.get_iterator();
+    // Get the input stream, and store the options for the report later.
+    auto& input_stream = variant_input.get_stream();
     variant_input_ = &variant_input;
 
-    // Get the window types that are available as Window Iterators.
-    std::unique_ptr<VariantWindowIterator> result;
+    // Get the window types that are available as Window streams.
+    std::unique_ptr<VariantWindowStream> result;
     switch( window_type() ) {
         case WindowType::kSliding: {
-            result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
-                get_variant_window_iterator_sliding_( input_iterator )
+            result = genesis::utils::make_unique<VariantSlidingIntervalWindowStream>(
+                get_variant_window_stream_sliding_( input_stream )
             );
             break;
         }
         case WindowType::kQueue: {
-            result = genesis::utils::make_unique<VariantSlidingEntriesWindowIterator>(
-                get_variant_window_iterator_queue_( input_iterator )
+            result = genesis::utils::make_unique<VariantSlidingEntriesWindowStream>(
+                get_variant_window_stream_queue_( input_stream )
             );
             break;
         }
         case WindowType::kSingle: {
-            result = genesis::utils::make_unique<VariantSlidingIntervalWindowIterator>(
-                get_variant_window_iterator_single_( input_iterator )
+            result = genesis::utils::make_unique<VariantSlidingIntervalWindowStream>(
+                get_variant_window_stream_single_( input_stream )
             );
             break;
         }
         case WindowType::kRegions: {
-            result = genesis::utils::make_unique<VariantRegionWindowIterator>(
-                get_variant_window_iterator_regions_( input_iterator )
+            result = genesis::utils::make_unique<VariantRegionWindowStream>(
+                get_variant_window_stream_regions_( input_stream )
             );
             break;
         }
@@ -343,7 +343,7 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
     }
     assert( result );
 
-    // Add logging to the iterator, and return it.
+    // Add logging to the stream, and return it.
     using VariantWindowType = genesis::population::Window<genesis::population::Variant>;
     result->add_observer([ this ]( VariantWindowType const& window ){
         ++num_windows_;
@@ -356,78 +356,78 @@ std::unique_ptr<VariantWindowIterator> WindowOptions::get_variant_window_iterato
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_view_iterator
+//     get_variant_window_view_stream
 // -------------------------------------------------------------------------
 
-std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_view_iterator(
+std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_stream(
     VariantInputOptions const& variant_input
 ) const {
-    // Derived type of the wrapper class that we need for the Window Iterators
-    using WindowViewIterator = genesis::population::WindowViewIterator<
-        genesis::population::VariantInputIterator::Iterator
+    // Derived type of the wrapper class that we need for the Window Streams
+    using WindowViewStream = genesis::population::WindowViewStream<
+        genesis::population::VariantInputStream::Iterator
     >;
 
     // Safety check. If this is set, we've made a mistake in a command setup,
-    // by not adding both the Window and Window View iterators, but requesting them here.
+    // by not adding both the Window and Window View streams, but requesting them here.
     if( ! include_window_view_types_ ) {
         throw std::domain_error(
-            "Internal error: Window View Iterators are not available."
+            "Internal error: Window View Streams are not available."
         );
     }
 
     // Check that no extra options were provided.
     check_options_();
 
-    // Get the input iterator, and store the options for the report later.
-    auto& input_iterator = variant_input.get_iterator();
+    // Get the input stream, and store the options for the report later.
+    auto& input_stream = variant_input.get_stream();
     variant_input_ = &variant_input;
 
     // Longer switch between all supported window types.
-    // For the ones that yield Window Iterators, we additionally need to wrap them,
-    // so that they become Window View iterators instead.
-    std::unique_ptr<VariantWindowViewIterator> result;
+    // For the ones that yield Window Streams, we additionally need to wrap them,
+    // so that they become Window View streams instead.
+    std::unique_ptr<VariantWindowViewStream> result;
     switch( window_type() ) {
         case WindowType::kSliding: {
-            result = genesis::utils::make_unique<WindowViewIterator>(
-                make_window_view_iterator(
-                    get_variant_window_iterator_sliding_( input_iterator )
+            result = genesis::utils::make_unique<WindowViewStream>(
+                make_window_view_stream(
+                    get_variant_window_stream_sliding_( input_stream )
                 )
             );
             break;
         }
         case WindowType::kQueue: {
-            result = genesis::utils::make_unique<WindowViewIterator>(
-                make_window_view_iterator(
-                    get_variant_window_iterator_queue_( input_iterator )
+            result = genesis::utils::make_unique<WindowViewStream>(
+                make_window_view_stream(
+                    get_variant_window_stream_queue_( input_stream )
                 )
             );
             break;
         }
         case WindowType::kSingle: {
-            result = genesis::utils::make_unique<WindowViewIterator>(
-                make_window_view_iterator(
-                    get_variant_window_iterator_single_( input_iterator )
+            result = genesis::utils::make_unique<WindowViewStream>(
+                make_window_view_stream(
+                    get_variant_window_stream_single_( input_stream )
                 )
             );
             break;
         }
         case WindowType::kRegions: {
-            result = genesis::utils::make_unique<WindowViewIterator>(
-                make_window_view_iterator(
-                    get_variant_window_iterator_regions_( input_iterator )
+            result = genesis::utils::make_unique<WindowViewStream>(
+                make_window_view_stream(
+                    get_variant_window_stream_regions_( input_stream )
                 )
             );
             break;
         }
         case WindowType::kChromosomes: {
-            result = genesis::utils::make_unique<ChromosomeIterator>(
-                get_variant_window_view_iterator_chromosomes_( input_iterator )
+            result = genesis::utils::make_unique<ChromosomeStream>(
+                get_variant_window_view_stream_chromosomes_( input_stream )
             );
             break;
         }
         case WindowType::kGenome: {
-            result = genesis::utils::make_unique<ChromosomeIterator>(
-                get_variant_window_view_iterator_genome_( input_iterator )
+            result = genesis::utils::make_unique<ChromosomeStream>(
+                get_variant_window_view_stream_genome_( input_stream )
             );
             break;
         }
@@ -440,7 +440,7 @@ std::unique_ptr<VariantWindowViewIterator> WindowOptions::get_variant_window_vie
     }
     assert( result );
 
-    // Add logging to the iterator, and return it.
+    // Add logging to the stream, and return it.
     using VariantWindowViewType = genesis::population::WindowView<genesis::population::Variant>;
     result->add_observer([ this ]( VariantWindowViewType const& window ){
         ++num_windows_;
@@ -527,12 +527,12 @@ void WindowOptions::check_options_() const
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_iterator_sliding_
+//     get_variant_window_stream_sliding_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantSlidingIntervalWindowIterator
-WindowOptions::get_variant_window_iterator_sliding_(
-    genesis::population::VariantInputIterator& input
+WindowOptions::VariantSlidingIntervalWindowStream
+WindowOptions::get_variant_window_stream_sliding_(
+    genesis::population::VariantInputStream& input
 ) const {
     if( ! *sliding_width_.option ) {
         throw CLI::ValidationError(
@@ -548,18 +548,18 @@ WindowOptions::get_variant_window_iterator_sliding_(
         );
     }
 
-    return genesis::population::make_default_sliding_interval_window_iterator(
+    return genesis::population::make_default_sliding_interval_window_stream(
         input.begin(), input.end(), sliding_width_.value, sliding_stride_.value
     );
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_iterator_queue_
+//     get_variant_window_stream_queue_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantSlidingEntriesWindowIterator
-WindowOptions::get_variant_window_iterator_queue_(
-    genesis::population::VariantInputIterator& input
+WindowOptions::VariantSlidingEntriesWindowStream
+WindowOptions::get_variant_window_stream_queue_(
+    genesis::population::VariantInputStream& input
 ) const {
     if( ! *queue_count_.option ) {
         throw CLI::ValidationError(
@@ -575,21 +575,21 @@ WindowOptions::get_variant_window_iterator_queue_(
         );
     }
 
-    return genesis::population::make_default_sliding_entries_window_iterator(
+    return genesis::population::make_default_sliding_entries_window_stream(
         input.begin(), input.end(), queue_count_.value, queue_stride_.value
     );
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_iterator_single_
+//     get_variant_window_stream_single_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantSlidingIntervalWindowIterator
-WindowOptions::get_variant_window_iterator_single_(
-    genesis::population::VariantInputIterator& input
+WindowOptions::VariantSlidingIntervalWindowStream
+WindowOptions::get_variant_window_stream_single_(
+    genesis::population::VariantInputStream& input
 ) const {
-    // Always return a sliding interval iterator with window width 1.
-    return genesis::population::make_default_sliding_interval_window_iterator(
+    // Always return a sliding interval stream with window width 1.
+    return genesis::population::make_default_sliding_interval_window_stream(
         input.begin(), input.end(), 1, 1
     );
 
@@ -597,12 +597,12 @@ WindowOptions::get_variant_window_iterator_single_(
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_iterator_regions_
+//     get_variant_window_stream_regions_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantRegionWindowIterator
-WindowOptions::get_variant_window_iterator_regions_(
-    genesis::population::VariantInputIterator& input
+WindowOptions::VariantRegionWindowStream
+WindowOptions::get_variant_window_stream_regions_(
+    genesis::population::VariantInputStream& input
 ) const {
     using namespace genesis::population;
     using namespace genesis::utils;
@@ -663,16 +663,16 @@ WindowOptions::get_variant_window_iterator_regions_(
     }
 
     // Count how many regions we have, in total, for user convenience.
-    LOG_MSG << "Iterating over " << region_list->total_region_count() << " total regions across "
+    LOG_MSG << "Streaming over " << region_list->total_region_count() << " total regions across "
             << region_list->chromosome_count() << " chromosomes.";
     for( auto const& chr : region_list->chromosome_names() ) {
         LOG_MSG2 << " - Chromosome \"" << chr << "\" with "
                  << region_list->region_count( chr ) << " regions";
     }
 
-    // Return an iterator over the regions that we just read.
+    // Return a stream over the regions that we just read.
     // It copies the shared pointer to the regions, keeping it alive.
-    auto result = genesis::population::make_default_region_window_iterator(
+    auto result = genesis::population::make_default_region_window_stream(
         input.begin(), input.end(), region_list
     );
     result.skip_empty_regions( region_skip_empty_.value );
@@ -681,15 +681,15 @@ WindowOptions::get_variant_window_iterator_regions_(
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_view_iterator_chromosomes_
+//     get_variant_window_view_stream_chromosomes_
 // -------------------------------------------------------------------------
 
-WindowOptions::ChromosomeIterator
-WindowOptions::get_variant_window_view_iterator_chromosomes_(
-    genesis::population::VariantInputIterator& input
+WindowOptions::ChromosomeStream
+WindowOptions::get_variant_window_view_stream_chromosomes_(
+    genesis::population::VariantInputStream& input
 ) const {
     assert( variant_input_ );
-    auto it = genesis::population::make_default_chromosome_iterator(
+    auto it = genesis::population::make_default_chromosome_stream(
         input.begin(), input.end()
     );
     it.sequence_dict( variant_input_->get_reference_dict() );
@@ -697,14 +697,14 @@ WindowOptions::get_variant_window_view_iterator_chromosomes_(
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_view_iterator_genome_
+//     get_variant_window_view_stream_genome_
 // -------------------------------------------------------------------------
 
-WindowOptions::ChromosomeIterator
-WindowOptions::get_variant_window_view_iterator_genome_(
-    genesis::population::VariantInputIterator& input
+WindowOptions::ChromosomeStream
+WindowOptions::get_variant_window_view_stream_genome_(
+    genesis::population::VariantInputStream& input
 ) const {
-    return genesis::population::make_default_genome_iterator(
+    return genesis::population::make_default_genome_stream(
         input.begin(), input.end()
     );
 }
