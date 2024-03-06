@@ -239,11 +239,11 @@ void VariantSampleNamesOptions::add_sample_name_filter(
     std::vector<bool> sample_filter;
     if( ! filter_samples_include_.value.empty() ) {
         auto const list = process_sample_name_list_option_( filter_samples_include_.value );
-        sample_filter = make_sample_filter( sample_names, list, false );
+        sample_filter = make_sample_name_filter( sample_names, list, false );
     }
     if( ! filter_samples_exclude_.value.empty() ) {
         auto const list = process_sample_name_list_option_( filter_samples_exclude_.value );
-        sample_filter = make_sample_filter( sample_names, list, true );
+        sample_filter = make_sample_name_filter( sample_names, list, true );
     }
     internal_check(
         sample_filter.size() == sample_names.size(), "sample_filter.size() != sample_names.size()"

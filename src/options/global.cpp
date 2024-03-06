@@ -36,7 +36,7 @@
 void GlobalOptions::initialize( int const argc, char const* const* argv )
 {
     // By default, use the hardware threads, taking hypterthreding into account
-    opt_threads.value = genesis::utils::guess_number_of_threads(false);
+    opt_threads.value = genesis::utils::guess_number_of_threads();
 
     // If hardware value is not available, just use 1 thread.
     // This is executed if the call to the above function fails.
@@ -110,7 +110,7 @@ void GlobalOptions::run_global()
 {
     // If user did not provide number, use hardware value (taking care of hyperthreads as well).
     if( opt_threads.value == 0 ) {
-        opt_threads.value = genesis::utils::guess_number_of_threads(false);
+        opt_threads.value = genesis::utils::guess_number_of_threads();
     }
 
     // If hardware value is not available, just use 1 thread.
@@ -119,14 +119,11 @@ void GlobalOptions::run_global()
         opt_threads.value = 1;
     }
 
-    // At the moment, we use a thread pool for the Generic Input Stream of the VariantInputOptions
-    // reading (but only for that, see comment above as well), because otherwise each input file
-    // spawns a separate thread, which could be hundreds  or a thousand threads all trying to
-    // get CPU time to parse their file at the same time... which would invalidate all thread
-    // settings, and might cause trouble on clusters.
-    // Note that this technique is independent of OpenMP, and so we will end of having two times
-    // the number of threads spawned as the moment... Hence the need for the refactor later.
-    genesis::utils::Options::get().init_global_thread_pool( opt_threads.value );
+    // Initialize the global thread pool. We use one fewer than the number of specified thread
+    // here, as we need to acount for the main thread doing work as well. We have implemented
+    // a type of proactive future that also does work from the pool when waiting for results,
+    // meaning that the main thread will also participate in the pool.
+    genesis::utils::Options::get().init_global_thread_pool( opt_threads.value - 1 );
 
     // Allow to overwrite files. Has to be done before adding the log file (coming below),
     // as this might already fail if the log file exists.
