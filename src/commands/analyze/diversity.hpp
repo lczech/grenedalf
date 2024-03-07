@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "options/table_output.hpp"
 #include "options/variant_filter_numerical.hpp"
 #include "options/variant_input.hpp"
+#include "options/variant_transform_subsample.hpp"
 #include "options/window.hpp"
 #include "tools/cli_option.hpp"
 
@@ -46,10 +47,11 @@ class DiversityOptions
 public:
 
     // Input options
-    VariantInputOptions           variant_input;
-    VariantFilterNumericalOptions filter_numerical;
-    WindowOptions                 window;
-    PoolsizesOptions              poolsizes;
+    VariantInputOptions              variant_input;
+    VariantFilterNumericalOptions    filter_numerical;
+    VariantTransformSubsampleOptions transform_subsample;
+    WindowOptions                    window;
+    PoolsizesOptions                 poolsizes;
 
     // Using defaults from PoPoolation, see Variance-sliding.pl
     CliOption<std::string> measure = "all";

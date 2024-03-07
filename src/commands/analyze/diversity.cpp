@@ -74,6 +74,9 @@ void setup_diversity( CLI::App& app )
     options->filter_numerical.sample_min_count.option->required();
     options->filter_numerical.sample_min_count.option->check( CLI::PositiveNumber );
 
+    // Also offer subsampling options for this command.
+    options->transform_subsample.add_subsample_opts_to_app( sub );
+
     // Settings for the windowing.
     options->window.add_window_opts_to_app( sub, true );
 
@@ -619,6 +622,12 @@ void run_diversity( DiversityOptions const& options )
     BaseCountsFilter filter;
     filter.only_snps = true;
     filter = options.filter_numerical.get_sample_filter( filter ).first;
+
+    // TODO right now, the numerical filters are applied in the diversity calculator, instead
+    // of on the stream beforehand - this will change soon once we support variant filters
+    // with masking properly. but in the meantime, that means that the subsampling will be
+    // applied _before_ the max coverage... need to fix asap!
+    options.transform_subsample.add_subsample_transformation( options.variant_input );
 
     // Get all samples names from the input file.
     auto const& sample_names = options.variant_input.sample_names();
