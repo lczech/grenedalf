@@ -111,6 +111,8 @@ jobs:
           - os: macos-11
             compiler: llvm-13
           - os: macos-11
+            compiler: llvm-14
+          - os: macos-11
             compiler: llvm-16
           - os: macos-11
             compiler: llvm-17
