@@ -48,16 +48,21 @@ void VariantTransformSubsampleOptions::add_subsample_opts_to_app(
     );
 
     // Rename samples option.
+    // See https://www.kofler.or.at/bioinformatic/wp-content/uploads/2018/07/pooledAnalysis_part1.pdf
     max_coverage_.option = sub->add_option(
         "--subsample-max-coverage",
         max_coverage_.value,
         "If provided, the nucleotide counts of each sample are subsampled so that they do not "
-        "exceed this given maximum total coverage (sum of the four nucleotide counts). "
+        "exceed this given maximum total coverage (sum of the four nucleotide counts, as well as "
+        "the any `N` and deleted `D` counts). "
         "If they are below this value anyway, they are not changed. "
         "This transformation is useful to limit the maximum coverage. For instance, the diversity "
         "estimators for Theta Pi and Theta Watterson have terms that depend on coverage. "
         "In particular when merging samples such as with `--sample-group-merge-table-file`, "
-        "having an upper limit can hence avoid long compute times."
+        "having an upper limit can hence avoid long compute times. "
+        "Furthermore, a very low Tajima's D, usually indicative of a selective sweep, may be found "
+        "as an artifact in highly covered regions, as such regions have just more sequencing errors. "
+        "To avoid these kinds of biases we recommend to subsample to an uniform coverage. "
         // "This transformation is applied after any filters, so that, e.g., filters high coverage "
         // "remove any unwanted positions first. See `--subsample-method` for the subsampling method."
     );
@@ -110,21 +115,21 @@ void VariantTransformSubsampleOptions::add_subsample_transformation(
     if( method == "subscale" ) {
         variant_input.add_combined_filter_and_transforms(
             [ max_coverage ]( Variant& variant ){
-                transform_subscale( variant, max_coverage );
+                subscale_counts( variant, max_coverage );
                 return true;
             }
         );
     } else if( method == "subsample-with-replacement" ) {
         variant_input.add_combined_filter_and_transforms(
             [ max_coverage ]( Variant& variant ){
-                transform_subsample_with_replacement( variant, max_coverage );
+                subsample_counts_with_replacement( variant, max_coverage );
                 return true;
             }
         );
     } else if( method == "subsample-without-replacement" ) {
         variant_input.add_combined_filter_and_transforms(
             [ max_coverage ]( Variant& variant ){
-                transform_subsample_without_replacement( variant, max_coverage );
+                subsample_counts_without_replacement( variant, max_coverage );
                 return true;
             }
         );

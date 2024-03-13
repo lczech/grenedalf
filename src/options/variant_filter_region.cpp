@@ -30,6 +30,7 @@
 #include "genesis/population/formats/genome_region_reader.hpp"
 #include "genesis/population/formats/gff_reader.hpp"
 #include "genesis/population/formats/map_bim_reader.hpp"
+#include "genesis/population/formats/vcf_common.hpp"
 #include "genesis/population/formats/vcf_input_stream.hpp"
 #include "genesis/population/functions/filter_transform.hpp"
 #include "genesis/population/functions/functions.hpp"
