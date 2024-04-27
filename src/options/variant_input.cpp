@@ -131,7 +131,7 @@ void VariantInputOptions::add_input_files_opts_to_app(
         multi_file_loci_set_.value,
         "When multiple input files are provided, select whether the union of all their loci is "
         "used (outer join), or their intersection (inner join). For their union, input files that "
-        "do not have data at a particular locus are considered to have zero coverage at that locus. "
+        "do not have data at a particular locus are considered as missing at that locus. "
         "Note that we allow to use multiple input files even with different file types."
     );
     multi_file_loci_set_.option->group( group );

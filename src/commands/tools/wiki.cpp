@@ -538,7 +538,7 @@ void make_wiki_home_page( WikiOptions const& options )
 
     // If we found direct subcommands of the main, make a commands table of them.
     if( ! direct_subcommands.empty() ) {
-        os << "### Commands:\n\n";
+        os << "### Commands\n\n";
         make_subcommands_table( direct_subcommands, os, "Command" );
     }
 
@@ -605,7 +605,7 @@ void make_wiki_sidebar( WikiOptions const& options )
 
             // First time we find a command that we want to print, we print a heading as well.
             if( ! has_direct_subcommands ) {
-                os << "Commands:\n\n";
+                os << "Commands\n\n";
                 has_direct_subcommands = true;
             }
 

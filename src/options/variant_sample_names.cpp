@@ -60,12 +60,13 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "Allows to rename samples, by providing a file that lists the old and new sample names, "
         "one per line, separating old and new names by a tab.\n"
         "By default, we use sample names as provided in the input files. Some file types however do "
-        "not contain sample names, such as (m)pileup or sync files. For such file types, sample "
-        "names are automatically assigned by using their input file base name (without path and "
-        "extension), followed by a dot and numbers 1..n for all samples in that file. "
+        "not contain sample names, such as (m)pileup or sync files (unless the non-standard sync "
+        "header line is provided). For such file types, sample names are automatically assigned "
+        "by using their input file base name (without path and extension), followed by a dot and "
+        "numbers 1..n for all samples in that file. "
         "For instance, samples in `/path/to/sample.sync` are named `sample.1`, `sample.2`, etc.\n"
         "Using this option, those names can be renamed as needed. Use verbose output (`--verbose`) "
-        "to show a list of all sample names. We then use these names in the output and the "
+        "to show a list of all sample names. We then use these names in the output as well as in the "
         "`--filter-samples-include` and `--filter-samples-exclude` options. "
     );
     rename_samples_.option->group( group );
@@ -76,7 +77,8 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "--filter-samples-include",
         filter_samples_include_.value,
         "Sample names to include (all other samples are excluded); either (1) a comma- or "
-        "tab-separated list given on the command line, or (2) a file with one sample name per line. "
+        "tab-separated list given on the command line (in a typical shell, this list has to be "
+        "enclosed in quotation marks), or (2) a file with one sample name per line. "
         "If no sample filter is provided, all samples in the input file are used. "
         "The option is applied after potentially renaming the samples with `--rename-samples-file`."
     );
@@ -87,7 +89,8 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "--filter-samples-exclude",
         filter_samples_exclude_.value,
         "Sample names to exclude (all other samples are included); either (1) a comma- or "
-        "tab-separated list given on the command line, or (2) a file with one sample name per line. "
+        "tab-separated list given on the command line (in a typical shell, this list has to be "
+        "enclosed in quotation marks), or (2) a file with one sample name per line. "
         "If no sample filter is provided, all samples in the input file are used. "
         "The option is applied after potentially renaming the samples with `--rename-samples-file`."
     );

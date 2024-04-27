@@ -308,8 +308,10 @@ void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
         total_min_frequency.value,
         "Minimum allele frequency that needs to be reached for a position to be used. "
         "Positions where the allele frequency `af` across all samples, or `1 - af`, "
-        "is below this value, are ignored. We compute allele frequency based on the counts "
-        "of the reference and alternative base."
+        "is below this value, are ignored. If both the reference and alternative base are known, "
+        "allele frequencies are ocmputed based on those; if only the reference base is known, "
+        "the most frequent non-reference base is used as the alternative; if neither is known, "
+        "the first and second most frequent bases are used to compute the frequency."
     );
     total_min_frequency.option->group( group );
 
