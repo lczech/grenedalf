@@ -59,14 +59,14 @@ void WindowOptions::add_window_opts_to_app(
         // We need a bit of string trickery to use the ternary operator here...
         std::string() +
         "Type of window to use. Depending on the type, additional options might need to be provided. "
-        "\n(1) `sliding`: Typical sliding window over intervals of fixed length (in bases) "
+        "\n(1) `interval`: Typical sliding window over intervals of fixed length (in bases) "
         "along the genome. "
         "\n(2) `queue`: Sliding window, but instead of using a fixed length of bases along the genome, "
         "it uses a fixed number of positions of the input data. Typically used for windowing over "
         "variant positions such as (biallelic) SNPs, and useful for example when SNPs are sparse "
         "in the genome. "
         "\n(3) `single`: Treat each position of the input data as an individual window of size 1. "
-        "This is typically used to process single SNPs, and equivalent to `sliding` or `queue` "
+        "This is typically used to process single SNPs, and equivalent to `interval` or `queue` "
         "with a width/count of 1. "
         "\n(4) `regions`: Windows corresponding to some regions of interest, such as genes. "
         "The regions need to be provided, and can be overlapping or nested as needed. " +
@@ -88,14 +88,14 @@ void WindowOptions::add_window_opts_to_app(
     if( include_window_view_types_ ) {
         window_type_.option->transform(
             CLI::IsMember(
-                { "sliding", "queue", "single", "regions", "chromosomes", "genome" },
+                { "interval", "queue", "single", "regions", "chromosomes", "genome" },
                 CLI::ignore_case
             )
         );
     } else {
         window_type_.option->transform(
             CLI::IsMember(
-                { "sliding", "queue", "single", "regions" },
+                { "interval", "queue", "single", "regions" },
                 CLI::ignore_case
             )
         );
@@ -106,25 +106,25 @@ void WindowOptions::add_window_opts_to_app(
     // -------------------------------------------------------------------------
 
     // Width
-    sliding_width_.option = sub->add_option(
-        "--window-sliding-width",
-        sliding_width_.value,
-        "Required when using `" + window_type_.option->get_name() + " sliding`: "
+    interval_width_.option = sub->add_option(
+        "--window-interval-width",
+        interval_width_.value,
+        "Required when using `" + window_type_.option->get_name() + " interval`: "
         "Width of each window along the chromosome, in bases."
     );
-    sliding_width_.option->group( group );
-    // sliding_width_.option->required();
+    interval_width_.option->group( group );
+    // interval_width_.option->required();
 
     // Stride
-    sliding_stride_.option = sub->add_option(
-        "--window-sliding-stride",
-        sliding_stride_.value,
-        "When using `" + window_type_.option->get_name() + " sliding`: "
+    interval_stride_.option = sub->add_option(
+        "--window-interval-stride",
+        interval_stride_.value,
+        "When using `" + window_type_.option->get_name() + " interval`: "
         "Stride between windows along the chromosome, that is how far to move to get to the next "
         "window. If set to 0 (default), this is set to the same value as the `" +
-        sliding_width_.option->get_name() + "`."
+        interval_width_.option->get_name() + "`."
     );
-    sliding_stride_.option->group( group );
+    interval_stride_.option->group( group );
 
     // -------------------------------------------------------------------------
     //     Sliding entries window
@@ -261,8 +261,8 @@ void WindowOptions::add_window_opts_to_app(
 
 WindowOptions::WindowType WindowOptions::window_type() const
 {
-    if( window_type_.value == "sliding" ) {
-        return WindowType::kSliding;
+    if( window_type_.value == "interval" ) {
+        return WindowType::kInterval;
     } else if( window_type_.value == "queue" ) {
         return WindowType::kQueue;
     } else if( window_type_.value == "single" ) {
@@ -308,20 +308,20 @@ std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
     // Get the window types that are available as Window streams.
     std::unique_ptr<VariantWindowStream> result;
     switch( window_type() ) {
-        case WindowType::kSliding: {
-            result = genesis::utils::make_unique<VariantSlidingIntervalWindowStream>(
-                get_variant_window_stream_sliding_( input_stream )
+        case WindowType::kInterval: {
+            result = genesis::utils::make_unique<VariantIntervalWindowStream>(
+                get_variant_window_stream_interval_( input_stream )
             );
             break;
         }
         case WindowType::kQueue: {
-            result = genesis::utils::make_unique<VariantSlidingEntriesWindowStream>(
+            result = genesis::utils::make_unique<VariantQueueWindowStream>(
                 get_variant_window_stream_queue_( input_stream )
             );
             break;
         }
         case WindowType::kSingle: {
-            result = genesis::utils::make_unique<VariantSlidingIntervalWindowStream>(
+            result = genesis::utils::make_unique<VariantIntervalWindowStream>(
                 get_variant_window_stream_single_( input_stream )
             );
             break;
@@ -387,10 +387,10 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
     // so that they become Window View streams instead.
     std::unique_ptr<VariantWindowViewStream> result;
     switch( window_type() ) {
-        case WindowType::kSliding: {
+        case WindowType::kInterval: {
             result = genesis::utils::make_unique<WindowViewStream>(
                 make_window_view_stream(
-                    get_variant_window_stream_sliding_( input_stream )
+                    get_variant_window_stream_interval_( input_stream )
                 )
             );
             break;
@@ -486,13 +486,13 @@ void WindowOptions::print_report() const
 
 void WindowOptions::check_options_() const
 {
-    // Check that no sliding window opts are provided unless sliding window was selected.
-    bool const has_sliding_opt = ( *sliding_width_.option || *sliding_stride_.option );
-    if( has_sliding_opt && window_type_.value != "sliding" ) {
+    // Check that no interval window opts are provided unless interval window was selected.
+    bool const has_interval_opt = ( *interval_width_.option || *interval_stride_.option );
+    if( has_interval_opt && window_type_.value != "interval" ) {
         throw CLI::ValidationError(
             window_type_.option->get_name(),
             "Window type \"" + window_type_.value +
-            "\" specified, but options for type \"sliding\" were provided."
+            "\" specified, but options for type \"interval\" were provided."
         );
     }
 
@@ -527,29 +527,29 @@ void WindowOptions::check_options_() const
 }
 
 // -------------------------------------------------------------------------
-//     get_variant_window_stream_sliding_
+//     get_variant_window_stream_interval_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantSlidingIntervalWindowStream
-WindowOptions::get_variant_window_stream_sliding_(
+WindowOptions::VariantIntervalWindowStream
+WindowOptions::get_variant_window_stream_interval_(
     genesis::population::VariantInputStream& input
 ) const {
-    if( ! *sliding_width_.option ) {
+    if( ! *interval_width_.option ) {
         throw CLI::ValidationError(
-            sliding_width_.option->get_name(),
+            interval_width_.option->get_name(),
             "Window width has to be provided when using `" +
-            window_type_.option->get_name() + " sliding`."
+            window_type_.option->get_name() + " interval`."
         );
     }
-    if( sliding_width_.value == 0 ) {
+    if( interval_width_.value == 0 ) {
         throw CLI::ValidationError(
-            sliding_width_.option->get_name(),
-            "Invalid window width for sliding window, has to be greater than 0."
+            interval_width_.option->get_name(),
+            "Invalid window width for interval window, has to be greater than 0."
         );
     }
 
-    return genesis::population::make_default_sliding_interval_window_stream(
-        input.begin(), input.end(), sliding_width_.value, sliding_stride_.value
+    return genesis::population::make_default_interval_interval_window_stream(
+        input.begin(), input.end(), interval_width_.value, interval_stride_.value
     );
 }
 
@@ -557,7 +557,7 @@ WindowOptions::get_variant_window_stream_sliding_(
 //     get_variant_window_stream_queue_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantSlidingEntriesWindowStream
+WindowOptions::VariantQueueWindowStream
 WindowOptions::get_variant_window_stream_queue_(
     genesis::population::VariantInputStream& input
 ) const {
@@ -575,7 +575,7 @@ WindowOptions::get_variant_window_stream_queue_(
         );
     }
 
-    return genesis::population::make_default_sliding_entries_window_stream(
+    return genesis::population::make_default_interval_entries_window_stream(
         input.begin(), input.end(), queue_count_.value, queue_stride_.value
     );
 }
@@ -584,16 +584,16 @@ WindowOptions::get_variant_window_stream_queue_(
 //     get_variant_window_stream_single_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantSlidingIntervalWindowStream
+WindowOptions::VariantIntervalWindowStream
 WindowOptions::get_variant_window_stream_single_(
     genesis::population::VariantInputStream& input
 ) const {
-    // Always return a sliding interval stream with window width 1.
-    return genesis::population::make_default_sliding_interval_window_stream(
+    // Always return a interval interval stream with window width 1.
+    return genesis::population::make_default_interval_interval_window_stream(
         input.begin(), input.end(), 1, 1
     );
 
-    // TODO change this to not use a sliding window, but just a view based on the stream!
+    // TODO change this to not use a interval window, but just a view based on the stream!
 }
 
 // -------------------------------------------------------------------------
