@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "commands/tools/wiki.hpp"
@@ -168,7 +168,7 @@ std::vector<CLI::App const*> get_all_subcommands( CLI::App const* app )
 /**
  * @brief Add the contents of a file to a stream.
  */
-void add_markdown_content(
+bool add_markdown_content(
     WikiOptions const& options, std::string const& md_file, std::ostream& os, bool add_header = false
 ) {
     using namespace genesis::utils;
@@ -181,9 +181,11 @@ void add_markdown_content(
             os << "# Description\n\n";
         }
         os << mds.rdbuf();
+        return true;
     } else {
         LOG_MSG << " - No documentation markdown found: " << md_file;
     }
+    return false;
 }
 
 // -------------------------------------------------------------------------
@@ -584,8 +586,14 @@ void make_wiki_sidebar( WikiOptions const& options )
     std::ofstream os( out_file );
 
     // Add standard entries
-    os << "[Home](../wiki)\n\n";
-    os << "[Build](../wiki/Build)\n\n";
+    // os << "[Home](../wiki)\n\n";
+    // os << "[Build](../wiki/Build)\n\n";
+
+    // Add sidebar header, which includes the standard entries.
+    bool const found_sidebar_header = add_markdown_content( options, "_Sidebar_header", os );
+    if( found_sidebar_header ) {
+        os << "\n";
+    }
 
     // Get all top level commands.
     auto subcomms = get_sorted_subcommands( options.app );

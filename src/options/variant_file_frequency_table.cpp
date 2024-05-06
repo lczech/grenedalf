@@ -68,12 +68,14 @@ CLI::Option* VariantFileFrequencyTableOptions::add_file_input_opt_to_app_(
 
     // Int factor
     int_factor_.option = sub->add_option(
-        "--frequency-table-int-factor",
+        "--frequency-table-cov-factor",
         int_factor_.value,
         "For frequency table input that only contains allele frequencies, without any information "
         "on coverage, we need to transform those frequencies into counts for our internal processing. "
         "This number is multiplied by the frequency to obtain these pseudo-counts. By default, "
-        "we use the largest number that is possible with our numerical types."
+        "we use 1000000, to get a reasonable interger approximation of the floating point frequency. "
+        "This is of course above any typical coverage, but allows for more accurate counts when "
+        "using for instance haplotype-corrected frequencies such as those from HAF-pipe."
     );
     int_factor_.option->group( group );
     int_factor_.option->transform( CLI::PositiveNumber );
