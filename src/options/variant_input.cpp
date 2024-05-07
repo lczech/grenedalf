@@ -261,7 +261,7 @@ void VariantInputOptions::prepare_inputs_() const
     // So we do this here, and in order to avoid ugly casting of our different input file types,
     // we just "set" the ref genome for all, which is a dummy function for all other types.
     for( auto const& input_file : input_files_ ) {
-        input_file->add_reference_genome( reference_genome_options_.get_reference_genome() );
+        input_file->add_reference_genome( get_reference_genome() );
     }
 }
 
@@ -419,10 +419,11 @@ void VariantInputOptions::prepare_stream_single_file_() const
     sample_name_options_.rename_samples( stream_.data().sample_names );
     sample_name_options_.add_sample_name_filter( stream_ );
     sample_name_options_.apply_sample_group_merging( stream_ );
+    make_gapless_stream_();
 
     // Copy over the sample names from the stream, so that they are accessible.
     if( sample_names().empty() ) {
-        throw std::runtime_error( "Invalid input file that does not contain any samples." );
+        throw std::runtime_error( "Invalid input that does not contain any samples." );
     }
     internal_check(
         static_cast<bool>( stream_ ),
@@ -600,6 +601,7 @@ void VariantInputOptions::prepare_stream_from_parallel_stream_(
     sample_name_options_.rename_samples( stream_.data().sample_names );
     sample_name_options_.add_sample_name_filter( stream_ );
     sample_name_options_.apply_sample_group_merging( stream_ );
+    make_gapless_stream_();
 
     // Add an observer that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.
@@ -620,6 +622,26 @@ void VariantInputOptions::prepare_stream_from_parallel_stream_(
     // We only buffer the final parallel stream, and not its individual sources,
     // in order to not keep too many threads from spawning... Might need testing and refinement.
     stream_.block_size( iterator_block_size_.value );
+}
+
+// -------------------------------------------------------------------------
+//     make_gapless_stream_
+// -------------------------------------------------------------------------
+
+void VariantInputOptions::make_gapless_stream_() const
+{
+    if( ! gapless_stream_ ) {
+        return;
+    }
+    if( get_reference_genome() ) {
+        stream_ = make_variant_gapless_input_stream( stream_, get_reference_genome() );
+        return;
+    }
+    if( get_reference_dict() ) {
+        stream_ = make_variant_gapless_input_stream( stream_, get_reference_dict() );
+        return;
+    }
+    stream_ = make_variant_gapless_input_stream( stream_ );
 }
 
 // =================================================================================================

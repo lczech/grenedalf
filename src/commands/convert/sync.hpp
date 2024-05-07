@@ -19,9 +19,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "CLI/CLI.hpp"
@@ -41,9 +41,16 @@ class SyncOptions
 public:
 
     VariantInputOptions variant_input;
+
+    CliOption<bool> without_header  = false;
+    CliOption<bool> without_missing = false;
+    CliOption<bool> guess_ref_base  = false;
+    CliOption<bool> gapless         = false;
+
+    CliOption<size_t> max_concurrent_files = 1000;
+    CliOption<std::string> temp_dir = "grenedalf-merge-tmp";
+
     FileOutputOptions   file_output;
-    CliOption<bool>     with_header = false;
-    CliOption<bool>     guess_reference_base = false;
 
 };
 

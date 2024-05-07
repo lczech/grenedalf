@@ -116,6 +116,22 @@ public:
     // -------------------------------------------------------------------------
 
     /**
+     * @brief Create a gapless stream that iterates over all positions in the genome,
+     * even the missing ones.
+     *
+     * This has to be set prior to creating the stream.
+     */
+    void gapless_stream( bool value ) const
+    {
+        if( static_cast<bool>( stream_ )) {
+            throw std::domain_error(
+                "Internal error: Cannot change to gapless stream after stream has been created."
+            );
+        }
+        gapless_stream_ = value;
+    }
+
+    /**
      * @brief Transformations and filters for individual input sources.
      *
      * These can be added by the commands as needed for their processing, and are executed
@@ -247,6 +263,8 @@ protected:
         genesis::population::VariantParallelInputStream&&
     ) const;
 
+    void make_gapless_stream_() const;
+
 private:
 
     /**
@@ -289,6 +307,12 @@ private:
     VariantReferenceGenomeOptions reference_genome_options_;
     VariantSampleNamesOptions     sample_name_options_;
     VariantFilterRegionOptions    region_filter_options_;
+
+    // We also allow to create a gapless stream, which iterates over every position in the genome,
+    // even the missing ones. This is implemented a bit ad-hoc here for now, as we only use this
+    // for creating gsync files. If this is needed in other contexts in the future, a cleaner
+    // setup here might help.
+    mutable bool gapless_stream_ = false;
 
     // Transformations and filters, can be added by the commands as needed for their processing.
     // The individual is applied per input source, and the compbined is applied on the whole
