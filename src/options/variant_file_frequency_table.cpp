@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "options/variant_file_frequency_table.hpp"
@@ -26,7 +26,8 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/frequency_table_input_stream.hpp"
+#include "genesis/population/format/frequency_table_input_stream.hpp"
+#include "genesis/population/stream/variant_input_stream_sources.hpp"
 
 #include <cassert>
 #include <stdexcept>

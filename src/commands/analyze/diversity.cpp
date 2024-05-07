@@ -26,10 +26,13 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/diversity_pool_calculator.hpp"
-#include "genesis/population/functions/diversity_pool_functions.hpp"
-#include "genesis/population/functions/filter_transform.hpp"
-#include "genesis/population/functions/functions.hpp"
+#include "genesis/population/function/diversity_pool_calculator.hpp"
+#include "genesis/population/function/diversity_pool_functions.hpp"
+#include "genesis/population/filter/sample_counts_filter_numerical.hpp"
+#include "genesis/population/filter/sample_counts_filter.hpp"
+#include "genesis/population/filter/variant_filter_numerical.hpp"
+#include "genesis/population/filter/variant_filter.hpp"
+#include "genesis/population/function/functions.hpp"
 #include "genesis/population/window/functions.hpp"
 #include "genesis/utils/text/string.hpp"
 
@@ -380,7 +383,7 @@ DiversityOutputData prepare_output_data_(
  */
 std::vector<genesis::population::DiversityPoolCalculator> get_diversity_calculators_(
     DiversityOptions const& options,
-    BaseCountsFilter const& filter,
+    SampleCountsFilterNumericalParams const& filter,
     std::vector<std::string> const& sample_names,
     std::vector<size_t> const& pool_sizes,
     DiversityOutputData const& output_data
@@ -419,9 +422,11 @@ void write_output_popoolation_(
     std::vector<std::string> const& sample_names,
     VariantWindowView const& window,
     std::vector<DiversityPoolCalculator> const& sample_diversity_calculators,
-    std::vector<BaseCountsFilterStats> const& sample_filter_stats,
+    std::vector<SampleCountsFilterStats> const& sample_filter_stats,
     DiversityOutputData& output_data
 ) {
+    using namespace genesis::population;
+
     // The popoolation table formats use the same format, so let's make one function to rule them all!
     // We take the DiversityPoolCalculator::Result here for the general values, and then the actual
     // data value again, so that we don't have to switch to get it.
@@ -429,15 +434,17 @@ void write_output_popoolation_(
     auto write_popoolation_line_ = [](
         std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
         VariantWindowView const& window,
-        BaseCountsFilterStats const& stats,
+        SampleCountsFilterStats const& stats,
         DiversityPoolCalculator::Result const& results,
         double value
     ) {
         internal_check(
-            stats.passed == results.processed_count,
-            "stats.passed != results.processed_count"
+            stats[SampleCountsFilterTag::kPassed] == results.processed_count,
+            "stats[SampleCountsFilterTag::kPassed] != results.processed_count"
         );
-        auto const coverage = static_cast<double>( stats.passed + stats.not_snp );
+        auto const coverage = static_cast<double>(
+            stats[SampleCountsFilterTag::kPassed] + stats[SampleCountsFilterTag::kNotSnp]
+        );
         auto const window_width = static_cast<double>( window.width() );
         auto const coverage_fraction = coverage / window_width;
 
@@ -505,10 +512,11 @@ void write_output_table_(
     std::vector<std::string> const& sample_names,
     VariantWindowView const& window,
     std::vector<DiversityPoolCalculator> const& sample_diversity_calculators,
-    std::vector<BaseCountsFilterStats> const& sample_filter_stats,
+    std::vector<SampleCountsFilterStats> const& sample_filter_stats,
     DiversityOutputData& output_data
 ) {
     // Shorthand
+    using namespace genesis::population;
     auto& table_ofs = output_data.table_ofs;
 
     // Helper function to write a field value to one of the tables.
@@ -528,7 +536,7 @@ void write_output_table_(
 
     // Write the per-pair diversity values in the correct order.
     for( size_t i = 0; i < sample_names.size(); ++i ) {
-        auto const coverage = sample_filter_stats[i].passed + sample_filter_stats[i].not_snp;
+        auto const coverage = sample_filter_stats[i][SampleCountsFilterTag::kPassed] + sample_filter_stats[i][SampleCountsFilterTag::kNotSnp];
         auto const window_width = static_cast<double>( window.width() );
         auto const coverage_fraction = static_cast<double>( coverage ) / window_width;
 
@@ -571,7 +579,7 @@ void write_output_(
     std::vector<std::string> const& sample_names,
     VariantWindowView const& window,
     std::vector<DiversityPoolCalculator> const& sample_diversity_calculators,
-    std::vector<BaseCountsFilterStats> const& sample_filter_stats,
+    std::vector<SampleCountsFilterStats> const& sample_filter_stats,
     DiversityOutputData& output_data
 ) {
     // Write the data, depending on the format.
@@ -609,7 +617,7 @@ void run_diversity( DiversityOptions const& options )
     // Right now, we however use the invariant sites to compute relative Theta, and so we do not
     // want to filter them out beforehand. This is instead done in the actual processing,
     // sample by sample. Bit slower, but not by much.
-    // BaseCountsFilter snp_filter;
+    // SampleCountsFilterNumericalParams snp_filter;
     // snp_filter.only_snps = true;
     // options.variant_input.add_combined_filter_and_transforms(
     //     [snp_filter]( genesis::population::Variant& variant ){
@@ -619,9 +627,9 @@ void run_diversity( DiversityOptions const& options )
 
     // Prepare the base counts filter. We default the snps filter,
     // and then override everything else with the user provided values.
-    BaseCountsFilter filter;
-    filter.only_snps = true;
-    filter = options.filter_numerical.get_sample_filter( filter ).first;
+    SampleCountsFilterNumericalParams filter_params;
+    filter_params.only_snps = true;
+    filter_params = options.filter_numerical.get_sample_filter_params( filter_params ).first;
 
     // TODO right now, the numerical filters are applied in the diversity calculator, instead
     // of on the stream beforehand - this will change soon once we support variant filters
@@ -644,9 +652,9 @@ void run_diversity( DiversityOptions const& options )
 
     // Prepare pool settings for each sample.
     auto sample_diversity_calculators = get_diversity_calculators_(
-        options, filter, sample_names, pool_sizes, output_data
+        options, filter_params, sample_names, pool_sizes, output_data
     );
-    std::vector<BaseCountsFilterStats> sample_filter_stats{ sample_names.size() };
+    std::vector<SampleCountsFilterStats> sample_filter_stats{ sample_names.size() };
 
     // -------------------------------------------------------------------------
     //     Main Loop
@@ -662,7 +670,7 @@ void run_diversity( DiversityOptions const& options )
         // Reset all calculator accumulators to zero for this window.
         for( size_t i = 0; i < sample_diversity_calculators.size(); ++i ) {
             sample_diversity_calculators[i].reset();
-            reset( sample_filter_stats[i] );
+            sample_filter_stats[i].clear();
         }
 
         // Compute diversity over samples.
@@ -678,7 +686,9 @@ void run_diversity( DiversityOptions const& options )
 
             // Compute diversity for each sample.
             for( size_t i = 0; i < sample_names.size(); ++i ) {
-                if( filter_base_counts( variant.samples[i], filter, sample_filter_stats[i] )) {
+                if( apply_sample_counts_filter_numerical(
+                    variant.samples[i], filter_params, sample_filter_stats[i] )
+                ) {
                     sample_diversity_calculators[i].process( variant.samples[i] );
                 }
             }

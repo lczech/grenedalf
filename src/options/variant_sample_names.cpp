@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "options/variant_sample_names.hpp"
@@ -26,7 +26,8 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/variant_input_stream.hpp"
+#include "genesis/population/function/variant_input_stream.hpp"
+#include "genesis/population/stream/variant_input_stream_adapters.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"

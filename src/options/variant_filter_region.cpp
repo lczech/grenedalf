@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2022 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "options/variant_filter_region.hpp"
@@ -26,15 +26,15 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/bed_reader.hpp"
-#include "genesis/population/formats/genome_region_reader.hpp"
-#include "genesis/population/formats/gff_reader.hpp"
-#include "genesis/population/formats/map_bim_reader.hpp"
-#include "genesis/population/formats/vcf_common.hpp"
-#include "genesis/population/formats/vcf_input_stream.hpp"
-#include "genesis/population/functions/filter_transform.hpp"
-#include "genesis/population/functions/functions.hpp"
-#include "genesis/population/functions/genome_region.hpp"
+#include "genesis/population/format/bed_reader.hpp"
+#include "genesis/population/format/genome_region_reader.hpp"
+#include "genesis/population/format/gff_reader.hpp"
+#include "genesis/population/format/map_bim_reader.hpp"
+#include "genesis/population/format/vcf_common.hpp"
+#include "genesis/population/format/vcf_input_stream.hpp"
+#include "genesis/population/filter/variant_filter_positional.hpp"
+#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
 
 #include <algorithm>

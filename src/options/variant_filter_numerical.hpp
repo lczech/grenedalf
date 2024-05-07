@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,17 +19,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "CLI/CLI.hpp"
 
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/functions/filter_transform.hpp"
-#include "genesis/population/functions/functions.hpp"
+#include "genesis/population/filter/sample_counts_filter.hpp"
+#include "genesis/population/filter/sample_counts_filter_numerical.hpp"
+#include "genesis/population/filter/variant_filter.hpp"
+#include "genesis/population/filter/variant_filter_numerical.hpp"
+#include "genesis/population/function/functions.hpp"
 
 #include <functional>
 #include <string>
@@ -142,8 +145,9 @@ public:
      * @brief Get the samples filter, along with a bool indicatin whether any options
      * was provided/changed by the user.
      */
-    std::pair<genesis::population::BaseCountsFilter, bool> get_sample_filter(
-        genesis::population::BaseCountsFilter filter = genesis::population::BaseCountsFilter{}
+    std::pair<genesis::population::SampleCountsFilterNumericalParams, bool> get_sample_filter_params(
+        genesis::population::SampleCountsFilterNumericalParams filter_params =
+        genesis::population::SampleCountsFilterNumericalParams{}
     ) const;
 
     /**
@@ -165,15 +169,16 @@ public:
      * are provided, those shall be used.
      */
     std::function<bool( genesis::population::Variant& )> make_sample_filter(
-        genesis::population::BaseCountsFilter filter
+        genesis::population::SampleCountsFilterNumericalParams filter_params
     ) const;
 
     /**
      * @brief Get the total filter, along with a bool indicatin whether any options
      * was provided/changed by the user.
      */
-    std::pair<genesis::population::VariantFilter, bool> get_total_filter(
-        genesis::population::VariantFilter filter = genesis::population::VariantFilter{}
+    std::pair<genesis::population::VariantFilterNumericalParams, bool> get_total_filter_params(
+        genesis::population::VariantFilterNumericalParams filter_params =
+        genesis::population::VariantFilterNumericalParams{}
     ) const;
 
     /**
@@ -182,7 +187,7 @@ public:
      * If the user did not provide any option that changed the filter from the default values,
      * an empty filter function is returned, so that we do not need to add it to the input filters.
      */
-    std::function<bool( genesis::population::Variant const&)> make_total_filter() const;
+    std::function<bool( genesis::population::Variant&)> make_total_filter() const;
 
     /**
      * @brief Overload that takes default filter values.
@@ -191,8 +196,8 @@ public:
      * This always returns a valid filter function, as we assume that if default filter settings
      * are provided, those shall be used.
      */
-    std::function<bool( genesis::population::Variant const&)> make_total_filter(
-        genesis::population::VariantFilter filter
+    std::function<bool( genesis::population::Variant&)> make_total_filter(
+        genesis::population::VariantFilterNumericalParams filter_params
     ) const;
 
     /**
@@ -206,30 +211,30 @@ public:
 
     // Public, so that the defaults can be changed by the commands.
 
-    // Filters for BaseCounts, modelled after BaseCountsFilter
+    // Filters for BaseCounts, modelled after SampleCountsFilterNumericalParams
     CliOption<size_t> sample_min_count           = 0;
     CliOption<size_t> sample_max_count           = 0;
+    CliOption<size_t> sample_del_count           = 0;
     CliOption<size_t> sample_min_coverage        = 0;
     CliOption<size_t> sample_max_coverage        = 0;
     CliOption<bool>   sample_only_snps           = false;
     CliOption<bool>   sample_only_biallelic_snps = false;
-    CliOption<bool>   sample_tolerate_deletions  = false;
 
     // Filters for Variant, modelled after VariantFilter
     CliOption<size_t> total_min_coverage         = 0;
     CliOption<size_t> total_max_coverage         = 0;
+    CliOption<size_t> total_del_count            = 0;
     CliOption<bool>   total_only_snps            = false;
     CliOption<bool>   total_only_biallelic_snps  = false;
     CliOption<size_t> total_min_count            = 0;
     CliOption<size_t> total_max_count            = 0;
     CliOption<double> total_min_frequency        = 0.0;
-    CliOption<bool>   total_tolerate_deletions   = false;
 
 private:
 
     // Run variables.
-    mutable genesis::population::BaseCountsFilterStats sample_stats_;
-    mutable genesis::population::VariantFilterStats    total_stats_;
+    mutable genesis::population::SampleCountsFilterStats sample_stats_;
+    mutable genesis::population::VariantFilterStats      total_stats_;
 
 };
 

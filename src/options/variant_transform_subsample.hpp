@@ -29,7 +29,7 @@
 #include "tools/cli_option.hpp"
 #include "options/variant_input.hpp"
 
-#include "genesis/population/streams/variant_input_stream.hpp"
+#include "genesis/population/stream/variant_input_stream.hpp"
 #include "genesis/population/variant.hpp"
 
 #include <string>

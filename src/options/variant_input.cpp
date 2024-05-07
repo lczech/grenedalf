@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "options/variant_input.hpp"
@@ -31,10 +31,12 @@
 #include "options/variant_file_vcf.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/streams/variant_parallel_input_stream.hpp"
-#include "genesis/population/functions/filter_transform.hpp"
-#include "genesis/population/functions/functions.hpp"
-#include "genesis/population/functions/variant_input_stream.hpp"
+#include "genesis/population/stream/variant_parallel_input_stream.hpp"
+#include "genesis/population/filter/sample_counts_filter.hpp"
+#include "genesis/population/filter/variant_filter_positional.hpp"
+#include "genesis/population/filter/variant_filter.hpp"
+#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/variant_input_stream.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/core/info.hpp"
@@ -639,7 +641,9 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_stream_(
 
     // Add the genome region list as a filter.
     if( region_filter_options_.get_region_filter() ) {
-        stream.add_filter( make_filter_by_region( region_filter_options_.get_region_filter() ));
+        stream.add_filter( make_variant_filter_by_region_excluding(
+            region_filter_options_.get_region_filter()
+        ));
     }
 
     // Add the addtional filters and transformations that might have been set by the commands.

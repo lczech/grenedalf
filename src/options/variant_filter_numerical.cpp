@@ -71,8 +71,6 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
             "Minimum base count for a nucleotide (in `ACGT`) to be considered as an allele. "
             "Counts below that are set to zero, and hence ignored as an allele/variant. "
             "For example, singleton read sequencing errors can be filtered out this way. "
-            "This min count is also used for filtering base counts with "
-            "too many deletions, unless `--filter-sample-tolerate-deletions` is set."
         );
         sample_min_count.option->group( group );
     }
@@ -89,14 +87,15 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
         sample_max_count.option->group( group );
     }
 
-    // Add tolerate deletions flag
-    sample_tolerate_deletions.option = sub->add_flag(
-        "--filter-sample-tolerate-deletions",
-        sample_tolerate_deletions.value,
-        "By default, we filter out any samples that have too many deletions (based on "
-        "`--filter-sample-min-count`). With this flag however, such samples are retained."
+    // Add deletions count limit
+    sample_del_count.option = sub->add_flag(
+        "--filter-sample-deletions-limit",
+        sample_del_count.value,
+        "Maximum number of deletions at a position before being filtered out. If this is set to "
+        "a value greater than 0, and the number of deletions at the position is equal to or "
+        "greater than this value, the sample is filtered out."
     );
-    sample_tolerate_deletions.option->group( group );
+    sample_del_count.option->group( group );
 }
 
 void VariantFilterNumericalOptions::add_sample_coverage_filter_opts_to_app(
@@ -216,6 +215,16 @@ void VariantFilterNumericalOptions::add_total_coverage_filter_opts_to_app(
         );
         total_max_coverage.option->group( group );
     }
+
+    // Add deletions count limit
+    total_del_count.option = sub->add_flag(
+        "--filter-total-deletions-limit",
+        total_del_count.value,
+        "Maximum number of deletions at a position before being filtered out, summed across all "
+        "samples. If this is set to a value greater than 0, and the number of deletions at the "
+        "position is equal to or greater than this value, the position is filtered out."
+    );
+    total_del_count.option->group( group );
 }
 
 void VariantFilterNumericalOptions::add_total_snp_filter_opts_to_app(
@@ -266,12 +275,11 @@ void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
     // Add min count for snps filter
     if( add_total_min_count ) {
         total_min_count.option = sub->add_option(
-            "--filter-total-min-count",
+            "--filter-total-snp-min-count",
             total_min_count.value,
             "When filtering for positions that are SNPs, use this minimum count (summed across all "
             "samples) to identify what is considered a SNP. Positions where the counts are below "
-            "this are filtered out. This min count is also used for filtering positions with "
-            "too many deletions, unless `--filter-total-tolerate-deletions` is set."
+            "this are filtered out."
         );
         total_min_count.option->group( group );
     }
@@ -279,7 +287,7 @@ void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
     // Add max count for snps filter
     if( add_total_max_count ) {
         total_max_count.option = sub->add_option(
-            "--filter-total-max-count",
+            "--filter-total-snp-max-count",
             total_max_count.value,
             "When filtering for positions that are SNPs, use this maximum count (summed across all "
             "samples) to identify what is considered a SNP. Positions where the counts are above "
@@ -287,15 +295,6 @@ void VariantFilterNumericalOptions::add_total_snp_count_opts_to_app(
         );
         total_max_count.option->group( group );
     }
-
-    // Add tolerate deletions flag
-    total_tolerate_deletions.option = sub->add_flag(
-        "--filter-total-tolerate-deletions",
-        total_tolerate_deletions.value,
-        "By default, we filter out any positions that have too many deletions (based on "
-        "`--filter-total-min-count`). With this flag however, such positions are retained."
-    );
-    total_tolerate_deletions.option->group( group );
 }
 
 void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
@@ -304,7 +303,7 @@ void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
 ) {
     // Add option for min frequency.
     total_min_frequency.option = sub->add_option(
-        "--filter-total-min-frequency",
+        "--filter-total-snp-min-frequency",
         total_min_frequency.value,
         "Minimum allele frequency that needs to be reached for a position to be used. "
         "Positions where the allele frequency `af` across all samples, or `1 - af`, "
@@ -326,52 +325,52 @@ void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
 //     Sample Filter
 // -------------------------------------------------------------------------
 
-std::pair<genesis::population::BaseCountsFilter, bool>
-VariantFilterNumericalOptions::get_sample_filter(
-    genesis::population::BaseCountsFilter filter
+std::pair<genesis::population::SampleCountsFilterNumericalParams, bool>
+VariantFilterNumericalOptions::get_sample_filter_params(
+    genesis::population::SampleCountsFilterNumericalParams filter_params
 ) const {
     bool any_provided = false;
 
     // We here want to check if the option was actually provided by the user,
     // to make it possible that an unspecified option can still be overriden.
     if( sample_min_count.option && *sample_min_count.option ) {
-        filter.min_count = sample_min_count.value;
+        filter_params.min_count = sample_min_count.value;
         any_provided = true;
     }
     if( sample_max_count.option && *sample_max_count.option ) {
-        filter.max_count = sample_max_count.value;
+        filter_params.max_count = sample_max_count.value;
+        any_provided = true;
+    }
+    if( sample_del_count.option && *sample_del_count.option ) {
+        filter_params.deletions_count_limit = sample_del_count.value;
         any_provided = true;
     }
     if( sample_min_coverage.option && *sample_min_coverage.option ) {
-        filter.min_coverage = sample_min_coverage.value;
+        filter_params.min_coverage = sample_min_coverage.value;
         any_provided = true;
     }
     if( sample_max_coverage.option && *sample_max_coverage.option ) {
-        filter.max_coverage = sample_max_coverage.value;
+        filter_params.max_coverage = sample_max_coverage.value;
         any_provided = true;
     }
     if( sample_only_snps.option && *sample_only_snps.option ) {
-        filter.only_snps = sample_only_snps.value;
+        filter_params.only_snps = sample_only_snps.value;
         any_provided = true;
     }
     if( sample_only_biallelic_snps.option && *sample_only_biallelic_snps.option ) {
-        filter.only_biallelic_snps = sample_only_biallelic_snps.value;
-        any_provided = true;
-    }
-    if( sample_tolerate_deletions.option && *sample_tolerate_deletions.option ) {
-        filter.tolerate_deletions = sample_tolerate_deletions.value;
+        filter_params.only_biallelic_snps = sample_only_biallelic_snps.value;
         any_provided = true;
     }
 
-    return std::make_pair( filter, any_provided );
+    return std::make_pair( filter_params, any_provided );
 }
 
 std::function<bool( genesis::population::Variant& )>
 VariantFilterNumericalOptions::make_sample_filter() const
 {
     // Get the filter settings as provided by the user.
-    auto const filter_pair = get_sample_filter();
-    auto const filter = filter_pair.first;
+    auto const filter_pair = get_sample_filter_params();
+    auto const filter_params = filter_pair.first;
 
     // If none were provided, we can return an empty function.
     if( !filter_pair.second ) {
@@ -379,22 +378,30 @@ VariantFilterNumericalOptions::make_sample_filter() const
     }
 
     // If provided, make a filter function.
-    return [ filter, this ]( genesis::population::Variant& variant ){
-        return genesis::population::filter_base_counts( variant, filter, sample_stats_ );
+    // We only tag the sample, but do not remove it here.
+    return [ filter_params, this ]( genesis::population::Variant& variant ){
+        genesis::population::apply_sample_counts_filter_numerical(
+            variant, filter_params, this->total_stats_, this->sample_stats_ //, all_need_pass
+        );
+        return true;
     };
 }
 
 std::function<bool( genesis::population::Variant& )>
 VariantFilterNumericalOptions::make_sample_filter(
-    genesis::population::BaseCountsFilter filter
+    genesis::population::SampleCountsFilterNumericalParams filter_params
 ) const {
     // Get the filter settings as provided by the user.
-    auto const filter_pair = get_sample_filter( filter );
-    filter = filter_pair.first;
+    auto const filter_pair = get_sample_filter_params( filter_params );
+    filter_params = filter_pair.first;
 
     // Always make a filter function.
-    return [ filter, this ]( genesis::population::Variant& variant ){
-        return genesis::population::filter_base_counts( variant, filter, sample_stats_ );
+    // We only tag the sample, but do not remove it here.
+    return [ filter_params, this ]( genesis::population::Variant& variant ){
+        genesis::population::apply_sample_counts_filter_numerical(
+            variant, filter_params, this->total_stats_, this->sample_stats_ //, all_need_pass
+        );
+        return true;
     };
 }
 
@@ -402,55 +409,55 @@ VariantFilterNumericalOptions::make_sample_filter(
 //     Total Filter
 // -------------------------------------------------------------------------
 
-std::pair<genesis::population::VariantFilter, bool>
-VariantFilterNumericalOptions::get_total_filter(
-    genesis::population::VariantFilter filter
+std::pair<genesis::population::VariantFilterNumericalParams, bool>
+VariantFilterNumericalOptions::get_total_filter_params(
+    genesis::population::VariantFilterNumericalParams filter_params
 ) const {
     bool any_provided = false;
 
     // Same as above.
     if( total_min_coverage.option && *total_min_coverage.option ) {
-        filter.min_coverage = total_min_coverage.value;
+        filter_params.min_coverage = total_min_coverage.value;
         any_provided = true;
     }
     if( total_max_coverage.option && *total_max_coverage.option ) {
-        filter.max_coverage = total_max_coverage.value;
+        filter_params.max_coverage = total_max_coverage.value;
+        any_provided = true;
+    }
+    if( total_del_count.option && *total_del_count.option ) {
+        filter_params.deletions_count_limit = total_del_count.value;
         any_provided = true;
     }
     if( total_only_snps.option && *total_only_snps.option ) {
-        filter.only_snps = total_only_snps.value;
+        filter_params.only_snps = total_only_snps.value;
         any_provided = true;
     }
     if( total_only_biallelic_snps.option && *total_only_biallelic_snps.option ) {
-        filter.only_biallelic_snps = total_only_biallelic_snps.value;
+        filter_params.only_biallelic_snps = total_only_biallelic_snps.value;
         any_provided = true;
     }
     if( total_min_count.option && *total_min_count.option ) {
-        filter.min_count = total_min_count.value;
+        filter_params.snp_min_count = total_min_count.value;
         any_provided = true;
     }
     if( total_max_count.option && *total_max_count.option ) {
-        filter.max_count = total_max_count.value;
+        filter_params.snp_max_count = total_max_count.value;
         any_provided = true;
     }
     if( total_min_frequency.option && *total_min_frequency.option ) {
-        filter.min_frequency = total_min_frequency.value;
-        any_provided = true;
-    }
-    if( total_tolerate_deletions.option && *total_tolerate_deletions.option ) {
-        filter.tolerate_deletions = total_tolerate_deletions.value;
+        filter_params.snp_min_allele_frequency = total_min_frequency.value;
         any_provided = true;
     }
 
-    return std::make_pair( filter, any_provided );
+    return std::make_pair( filter_params, any_provided );
 }
 
-std::function<bool( genesis::population::Variant const& )>
+std::function<bool( genesis::population::Variant& )>
 VariantFilterNumericalOptions::make_total_filter() const
 {
     // Get the filter settings as provided by the user.
-    auto const filter_pair = get_total_filter();
-    auto const filter = filter_pair.first;
+    auto const filter_pair = get_total_filter_params();
+    auto const filter_params = filter_pair.first;
 
     // If none were provided, we can return an empty function.
     if( !filter_pair.second ) {
@@ -458,22 +465,28 @@ VariantFilterNumericalOptions::make_total_filter() const
     }
 
     // If provided, make a filter function.
-    return [ filter, this ]( genesis::population::Variant const& variant ){
-        return genesis::population::filter_variant( variant, filter, total_stats_ );
+    return [ filter_params, this ]( genesis::population::Variant& variant ){
+        genesis::population::apply_variant_filter_numerical(
+            variant, filter_params, this->total_stats_
+        );
+        return true;
     };
 }
 
-std::function<bool( genesis::population::Variant const& )>
+std::function<bool( genesis::population::Variant& )>
 VariantFilterNumericalOptions::make_total_filter(
-    genesis::population::VariantFilter filter
+    genesis::population::VariantFilterNumericalParams filter_params
 ) const {
     // Get the filter settings as provided by the user.
-    auto const filter_pair = get_total_filter( filter );
-    filter = filter_pair.first;
+    auto const filter_pair = get_total_filter_params( filter_params );
+    filter_params = filter_pair.first;
 
     // Always make a filter function.
-    return [ filter, this ]( genesis::population::Variant const& variant ){
-        return genesis::population::filter_variant( variant, filter, total_stats_ );
+    return [ filter_params, this ]( genesis::population::Variant& variant ){
+        genesis::population::apply_variant_filter_numerical(
+            variant, filter_params, this->total_stats_
+        );
+        return true;
     };
 }
 
@@ -485,7 +498,7 @@ void VariantFilterNumericalOptions::print_report() const
 {
     using namespace genesis::population;
 
-    auto const sample_text = print_base_counts_filter_stats( sample_stats_ );
+    auto const sample_text = print_sample_counts_filter_stats( sample_stats_ );
     if( ! sample_text.empty() ) {
         LOG_MSG1 << "Sample filter summary (summed up across all samples):\n"
                  << sample_text << "\n";

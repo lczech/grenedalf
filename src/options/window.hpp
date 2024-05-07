@@ -19,9 +19,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "CLI/CLI.hpp"
@@ -29,14 +29,15 @@
 #include "tools/cli_option.hpp"
 #include "options/variant_input.hpp"
 
-#include "genesis/population/streams/variant_input_stream.hpp"
+#include "genesis/population/stream/variant_input_stream.hpp"
 #include "genesis/population/variant.hpp"
 #include "genesis/population/window/base_window_stream.hpp"
 #include "genesis/population/window/base_window.hpp"
-#include "genesis/population/window/chromosome_stream.hpp"
+#include "genesis/population/window/chromosome_window_stream.hpp"
+#include "genesis/population/window/genome_window_stream.hpp"
+#include "genesis/population/window/interval_window_stream.hpp"
+#include "genesis/population/window/queue_window_stream.hpp"
 #include "genesis/population/window/region_window_stream.hpp"
-#include "genesis/population/window/sliding_entries_window_stream.hpp"
-#include "genesis/population/window/sliding_interval_window_stream.hpp"
 #include "genesis/population/window/variant_window_stream.hpp"
 #include "genesis/population/window/window_view_stream.hpp"
 #include "genesis/population/window/window_view.hpp"
@@ -95,7 +96,7 @@ public:
 
     enum class WindowType
     {
-        kSliding,
+        kInterval,
         kQueue,
         kSingle,
         kRegions,
@@ -108,10 +109,10 @@ public:
     using VariantWindowViewStream = genesis::population::VariantWindowViewStream;
 
     // Typedefs for the Window-based streams.
-    using VariantSlidingIntervalWindowStream = genesis::population::SlidingIntervalWindowStream<
+    using VariantIntervalWindowStream = genesis::population::IntervalWindowStream<
         genesis::population::VariantInputStream::Iterator
     >;
-    using VariantSlidingEntriesWindowStream = genesis::population::SlidingEntriesWindowStream<
+    using VariantQueueWindowStream = genesis::population::QueueWindowStream<
         genesis::population::VariantInputStream::Iterator
     >;
     using VariantRegionWindowStream = genesis::population::RegionWindowStream<
@@ -119,7 +120,10 @@ public:
     >;
 
     // Typedefs for the WindowView-based streams.
-    using ChromosomeStream = genesis::population::ChromosomeStream<
+    using ChromosomeWindowStream = genesis::population::ChromosomeWindowStream<
+        genesis::population::VariantInputStream::Iterator
+    >;
+    using GenomeWindowStream = genesis::population::GenomeWindowStream<
         genesis::population::VariantInputStream::Iterator
     >;
 
@@ -226,15 +230,15 @@ private:
 
     void check_options_() const;
 
-    VariantSlidingIntervalWindowStream get_variant_window_stream_sliding_(
+    VariantIntervalWindowStream get_variant_window_stream_interval_(
         genesis::population::VariantInputStream& input
     ) const;
 
-    VariantSlidingEntriesWindowStream get_variant_window_stream_queue_(
+    VariantQueueWindowStream get_variant_window_stream_queue_(
         genesis::population::VariantInputStream& input
     ) const;
 
-    VariantSlidingIntervalWindowStream get_variant_window_stream_single_(
+    VariantIntervalWindowStream get_variant_window_stream_single_(
         genesis::population::VariantInputStream& input
     ) const;
 
@@ -242,11 +246,11 @@ private:
         genesis::population::VariantInputStream& input
     ) const;
 
-    ChromosomeStream get_variant_window_view_stream_chromosomes_(
+    ChromosomeWindowStream get_variant_window_view_stream_chromosomes_(
         genesis::population::VariantInputStream& input
     ) const;
 
-    ChromosomeStream get_variant_window_view_stream_genome_(
+    GenomeWindowStream get_variant_window_view_stream_genome_(
         genesis::population::VariantInputStream& input
     ) const;
 
@@ -262,13 +266,13 @@ private:
 
     // Window type selection
     bool include_window_view_types_ = false;
-    CliOption<std::string> window_type_ = "sliding";
+    CliOption<std::string> window_type_ = "interval";
 
-    // Sliding interval window settings
-    CliOption<size_t> sliding_width_  = 0;
-    CliOption<size_t> sliding_stride_ = 0;
+    // Interval window settings
+    CliOption<size_t> interval_width_  = 0;
+    CliOption<size_t> interval_stride_ = 0;
 
-    // Sliding entries window settings
+    // Queue window settings
     CliOption<size_t> queue_count_  = 0;
     CliOption<size_t> queue_stride_ = 0;
 

@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "commands/visualize/afs_heatmap.hpp"
@@ -26,7 +26,7 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/functions.hpp"
+#include "genesis/population/function/functions.hpp"
 #include "genesis/population/plotting/genome_heatmap.hpp"
 #include "genesis/population/plotting/heatmap_colorization.hpp"
 #include "genesis/utils/math/statistics.hpp"
@@ -262,7 +262,9 @@ Nucleotide get_main_allele_(
     // Also, if the above did not yield a valid reference base, e.g. the reference base of the
     // variant is 'N' or '.', we instead use the folded approach.
     // First, get the sum of all counts of the variant sorted, most common first.
-    auto const order = sorted_base_counts( variant, false );
+    auto const order = sorted_sample_counts(
+        variant, false, genesis::population::SampleCountsFilterPolicy::kOnlyPassing
+    );
 
     // If the most common one has a count of 0, this is not really a variant, so return N.
     // If not, return the symbol of the most common one.
@@ -294,9 +296,9 @@ double compute_frequency_(
     }
 
     // Helper function to extract the counts of the main (reference or major) allele,
-    // and the sum of all alleles, from a given BaseCounts object.
+    // and the sum of all alleles, from a given SampleCounts object.
     // Returns a pair with first = main, second = sum of all.
-    auto get_bc_counts_ = [main_allele]( BaseCounts const& bc ) -> std::pair<size_t, size_t> {
+    auto get_bc_counts_ = [main_allele]( SampleCounts const& bc ) -> std::pair<size_t, size_t> {
         size_t all_cnt = bc.a_count + bc.c_count + bc.g_count + bc.t_count;
         switch( main_allele ) {
             case Nucleotide::kA: {

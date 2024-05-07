@@ -26,12 +26,12 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/formats/bed_reader.hpp"
-#include "genesis/population/formats/genome_region_reader.hpp"
-#include "genesis/population/formats/gff_reader.hpp"
-#include "genesis/population/formats/map_bim_reader.hpp"
-#include "genesis/population/functions/functions.hpp"
-#include "genesis/population/functions/genome_region.hpp"
+#include "genesis/population/format/bed_reader.hpp"
+#include "genesis/population/format/genome_region_reader.hpp"
+#include "genesis/population/format/gff_reader.hpp"
+#include "genesis/population/format/map_bim_reader.hpp"
+#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
 #include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/std.hpp"
@@ -102,7 +102,7 @@ void WindowOptions::add_window_opts_to_app(
     }
 
     // -------------------------------------------------------------------------
-    //     Sliding interval window
+    //     Interval window
     // -------------------------------------------------------------------------
 
     // Width
@@ -127,7 +127,7 @@ void WindowOptions::add_window_opts_to_app(
     interval_stride_.option->group( group );
 
     // -------------------------------------------------------------------------
-    //     Sliding entries window
+    //     Queue window
     // -------------------------------------------------------------------------
 
     // Count
@@ -420,13 +420,13 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
             break;
         }
         case WindowType::kChromosomes: {
-            result = genesis::utils::make_unique<ChromosomeStream>(
+            result = genesis::utils::make_unique<ChromosomeWindowStream>(
                 get_variant_window_view_stream_chromosomes_( input_stream )
             );
             break;
         }
         case WindowType::kGenome: {
-            result = genesis::utils::make_unique<ChromosomeStream>(
+            result = genesis::utils::make_unique<GenomeWindowStream>(
                 get_variant_window_view_stream_genome_( input_stream )
             );
             break;
@@ -548,7 +548,7 @@ WindowOptions::get_variant_window_stream_interval_(
         );
     }
 
-    return genesis::population::make_default_interval_interval_window_stream(
+    return genesis::population::make_default_interval_window_stream(
         input.begin(), input.end(), interval_width_.value, interval_stride_.value
     );
 }
@@ -575,7 +575,7 @@ WindowOptions::get_variant_window_stream_queue_(
         );
     }
 
-    return genesis::population::make_default_interval_entries_window_stream(
+    return genesis::population::make_passing_variant_queue_window_stream(
         input.begin(), input.end(), queue_count_.value, queue_stride_.value
     );
 }
@@ -589,7 +589,7 @@ WindowOptions::get_variant_window_stream_single_(
     genesis::population::VariantInputStream& input
 ) const {
     // Always return a interval interval stream with window width 1.
-    return genesis::population::make_default_interval_interval_window_stream(
+    return genesis::population::make_default_interval_window_stream(
         input.begin(), input.end(), 1, 1
     );
 
@@ -684,12 +684,12 @@ WindowOptions::get_variant_window_stream_regions_(
 //     get_variant_window_view_stream_chromosomes_
 // -------------------------------------------------------------------------
 
-WindowOptions::ChromosomeStream
+WindowOptions::ChromosomeWindowStream
 WindowOptions::get_variant_window_view_stream_chromosomes_(
     genesis::population::VariantInputStream& input
 ) const {
     assert( variant_input_ );
-    auto it = genesis::population::make_default_chromosome_stream(
+    auto it = genesis::population::make_default_chromosome_window_stream(
         input.begin(), input.end()
     );
     it.sequence_dict( variant_input_->get_reference_dict() );
@@ -700,11 +700,11 @@ WindowOptions::get_variant_window_view_stream_chromosomes_(
 //     get_variant_window_view_stream_genome_
 // -------------------------------------------------------------------------
 
-WindowOptions::ChromosomeStream
+WindowOptions::GenomeWindowStream
 WindowOptions::get_variant_window_view_stream_genome_(
     genesis::population::VariantInputStream& input
 ) const {
-    return genesis::population::make_default_genome_stream(
+    return genesis::population::make_default_genome_window_stream(
         input.begin(), input.end()
     );
 }

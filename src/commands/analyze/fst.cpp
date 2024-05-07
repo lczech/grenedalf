@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "commands/analyze/fst.hpp"
@@ -26,13 +26,13 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/functions/fst_pool_calculator.hpp"
-#include "genesis/population/functions/fst_pool_functions.hpp"
-#include "genesis/population/functions/fst_pool_karlsson.hpp"
-#include "genesis/population/functions/fst_pool_kofler.hpp"
-#include "genesis/population/functions/fst_pool_processor.hpp"
-#include "genesis/population/functions/fst_pool_unbiased.hpp"
-#include "genesis/population/functions/functions.hpp"
+#include "genesis/population/function/fst_pool_calculator.hpp"
+#include "genesis/population/function/fst_pool_functions.hpp"
+#include "genesis/population/function/fst_pool_karlsson.hpp"
+#include "genesis/population/function/fst_pool_kofler.hpp"
+#include "genesis/population/function/fst_pool_processor.hpp"
+#include "genesis/population/function/fst_pool_unbiased.hpp"
+#include "genesis/population/function/functions.hpp"
 #include "genesis/utils/containers/matrix.hpp"
 #include "genesis/utils/containers/matrix/operators.hpp"
 #include "genesis/utils/containers/matrix/writer.hpp"
@@ -834,7 +834,7 @@ void run_fst( FstOptions const& options )
     options.variant_input.add_combined_filter_and_transforms(
         options.filter_numerical.make_sample_filter()
     );
-    genesis::population::VariantFilter total_filter;
+    genesis::population::VariantFilterNumericalParams total_filter;
     total_filter.only_snps = true;
     // if( state.method == FstMethod::kKarlsson ) {
     //     total_filter.only_biallelic_snps = true;
