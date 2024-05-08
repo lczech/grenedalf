@@ -28,7 +28,7 @@
 
 #include "options/file_output.hpp"
 #include "options/poolsizes.hpp"
-#include "options/sample_pairs.hpp"
+#include "options/fst_processor.hpp"
 #include "options/table_output.hpp"
 #include "options/variant_filter_numerical.hpp"
 #include "options/variant_input.hpp"
@@ -52,12 +52,9 @@ public:
     WindowOptions                 window;
 
     // Specific settings
-    CliOption<std::string> method = "unbiased-nei";
-    PoolsizesOptions       poolsizes;
-    SamplePairsOptions     sample_pairs;
-    CliOption<bool>        write_pi_tables = false;
-    CliOption<bool>        omit_na_windows = false;
-    CliOption<size_t>      threading_threshold = 4096;
+    FstProcessorOptions fst_processor;
+    CliOption<bool>     write_pi_tables = false;
+    CliOption<bool>     omit_na_windows = false;
 
     // Output options
     TableOutputOptions table_output;

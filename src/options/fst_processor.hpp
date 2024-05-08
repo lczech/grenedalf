@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_SAMPLE_PAIRS_H_
-#define GRENEDALF_OPTIONS_SAMPLE_PAIRS_H_
+#ifndef GRENEDALF_OPTIONS_FST_PROCESSOR_H_
+#define GRENEDALF_OPTIONS_FST_PROCESSOR_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -26,7 +26,10 @@
 
 #include "CLI/CLI.hpp"
 
+#include "options/poolsizes.hpp"
 #include "tools/cli_option.hpp"
+
+#include "genesis/population/function/fst_pool_processor.hpp"
 
 #include <string>
 #include <utility>
@@ -38,34 +41,47 @@
 // =================================================================================================
 
 /**
- * @brief Select pairs of samples.
+ * @brief Create an Fst Processpr, including the selection of pairs of samples.
  *
  * This set of options allows to select a set of sample pairs, for instance to compute pairwise
  * measures such as FST. Using these options, the subset of samples can be selected by the user.
  */
-class SamplePairsOptions
+class FstProcessorOptions
 {
 public:
+
+    // -------------------------------------------------------------------------
+    //     Typedefs and Enums
+    // -------------------------------------------------------------------------
+
+    enum class FstMethod
+    {
+        kUnbiasedNei,
+        kUnbiasedHudson,
+        kKofler,
+        kKarlsson
+    };
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    SamplePairsOptions()  = default;
-    virtual ~SamplePairsOptions() = default;
+    FstProcessorOptions()  = default;
+    virtual ~FstProcessorOptions() = default;
 
-    SamplePairsOptions( SamplePairsOptions const& other ) = default;
-    SamplePairsOptions( SamplePairsOptions&& )            = default;
+    FstProcessorOptions( FstProcessorOptions const& other ) = default;
+    FstProcessorOptions( FstProcessorOptions&& )            = default;
 
-    SamplePairsOptions& operator= ( SamplePairsOptions const& other ) = default;
-    SamplePairsOptions& operator= ( SamplePairsOptions&& )            = default;
+    FstProcessorOptions& operator= ( FstProcessorOptions const& other ) = default;
+    FstProcessorOptions& operator= ( FstProcessorOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Setup Functions
     // -------------------------------------------------------------------------
 
-    void add_sample_pairs_opts_to_app(
+    void add_fst_processor_opts_to_app(
         CLI::App* sub,
+        bool all_methods = true,
         std::string const& group = "Settings"
     );
 
@@ -75,8 +91,15 @@ public:
 
     bool is_all_to_all() const;
 
+    FstMethod get_fst_method() const;
+
     std::vector<std::pair<size_t, size_t>> get_sample_pairs(
         std::vector<std::string> const& sample_names
+    ) const;
+
+    genesis::population::FstPoolProcessor get_fst_pool_processor(
+        std::vector<std::string> const& sample_names,
+        std::vector<std::pair<size_t, size_t>> const& sample_pairs
     ) const;
 
     // -------------------------------------------------------------------------
@@ -85,9 +108,14 @@ public:
 
 private:
 
+    CliOption<std::string> method = "unbiased-nei";
+    PoolsizesOptions       poolsizes;
+
     CliOption<std::string> comparand = "";
     CliOption<std::string> second_comparand = "";
     CliOption<std::string> comparand_list = "";
+
+    CliOption<size_t> threading_threshold = 4096;
 
 };
 

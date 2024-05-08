@@ -53,25 +53,6 @@
 #include <vector>
 
 // =================================================================================================
-//      Enum Mapping
-// =================================================================================================
-
-enum class FstMethod
-{
-    kUnbiasedNei,
-    kUnbiasedHudson,
-    kKofler,
-    kKarlsson
-};
-
-std::vector<std::pair<std::string, FstMethod>> const fst_method_map = {
-    { "unbiased-nei",    FstMethod::kUnbiasedNei },
-    { "unbiased-hudson", FstMethod::kUnbiasedHudson },
-    { "kofler",          FstMethod::kKofler },
-    { "karlsson",        FstMethod::kKarlsson }
-};
-
-// =================================================================================================
 //      Setup
 // =================================================================================================
 
@@ -119,27 +100,8 @@ void setup_fst( CLI::App& app )
     //     Settings
     // -------------------------------------------------------------------------
 
-    // Settings: FST Method
-    options->method.option = sub->add_option(
-        "--method",
-        options->method.value,
-        "FST method to use for the computation.\n(1) The unbiased pool-sequencing statistic "
-        "(in two variants, following the definition of Nei, and the definition of Hudson),"
-        "\n(2) the statistic by Kofler et al of PoPoolation2, or \n(3) the asymptotically unbiased "
-        "estimator of Karlsson et al (which is also implemented in PoPoolation2). "
-        "\nAll except for the Karlsson method also require `--pool-sizes` to be provided."
-    );
-    options->method.option->group( "Settings" );
-    options->method.option->required();
-    options->method.option->transform(
-        CLI::IsMember( enum_map_keys( fst_method_map ), CLI::ignore_case )
-    );
-
-    // Settings: Pool sizes
-    options->poolsizes.add_poolsizes_opt_to_app( sub, false );
-
-    // Sample pairs
-    options->sample_pairs.add_sample_pairs_opts_to_app( sub, "Settings" );
+    // Fst Processor
+    options->fst_processor.add_fst_processor_opts_to_app( sub, true, "Settings" );
 
     // Settings: Write pi tables
     options->write_pi_tables.option = sub->add_flag(
@@ -163,18 +125,6 @@ void setup_fst( CLI::App& app )
         "in order to not produce output for invariant positions in the genome."
     );
     options->omit_na_windows.option->group( "Settings" );
-
-    // Setting: threading_threshold
-    options->threading_threshold.option = sub->add_option(
-        "--threading-threshold",
-        options->threading_threshold.value,
-        "When only computing FST beween a few pairs of samples, doing so in individual threads "
-        "usually incurs a substantial overhead due to thread synchronozation. Hence, we only want "
-        "to use threads for the FST computation if many pairs of samples are being computed. "
-        "This setting determiens the number of sample pairs at which threads are used for FST. "
-        "(Note that we still always use threads for input file parsing.)"
-    );
-    options->threading_threshold.option->group( "" );
 
     // -------------------------------------------------------------------------
     //     Output
@@ -203,87 +153,6 @@ void setup_fst( CLI::App& app )
 }
 
 // =================================================================================================
-//      Setup Functions
-// =================================================================================================
-
-// -------------------------------------------------------------------------
-//     get_fst_pool_processor_
-// -------------------------------------------------------------------------
-
-genesis::population::FstPoolProcessor get_fst_pool_processor_(
-    FstOptions const& options,
-    FstMethod method,
-    std::vector<std::pair<size_t, size_t>> const& sample_pairs
-) {
-    using namespace genesis::population;
-
-    // Get all sample indices that we are actually interested in.
-    // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
-    auto const& sample_names = options.variant_input.sample_names();
-    auto used_samples = std::vector<bool>( sample_names.size(), false );
-    for( auto const& sp : sample_pairs ) {
-        used_samples[ sp.first ]  = true;
-        used_samples[ sp.second ] = true;
-    }
-    assert( used_samples.size() == sample_names.size() );
-
-    // Get the pool sizes for all samples that we are interested in.
-    auto const needs_pool_sizes = (
-        method == FstMethod::kUnbiasedNei ||
-        method == FstMethod::kUnbiasedHudson ||
-        method == FstMethod::kKofler
-    );
-    auto const pool_sizes = (
-        needs_pool_sizes
-        ? options.poolsizes.get_pool_sizes( sample_names, used_samples )
-        : std::vector<size_t>( sample_names.size(), 0 )
-    );
-
-    // For our unbiased and for Kofler, check that we got the right number of pool sizes.
-    internal_check(
-        ! needs_pool_sizes || pool_sizes.size() == sample_names.size(),
-        "Inconsistent number of samples and number of pool sizes."
-    );
-
-    // Make the type of processor that we need for the provided method.
-    FstPoolProcessor processor;
-    switch( method ) {
-        case FstMethod::kUnbiasedNei: {
-            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kNei
-            );
-            break;
-        }
-        case FstMethod::kUnbiasedHudson: {
-            processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kHudson
-            );
-            break;
-        }
-        case FstMethod::kKofler: {
-            processor = make_fst_pool_processor<FstPoolCalculatorKofler>(
-                sample_pairs, pool_sizes
-            );
-            break;
-        }
-        case FstMethod::kKarlsson: {
-            processor = make_fst_pool_processor<FstPoolCalculatorKarlsson>(
-                sample_pairs, pool_sizes
-            );
-            break;
-        }
-        default: {
-            throw std::domain_error( "Internal error: Invalid FST method." );
-        }
-    }
-
-    // Set the threading options as provided by the (currently hidden) setting.
-    processor.thread_pool( global_options.thread_pool() );
-    processor.threading_threshold( options.threading_threshold.value );
-    return processor;
-}
-
-// =================================================================================================
 //      Output Functions
 // =================================================================================================
 
@@ -295,7 +164,7 @@ genesis::population::FstPoolProcessor get_fst_pool_processor_(
  */
 struct FstCommandState
 {
-    FstMethod method;
+    FstProcessorOptions::FstMethod method;
 
     // The output to write to, for per-window output.
     // The pi ones are only used when using fst unbiased nei or hudson,
@@ -311,8 +180,8 @@ struct FstCommandState
 
     // Are we using whole genome mode, and all to all?
     // In those cases, we need to produce some extra files.
-    bool is_whole_genome;
     bool is_all_to_all;
+    bool is_whole_genome;
 };
 
 /**
@@ -331,8 +200,8 @@ void check_output_files_(
     // Check that the pi tables are actually computed.
     if(
         options.write_pi_tables.value && (
-            state.method != FstMethod::kUnbiasedNei &&
-            state.method != FstMethod::kUnbiasedHudson
+            state.method != FstProcessorOptions::FstMethod::kUnbiasedNei &&
+            state.method != FstProcessorOptions::FstMethod::kUnbiasedHudson
         )
     ) {
         throw CLI::ValidationError(
@@ -583,7 +452,8 @@ void print_to_output_files_(
     if( options.write_pi_tables.value ) {
         // Assert that we indeed are computing one of the unbiased estimators.
         internal_check(
-            state.method == FstMethod::kUnbiasedNei || state.method == FstMethod::kUnbiasedHudson,
+            state.method == FstProcessorOptions::FstMethod::kUnbiasedNei ||
+            state.method == FstProcessorOptions::FstMethod::kUnbiasedHudson,
             "Unbiased Nei/Hudson calculator expected when using --write-pi-values"
         );
 
@@ -665,9 +535,9 @@ void run_fst( FstOptions const& options )
 
     // The state POD that stores the run objects in one place.
     FstCommandState state;
-    state.method = get_enum_map_value( fst_method_map, options.method.value );
-    state.is_whole_genome = ( options.window.window_type() == WindowOptions::WindowType::kGenome );
-    state.is_all_to_all = options.sample_pairs.is_all_to_all();
+    state.method          = options.fst_processor.get_fst_method();
+    state.is_all_to_all   = options.fst_processor.is_all_to_all();
+    state.is_whole_genome = options.window.window_type() == WindowOptions::WindowType::kGenome;
 
     // Check that none of the output files exist.
     check_output_files_( options, state );
@@ -687,7 +557,7 @@ void run_fst( FstOptions const& options )
     );
     genesis::population::VariantFilterNumericalParams total_filter;
     total_filter.only_snps = true;
-    // if( state.method == FstMethod::kKarlsson ) {
+    // if( state.method == FstProcessorOptions::FstMethod::kKarlsson ) {
     //     total_filter.only_biallelic_snps = true;
     // }
     options.variant_input.add_combined_filter_and_transforms(
@@ -696,24 +566,17 @@ void run_fst( FstOptions const& options )
 
     // Get indices of all pairs of samples for which we want to compute FST.
     auto const& sample_names = options.variant_input.sample_names();
-    auto const sample_pairs = options.sample_pairs.get_sample_pairs(
+    auto const sample_pairs = options.fst_processor.get_sample_pairs(
         options.variant_input.sample_names()
     );
     if( sample_pairs.empty() ) {
-        LOG_WARN << "No pairs of samples selected, which will produce empty output. Stopping now.";
         return;
     }
-    LOG_MSG << "Computing FST between " << sample_pairs.size()
-            << " pair" << ( sample_pairs.size() > 1 ? "s" : "" ) << " of samples.";
-
-    // If we do all-to-all, we expect a triangular matrix size of entries.
-    internal_check(
-        ! state.is_all_to_all || sample_pairs.size() == triangular_size( sample_names.size() ),
-        "Expeting all-to-all FST to create a trinangular number of sample pairs."
-    );
 
     // Make the processor.
-    FstPoolProcessor processor = get_fst_pool_processor_( options, state.method, sample_pairs );
+    FstPoolProcessor processor = options.fst_processor.get_fst_pool_processor(
+        sample_names, sample_pairs
+    );
 
     // -------------------------------------------------------------------------
     //     Prepare Tables, Print Headers
