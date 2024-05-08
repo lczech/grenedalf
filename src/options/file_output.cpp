@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "options/file_output.hpp"
@@ -248,7 +248,8 @@ void FileOutputOptions::check_output_files_nonexistence(
         if( genesis::utils::Options::get().allow_file_overwriting() ) {
             if( warned_names.count( path ) == 0 ) {
                 if( count_substring_occurrences( path, "*" ) > 0 ) {
-                    LOG_WARN << "Warning: Output files already exist and will be overwritten: "
+                    LOG_WARN << "Warning: Output files with the target pattern already exist "
+                             << "and might be overwritten: "
                              << path;
                     LOG_BOLD;
                 } else {
