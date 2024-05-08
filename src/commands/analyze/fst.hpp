@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,15 +19,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "CLI/CLI.hpp"
 
 #include "options/file_output.hpp"
 #include "options/poolsizes.hpp"
+#include "options/sample_pairs.hpp"
 #include "options/table_output.hpp"
 #include "options/variant_filter_numerical.hpp"
 #include "options/variant_input.hpp"
@@ -49,15 +50,13 @@ public:
     VariantInputOptions           variant_input;
     VariantFilterNumericalOptions filter_numerical;
     WindowOptions                 window;
-    PoolsizesOptions              poolsizes;
 
     // Specific settings
     CliOption<std::string> method = "unbiased-nei";
+    PoolsizesOptions       poolsizes;
+    SamplePairsOptions     sample_pairs;
     CliOption<bool>        write_pi_tables = false;
     CliOption<bool>        omit_na_windows = false;
-    CliOption<std::string> comparand = "";
-    CliOption<std::string> second_comparand = "";
-    CliOption<std::string> comparand_list = "";
     CliOption<size_t>      threading_threshold = 4096;
 
     // Output options

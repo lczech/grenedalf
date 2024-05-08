@@ -39,6 +39,7 @@
 #include "genesis/utils/containers/transform_iterator.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/std.hpp"
 #include "genesis/utils/text/convert.hpp"
 #include "genesis/utils/text/string.hpp"
@@ -137,6 +138,9 @@ void setup_fst( CLI::App& app )
     // Settings: Pool sizes
     options->poolsizes.add_poolsizes_opt_to_app( sub, false );
 
+    // Sample pairs
+    options->sample_pairs.add_sample_pairs_opts_to_app( sub, "Settings" );
+
     // Settings: Write pi tables
     options->write_pi_tables.option = sub->add_flag(
         "--write-pi-tables",
@@ -159,39 +163,6 @@ void setup_fst( CLI::App& app )
         "in order to not produce output for invariant positions in the genome."
     );
     options->omit_na_windows.option->group( "Settings" );
-
-    // Settings: Comparand
-    options->comparand.option = sub->add_option(
-        "--comparand",
-        options->comparand.value,
-        "By default, FST between all pairs of samples (that are not filtered) is computed. "
-        "If this option is given a sample name however, only the pairwise FST between that "
-        "sample and all others (that are not filtered) is computed."
-    );
-    options->comparand.option->group( "Settings" );
-
-    // Settings: Second comparand
-    options->second_comparand.option = sub->add_option(
-        "--second-comparand",
-        options->second_comparand.value,
-        "If in addition to `--comparand`, this option is also given a (second) sample name, only "
-        "FST between those two samples is computed."
-    );
-    options->second_comparand.option->group( "Settings" );
-    options->second_comparand.option->needs( options->comparand.option );
-
-    // Settings: Comparand list
-    options->comparand_list.option = sub->add_option(
-        "--comparand-list",
-        options->comparand_list.value,
-        "By default, FST between all pairs of samples is computed. If this option is given a file "
-        "containing comma- or tab-separated pairs of sample names (one pair per line) however, "
-        "only these pairwise FST values are computed."
-    );
-    options->comparand_list.option->group( "Settings" );
-    options->comparand_list.option->check( CLI::ExistingFile );
-    options->comparand_list.option->excludes( options->comparand.option );
-    options->comparand_list.option->excludes( options->second_comparand.option );
 
     // Setting: threading_threshold
     options->threading_threshold.option = sub->add_option(
@@ -234,126 +205,6 @@ void setup_fst( CLI::App& app )
 // =================================================================================================
 //      Setup Functions
 // =================================================================================================
-
-// -------------------------------------------------------------------------
-//     get_sample_pairs_
-// -------------------------------------------------------------------------
-
-// We want to build a hash map for pairs, which needs hashing first...
-struct pair_hash {
-    template <class T1, class T2>
-    std::size_t operator () (const std::pair<T1,T2> &p) const {
-        auto h1 = std::hash<T1>{}(p.first);
-        auto h2 = std::hash<T2>{}(p.second);
-        return genesis::utils::hash_combine( h1, h2 );
-    }
-};
-
-std::vector<std::pair<size_t, size_t>> get_sample_pairs_( FstOptions const& options )
-{
-    using namespace genesis::utils;
-
-    // We here build a vector of pairs, in order to keep the order of pairs as specified.
-    // This is important, as otherwise our assignmen of which samples and pairs belong
-    // to which value computed will get messed up.
-
-    // Get sample names and map to their index or throw if invalid name is given.
-    // We create a map of names to their index in the list; if used, the names need to be unique.
-    // We however only need it when a comparand of sorts is provided, so that we can look up the
-    // names. Without comaparnd, we do not need the names, and hence can allow duplicates.
-    // We hence use a lambda to only fill the map when needed.
-    auto const& sample_names = options.variant_input.sample_names();
-    std::unordered_map<std::string, size_t> sample_map;
-    auto make_sample_map = [&](){
-        for( size_t i = 0; i < sample_names.size(); ++i ) {
-            auto const& name = sample_names[i];
-            if( sample_map.count( name ) > 0 ) {
-                throw std::runtime_error(
-                    "Duplicate sample name \"" + name + "\". "
-                    "Cannot uniquely identify the samples used for the FST comparands."
-                );
-            }
-            sample_map[name] = i;
-        }
-    };
-    auto sample_index = [&]( std::string const& name ) -> size_t {
-        auto it = sample_map.find( name );
-        if( it == sample_map.end() ) {
-            throw CLI::ValidationError(
-                "Comparand sample names",
-                "Invalid sample name: \"" + name  + "\" that was not found in the input, "
-                "or was filtered out."
-            );
-        }
-        return it->second;
-    };
-
-    // Get all pairs of samples for which we want to compute FST.
-    std::vector<std::pair<size_t, size_t>> sample_pairs;
-    if( *options.comparand.option ) {
-        make_sample_map();
-        if( *options.second_comparand.option ) {
-            // Only exactly one pair of samples.
-            auto const index_a = sample_index( options.comparand.value );
-            auto const index_b = sample_index( options.second_comparand.value );
-            sample_pairs.emplace_back( index_a, index_b );
-        } else {
-            // One sample against all others.
-            auto const index_a = sample_index( options.comparand.value );
-            for( auto const& sn : sample_names ) {
-                if( sn != options.comparand.value ) {
-                    auto const index_b = sample_index( sn );
-                    sample_pairs.emplace_back( index_a, index_b );
-                }
-            }
-        }
-    } else if( *options.comparand_list.option ) {
-        // Read list of pairs from file, and prepare the name index lookup.
-        auto const lines = file_read_lines( options.comparand_list.value );
-        make_sample_map();
-
-        // Get all pairs from the file, and build the list.
-        for( size_t i = 0; i < lines.size(); ++i ) {
-            auto const& line = lines[i];
-            auto const pair = split( line, ",\t", false );
-            if( pair.size() != 2 ) {
-                throw CLI::ValidationError(
-                    options.comparand_list.option->get_name() + "(" +
-                    options.comparand_list.value + ")",
-                    "Invalid line that does not contain two sample names (line " +
-                    std::to_string( i + 1 ) + ")."
-                );
-            }
-            auto const index_a = sample_index( pair[0] );
-            auto const index_b = sample_index( pair[1] );
-            sample_pairs.emplace_back( index_a, index_b );
-        }
-    } else {
-        // All pairs. Build upper triangle list of sample indices.
-        for( size_t i = 0; i < sample_names.size(); ++i ) {
-            for( size_t j = i + 1; j < sample_names.size(); ++j ) {
-                sample_pairs.emplace_back( i, j );
-            }
-        }
-    }
-
-    // Check for duplicates. Build a hash map for fast lookup of which pairs are there already.
-    // We tried with a vector first for simplicity, but that just got too expensive
-    // when many samples (in the thousands) are involved, as this means millions of pairs,
-    // each involving a linear search through the vector to check for duplicates...
-    std::unordered_set<std::pair<size_t, size_t>, pair_hash> dups;
-    for( auto const& pair : sample_pairs ) {
-        auto const rev_pair = std::pair<size_t, size_t>( pair.second, pair.first );
-        if( dups.count( pair ) > 0 || dups.count( rev_pair ) > 0 ) {
-            LOG_WARN << "Sample pairing for sample \"" << sample_names[pair.first]
-                     << "\" and sample \"" << sample_names[pair.second]
-                     << "\" is provided more than once.";
-        }
-        dups.insert( pair );
-    }
-
-    return sample_pairs;
-}
 
 // -------------------------------------------------------------------------
 //     get_fst_pool_processor_
@@ -816,7 +667,7 @@ void run_fst( FstOptions const& options )
     FstCommandState state;
     state.method = get_enum_map_value( fst_method_map, options.method.value );
     state.is_whole_genome = ( options.window.window_type() == WindowOptions::WindowType::kGenome );
-    state.is_all_to_all = ( ! *options.comparand.option) && ( ! *options.comparand_list.option );
+    state.is_all_to_all = options.sample_pairs.is_all_to_all();
 
     // Check that none of the output files exist.
     check_output_files_( options, state );
@@ -845,7 +696,9 @@ void run_fst( FstOptions const& options )
 
     // Get indices of all pairs of samples for which we want to compute FST.
     auto const& sample_names = options.variant_input.sample_names();
-    auto const sample_pairs = get_sample_pairs_( options );
+    auto const sample_pairs = options.sample_pairs.get_sample_pairs(
+        options.variant_input.sample_names()
+    );
     if( sample_pairs.empty() ) {
         LOG_WARN << "No pairs of samples selected, which will produce empty output. Stopping now.";
         return;
