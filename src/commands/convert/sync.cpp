@@ -84,9 +84,13 @@ void setup_sync( CLI::App& app )
         options->gapless.value,
         "By default, only the positions for which there is data are printed in the output. "
         "However, it might make processing with other tools easier if all files contain all "
-        "positions, which one might call a gsync file (following gvcf). With this option, "
-        "all missing positions are filled with the missing data indicator or with zero counts, "
-        "depending on the `--no-missing-marker` option."
+        "positions, which one might call a `gsync` file (following the `gvcf` format). "
+        "With this option, all missing positions are filled with the missing data indicator, "
+        "or with zero counts, depending on the `--no-missing-marker` option. "
+        "If a referene genome or dictionary is given, this might also include positions beyond "
+        "where there is input data, up until the length of each chromosome. Hence, the resulting "
+        "`gsync` files shall all have the exact same number of lines, which is convenient for "
+        "simply downstream scripts."
     );
     options->gapless.option->group( "Settings" );
 
