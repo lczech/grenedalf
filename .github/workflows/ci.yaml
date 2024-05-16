@@ -89,6 +89,12 @@ jobs:
           - os: ubuntu-22.04
             compiler: llvm-9
 
+          # Older GCC versions are also not supported by MacOS 12 any more
+          - os: macos-12
+            compiler: gcc-7
+          - os: macos-12
+            compiler: gcc-8
+
           # We also currently exclude clang from macos, as it fails with different types of
           # linker errors. As this is merely a problem in the setup, we defer solving this for now.
           # Wildcards do not work here, so we have to list them all... :-(
@@ -153,10 +159,10 @@ jobs:
             compiler: gcc
           - os: ubuntu-latest
             compiler: llvm
-          - os: macos-latest
-            compiler: gcc
-          - os: macos-latest
-            compiler: llvm
+          # - os: macos-latest
+          #   compiler: gcc
+          # - os: macos-latest
+          #   compiler: llvm
 
           # We test AppleClang as well, as a special case.
           # - os: macos-10.15
