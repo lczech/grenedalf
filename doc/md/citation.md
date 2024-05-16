@@ -1,4 +1,4 @@
-## Description
+# Description
 
 The auxiliary command prints references that need to be cited when using grenedalf. By default, it simply prints the grenedalf reference itself.
 

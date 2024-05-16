@@ -1,4 +1,4 @@
-## Description
+# Description
 
 Compute the data for an FST cathedral plot. This command does the main part of the computation:
 reading the input sample data, computing per-position FST values along the chromosomes,
@@ -22,7 +22,7 @@ Note that the command processes all given pairs of samples at the same time. We 
 positions. Hence, for a large number of samples, this can result in high memory usage. If that is the
 case, simply run this command individually on subsets of sample pairs.
 
-## FST Cathedral Plots
+# FST Cathedral Plots
 
 ![FST Cathedral Plot.](https://github.com/lczech/grenedalf/blob/master/doc/png/fst_cathedral.png?raw=true)
 

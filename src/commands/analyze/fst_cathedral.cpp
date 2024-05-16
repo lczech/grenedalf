@@ -260,9 +260,10 @@ void run_fst_cathedral( FstCathedralOptions const& options )
 
         // Compute and store all of them in files, for this chromosome.
         // This is the expensive part of the computation, which calculates the value for each
-        // pixel of the plot. Hence, we parallelize this loop.
+        // pixel of the plot. Hence, we parallelize this loop over sample pairs (the records).
         genesis::utils::parallel_for_each(
-            records.begin(), records.end(), [&]( FstCathedralPlotRecord& record ){
+            records.begin(), records.end(),
+            [&]( FstCathedralPlotRecord& record ){
                 // Compute the matrix
                 compute_fst_cathedral_matrix( params, record );
 

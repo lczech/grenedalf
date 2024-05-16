@@ -1,4 +1,4 @@
-## Description
+# Description
 
 Create cathedral plots. This is the second step after [`fst-cathedral`](../wiki/Subcommand:-fst-cathedral), and turns the matrix computed there into the actual plots. We split this into two commands
 for efficiency, so that it is faster to iterate over different color schemes and other plotting settings.
