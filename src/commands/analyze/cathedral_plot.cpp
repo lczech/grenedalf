@@ -24,6 +24,7 @@
 #include "commands/analyze/cathedral_plot.hpp"
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
+#include "tools/misc.hpp"
 
 #include "genesis/population/plotting/cathedral_plot.hpp"
 #include "genesis/population/plotting/genome_heatmap.hpp"
@@ -32,6 +33,22 @@
 #include "genesis/utils/formats/json/document.hpp"
 #include "genesis/utils/formats/svg/svg.hpp"
 #include "genesis/utils/text/string.hpp"
+
+// =================================================================================================
+//      Enum Mapping
+// =================================================================================================
+
+std::vector<std::pair<std::string, genesis::utils::HeatmapParameters::ColorNorm>> const color_norm_map = {
+    { "linear",      genesis::utils::HeatmapParameters::ColorNorm::kLinear },
+    { "logarithmic", genesis::utils::HeatmapParameters::ColorNorm::kLogarithmic },
+    // { "diverging",   genesis::utils::HeatmapParameters::ColorNorm::kDiverging },
+};
+
+std::vector<std::pair<std::string, genesis::utils::HeatmapParameters::NormalizationRange>> const color_norm_range_map = {
+    { "all", genesis::utils::HeatmapParameters::NormalizationRange::kAll },
+    { "row", genesis::utils::HeatmapParameters::NormalizationRange::kRow },
+    { "col", genesis::utils::HeatmapParameters::NormalizationRange::kCol },
+};
 
 // =================================================================================================
 //      Setup
@@ -51,8 +68,8 @@ void setup_cathedral_plot( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Add the file input options, separate for both types
-    options->json_input.add_multi_file_input_opt_to_app( sub, "json", "json", "json", "json" );
-    options->csv_input.add_multi_file_input_opt_to_app( sub, "csv", "csv", "csv", "csv" );
+    options->json_input.add_multi_file_input_opt_to_app( sub, "json", "json", "json", "json", false );
+    options->csv_input.add_multi_file_input_opt_to_app( sub, "csv", "csv", "csv", "csv", false );
     options->json_input.option()->excludes( options->csv_input.option() );
     options->csv_input.option()->excludes( options->json_input.option() );
 
@@ -77,8 +94,7 @@ void setup_cathedral_plot( CLI::App& app )
     );
     options->color_norm.option->group( "Color" );
     options->color_norm.option->transform(
-        CLI::IsMember({ "linear", "logarithmic" }, CLI::ignore_case )
-        // CLI::IsMember({ "linear", "logarithmic", "diverging" }, CLI::ignore_case )
+        CLI::IsMember( enum_map_keys( color_norm_map ), CLI::ignore_case )
     );
 
     // Add color normalization range option.
@@ -99,12 +115,12 @@ void setup_cathedral_plot( CLI::App& app )
     // options->color_norm_range.option->group( "Color" );
     options->color_norm_range.option->group("");
     options->color_norm_range.option->transform(
-        CLI::IsMember({ "all", "row", "col" }, CLI::ignore_case )
+        CLI::IsMember( enum_map_keys( color_norm_range_map ), CLI::ignore_case )
     );
 
     // Add min max value for the heat map
     options->min_value.option = sub->add_option(
-        "--color-normalization-min-value",
+        "--min-value",
         options->min_value.value,
         "As an alternative to determining the range of values automatically, the range limits "
         "can be set explicitly. This allows for instance to cap the visualization in cases of "
@@ -112,11 +128,11 @@ void setup_cathedral_plot( CLI::App& app )
         "Any value that is below the min specified here will then be mapped to the `under` color, "
         "or clipped to the lowest value in the color map."
     );
-    options->max_value.option->group( "Color" );
+    options->min_value.option->group( "Color" );
     options->max_value.option = sub->add_option(
-        "--color-normalization-max-value",
+        "--max-value",
         options->max_value.value,
-        "See `--color-normalization-min-value`; this is the equivalent upper limit of values."
+        "See `--min-value`; this is the equivalent upper limit of values."
         "Any value that is above the max specified here will then be mapped to the `over` color, "
         "or be clipped to the highest value in the color map."
     );
@@ -181,33 +197,14 @@ void run_cathedral_plot( CathedralPlotOptions const& options )
     HeatmapParameters heatmap_params{ options.color_map.color_map() };
     heatmap_params.min_value = options.min_value.value;
     heatmap_params.max_value = options.max_value.value;
-    if( genesis::utils::to_lower( options.color_norm.value ) == "linear" ) {
-        heatmap_params.color_norm = HeatmapParameters::ColorNorm::kLinear;
-    } else if( genesis::utils::to_lower( options.color_norm.value ) == "logarithmic" ) {
-        heatmap_params.color_norm = HeatmapParameters::ColorNorm::kLogarithmic;
-    } else if( genesis::utils::to_lower( options.color_norm.value ) == "diverging" ) {
-        heatmap_params.color_norm = HeatmapParameters::ColorNorm::kDiverging;
-    } else {
-        throw CLI::ValidationError(
-            options.color_norm.option->get_name(),
-            "Invalid color normalization type: " + options.color_norm.value
-        );
-    }
-    if( genesis::utils::to_lower( options.color_norm_range.value ) == "all" ) {
-        heatmap_params.normalization_range = HeatmapParameters::NormalizationRange::kAll;
-    } else if( genesis::utils::to_lower( options.color_norm_range.value ) == "row" ) {
-        heatmap_params.normalization_range = HeatmapParameters::NormalizationRange::kRow;
-    } else if( genesis::utils::to_lower( options.color_norm_range.value ) == "col" ) {
-        heatmap_params.normalization_range = HeatmapParameters::NormalizationRange::kCol;
-    } else {
-        throw CLI::ValidationError(
-            options.color_norm_range.option->get_name(),
-            "Invalid color normalization range type: " + options.color_norm_range.value
-        );
-    }
+    heatmap_params.color_norm = get_enum_map_value( color_norm_map, options.color_norm.value );
+    heatmap_params.normalization_range = get_enum_map_value(
+        color_norm_range_map, options.color_norm_range.value
+    );
 
     // Now we iterate each file and make a plot for it.
     for( auto const& file : file_paths ) {
+        LOG_MSG << "Plotting " << file;
         auto const record = load_cathedral_plot_record_from_files( file );
 
         // Create the plot elements

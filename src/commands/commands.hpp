@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,15 +19,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Contact:
-    Lucas Czech <lczech@carnegiescience.edu>
-    Department of Plant Biology, Carnegie Institution For Science
-    260 Panama Street, Stanford, CA 94305, USA
+    Lucas Czech <lucas.czech@sund.ku.dk>
+    University of Copenhagen, Globe Institute, Section for GeoGenetics
+    Oster Voldgade 5-7, 1350 Copenhagen K, Denmark
 */
 
 #include "CLI/CLI.hpp"
 
+#include "commands/analyze/cathedral_plot.hpp"
 #include "commands/analyze/diversity.hpp"
 #include "commands/analyze/fst.hpp"
+#include "commands/analyze/fst_cathedral.hpp"
 #include "commands/convert/frequency.hpp"
 #include "commands/convert/sync.hpp"
 #include "commands/simulate/simulate.hpp"
@@ -57,9 +59,11 @@ inline void setup_commands( CLI::App& app )
     // in gappa, where the command would be called `grenedalf analyze fst` instead of `grenedalf fst`
 
     // setup_afs_heatmap( app );
+    setup_cathedral_plot( app );
     setup_diversity( app );
     setup_frequency( app );
     setup_fst( app );
+    setup_fst_cathedral( app );
     setup_simulate( app );
     setup_sync( app );
 
