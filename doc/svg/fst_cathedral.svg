@@ -12,8 +12,11 @@
    height="330.53751"
    version="1.1"
    id="svg601"
-   sodipodi:docname="cathedral.svg"
-   inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)">
+   sodipodi:docname="fst_cathedral.svg"
+   inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
+   inkscape:export-filename="/home/lucas/Dropbox/GitHub/grenedalf/doc/png/fst_cathedral.png"
+   inkscape:export-xdpi="98.800545"
+   inkscape:export-ydpi="98.800545">
   <metadata
      id="metadata605">
     <rdf:RDF>
@@ -22,7 +25,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -33,15 +36,15 @@
      objecttolerance="10"
      gridtolerance="10"
      guidetolerance="10"
-     inkscape:pageopacity="0"
+     inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:window-width="3384"
-     inkscape:window-height="1412"
+     inkscape:window-width="1864"
+     inkscape:window-height="1052"
      id="namedview603"
      showgrid="false"
-     inkscape:zoom="1.0286798"
-     inkscape:cx="552.4367"
-     inkscape:cy="57.642419"
+     inkscape:zoom="0.36369323"
+     inkscape:cx="-1242.1456"
+     inkscape:cy="302.35954"
      inkscape:window-x="56"
      inkscape:window-y="28"
      inkscape:window-maximized="1"

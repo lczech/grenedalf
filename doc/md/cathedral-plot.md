@@ -3,7 +3,7 @@
 Create cathedral plots. This is the second step after [`fst-cathedral`](../wiki/Subcommand:-fst-cathedral), and turns the matrix computed there into the actual plots. We split this into two commands
 for efficiency, so that it is faster to iterate over different color schemes and other plotting settings.
 
-The command takes either the `csv` or the `json` files as input (and infers the respective other).
+The command takes either the `csv` or the `json` files produced by `fst-cathedral` as input (and infers the respective other file, both have to be in the same directory, with the same base name).
 It then colors the value matrix according to the provided color map settings, and stores the result as
 a `bmp` bitmap picture. Furthermore, it creates an `svg` file that additionally contains axes, a
 legend for the color map, and a title, and can be edited and refined later with any vector graphics
