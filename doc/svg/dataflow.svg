@@ -9,16 +9,16 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="84.444695mm"
-   height="80.696419mm"
-   viewBox="0 0 84.444693 80.696419"
+   width="88.444695mm"
+   height="84.696411mm"
+   viewBox="0 0 88.444692 84.696411"
    version="1.1"
    id="svg4746"
    inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
-   sodipodi:docname="variants.svg"
-   inkscape:export-filename="/home/lucas/Dropbox/Research/Manuscripts/2023-grenedalf/variants/dataflow.png"
-   inkscape:export-xdpi="150.45526"
-   inkscape:export-ydpi="150.45526">
+   sodipodi:docname="dataflow.svg"
+   inkscape:export-filename="/home/lucas/Dropbox/GitHub/grenedalf/doc/png/dataflow.png"
+   inkscape:export-xdpi="150.77219"
+   inkscape:export-ydpi="150.77219">
   <defs
      id="defs4740">
     <marker
@@ -1072,24 +1072,24 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2.1514936"
-     inkscape:cx="46.174861"
-     inkscape:cy="150.26043"
+     inkscape:zoom="1.5213357"
+     inkscape:cx="12.315836"
+     inkscape:cy="119.06964"
      inkscape:document-units="mm"
      inkscape:current-layer="layer5"
      showgrid="false"
-     inkscape:window-width="1864"
-     inkscape:window-height="1052"
+     inkscape:window-width="1692"
+     inkscape:window-height="1384"
      inkscape:window-x="56"
      inkscape:window-y="28"
-     inkscape:window-maximized="1"
+     inkscape:window-maximized="0"
      inkscape:object-paths="true"
      inkscape:snap-intersection-paths="true"
      inkscape:snap-smooth-nodes="true"
-     fit-margin-top="0.3"
-     fit-margin-left="0.3"
-     fit-margin-right="0.3"
-     fit-margin-bottom="0.3"
+     fit-margin-top="2"
+     fit-margin-left="2"
+     fit-margin-right="2"
+     fit-margin-bottom="2"
      inkscape:snap-bbox="true"
      inkscape:bbox-paths="true"
      inkscape:bbox-nodes="true"
@@ -1106,7 +1106,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1115,7 +1115,7 @@
      inkscape:groupmode="layer"
      id="layer1"
      style="display:none"
-     transform="translate(-53.855666,-91.367114)">
+     transform="translate(-51.855666,-89.367114)">
     <flowRoot
        xml:space="preserve"
        id="flowRoot2354"
@@ -1825,7 +1825,7 @@
      inkscape:groupmode="layer"
      id="layer3"
      inkscape:label="variants 4 files"
-     transform="translate(-53.855666,-91.367114)"
+     transform="translate(-51.855666,-89.367114)"
      style="display:none">
     <path
        sodipodi:nodetypes="cc"
@@ -2614,7 +2614,7 @@
      id="layer4"
      inkscape:label="variants 5 files"
      style="display:none"
-     transform="translate(-5.6572033)">
+     transform="translate(-3.6572032,2)">
     <path
        style="display:inline;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.33164528;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5656-3)"
        d="M 14.256366,24.301267 V 34.872828"
@@ -3462,7 +3462,7 @@
      id="g1543"
      inkscape:groupmode="layer"
      inkscape:label="variants unified"
-     transform="translate(-53.855666,-91.367114)"
+     transform="translate(-51.855666,-89.367114)"
      style="display:none">
     <path
        sodipodi:nodetypes="cc"
@@ -4109,7 +4109,7 @@
      id="layer5"
      inkscape:label="data flow"
      style="display:inline"
-     transform="translate(-5.6572033)">
+     transform="translate(-3.6572032,2)">
     <rect
        style="opacity:1;vector-effect:none;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.76499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
        id="rect8942"
@@ -4692,7 +4692,7 @@
      inkscape:groupmode="layer"
      id="layer2"
      inkscape:label="files"
-     transform="translate(-53.855666,-91.367114)"
+     transform="translate(-51.855666,-89.367114)"
      style="display:none">
     <path
        style="display:inline;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.33164528;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5656-6)"
