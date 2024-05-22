@@ -107,7 +107,10 @@ private:
     CliOption<std::vector<std::string>> filter_region_gff_;
     CliOption<std::vector<std::string>> filter_region_bim_;
     CliOption<std::vector<std::string>> filter_region_vcf_;
-    CliOption<std::string> filter_region_set_ = "union";
+    CliOption<std::vector<std::string>> filter_region_mask_fasta_;
+    CliOption<size_t>                   filter_region_mask_min_ = 0;
+    CliOption<bool>                     filter_region_mask_inv_ = false;
+    CliOption<std::string>              filter_region_set_ = "union";
 
     // We keep the region filter here, so that it can be re-used for all inputs.
     // This filter is created by combining (union or intersection) all input filter files.

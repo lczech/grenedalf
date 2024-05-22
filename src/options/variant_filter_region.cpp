@@ -26,16 +26,18 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
+#include "genesis/population/filter/variant_filter_positional.hpp"
 #include "genesis/population/format/bed_reader.hpp"
 #include "genesis/population/format/genome_region_reader.hpp"
 #include "genesis/population/format/gff_reader.hpp"
 #include "genesis/population/format/map_bim_reader.hpp"
 #include "genesis/population/format/vcf_common.hpp"
 #include "genesis/population/format/vcf_input_stream.hpp"
-#include "genesis/population/filter/variant_filter_positional.hpp"
 #include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/genome_locus_set.hpp"
 #include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
+#include "genesis/utils/io/input_source.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -63,6 +65,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         "Genomic region to filter for, in the format \"chr\" (for whole chromosomes), "
         "\"chr:position\", \"chr:start-end\", or \"chr:start..end\". "
         "Positions are 1-based and inclusive (closed intervals). "
+        "The filter keeps all listed positions, and removes all that are not listed. "
         "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_.option->group( group );
@@ -75,6 +78,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         "either in the format \"chr\" (for whole chromosomes), \"chr:position\", \"chr:start-end\", "
         "\"chr:start..end\", or tab- or space-delimited \"chr position\" or \"chr start end\". "
         "Positions are 1-based and inclusive (closed intervals). "
+        "The filter keeps all listed positions, and removes all that are not listed. "
         "Multiple region options can be provided, see also `--filter-region-set`."
     );
     filter_region_list_.option->check( CLI::ExistingFile );
@@ -88,7 +92,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         "as well as start and end information per line, and ignores everything else in the file. "
         "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position; "
         "simply using columns extracted from other file formats (such as vcf or gff) will not work. "
-        "Multiple region options can be provided, see also `--filter-region-set`."
+        "The filter keeps all listed positions, and removes all that are not listed."
     );
     filter_region_bed_.option->check( CLI::ExistingFile );
     filter_region_bed_.option->group( group );
@@ -99,7 +103,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         filter_region_gff_.value,
         "Genomic regions to filter for, as a GFF2/GFF3/GTF file. This only uses the chromosome, "
         "as well as start and end information per line, and ignores everything else in the file. "
-        "Multiple region options can be provided, see also `--filter-region-set`."
+        "The filter keeps all listed positions, and removes all that are not listed."
     );
     filter_region_gff_.option->check( CLI::ExistingFile );
     filter_region_gff_.option->group( group );
@@ -110,7 +114,7 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         filter_region_bim_.value,
         "Genomic positions to filter for, as a MAP or BIM file as used in PLINK. This only "
         "uses the chromosome and coordinate per line, and ignores everything else in the file. "
-        "Multiple region options can be provided, see also `--filter-region-set`."
+        "The filter keeps all listed positions, and removes all that are not listed."
     );
     filter_region_bim_.option->check( CLI::ExistingFile );
     filter_region_bim_.option->group( group );
@@ -121,18 +125,53 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
         filter_region_vcf_.value,
         "Genomic positions to filter for, as a VCF/BCF file (such as a known-variants file). This "
         "only uses the chromosome and position per line, and ignores everything else in the file. "
-        "Multiple region options can be provided, see also `--filter-region-set`."
+        "The filter keeps all listed positions, and removes all that are not listed."
     );
     filter_region_vcf_.option->check( CLI::ExistingFile );
     filter_region_vcf_.option->group( group );
+
+    // Add option for genomic region filter by fasta-style mask file.
+    filter_region_mask_fasta_.option = sub->add_option(
+        "--filter-region-mask-fasta",
+        filter_region_mask_fasta_.value,
+        "Genomic positions to filter for, as a FASTA-like mask file (such as used by vcftools). "
+        "The file contains a sequence of integer digits `[0-9]`, one for each position on the "
+        "chromosomes, which specify if the position should be filtered out or not. Any positions "
+        "with digits above the `--filter-region-mask-min` value are removed."
+    );
+    filter_region_mask_fasta_.option->check( CLI::ExistingFile );
+    filter_region_mask_fasta_.option->group( group );
+
+    // Add min threshold option for above mask option.
+    filter_region_mask_min_.option = sub->add_option(
+        "--filter-region-mask-min",
+        filter_region_mask_min_.value,
+        "When using `--filter-region-mask-fasta`, set the cutoff threshold for the filtered digits. "
+        "The default is 0, meaning only positions with that value or lower will be kept."
+    );
+    filter_region_mask_min_.option->check(CLI::Range(0,9));
+    filter_region_mask_min_.option->group( group );
+    filter_region_mask_min_.option->needs( filter_region_mask_fasta_.option );
+
+    // Add inversion option for above mask option.
+    filter_region_mask_inv_.option = sub->add_flag(
+        "--filter-region-mask-invert",
+        filter_region_mask_inv_.value,
+        "When using `--filter-region-mask-fasta`, invert the mask. This option has the same effect "
+        "as the equivalent in vcftools, but instead of specifying the file, this here is a flag. "
+        "When it is set, the mask specified above is inverted."
+    );
+    filter_region_mask_inv_.option->check(CLI::Range(0,9));
+    filter_region_mask_inv_.option->group( group );
+    filter_region_mask_inv_.option->needs( filter_region_mask_fasta_.option );
 
     // Add the set combination of the genom regions.
     filter_region_set_.option = sub->add_option(
         // If flag name is changed in the future, change it in the above options as well.
         "--filter-region-set",
         filter_region_set_.value,
-        "If multiple genomic region filters are set, "
-        "decide on how to combine the loci of these filters."
+        "It is possible to provide multiple of the above region filter options, even of different "
+        "types. In that case, decide on how to combine the loci of these filters."
     );
     filter_region_set_.option->transform(
         CLI::IsMember(
@@ -198,32 +237,40 @@ void VariantFilterRegionOptions::prepare_region_filters() const
 
     // Add the region list files.
     for( auto const& list_file : filter_region_list_.value ) {
-        LOG_MSG2 << "Reading regions list file " << list_file;
+        LOG_MSG2 << "Reading regions filter list file " << list_file;
         add_filter_( GenomeRegionReader().read_as_genome_locus_set( from_file( list_file )));
     }
 
     // Add the regions from bed files.
     for( auto const& file : filter_region_bed_.value ) {
-        LOG_MSG2 << "Reading regions BED file " << file;
+        LOG_MSG2 << "Reading regions filter BED file " << file;
         add_filter_( BedReader().read_as_genome_locus_set( from_file( file )));
     }
 
     // Add the regions from gff files.
     for( auto const& file : filter_region_gff_.value ) {
-        LOG_MSG2 << "Reading regions GFF2/GFF3/GTF file " << file;
+        LOG_MSG2 << "Reading regions filter GFF2/GFF3/GTF file " << file;
         add_filter_( GffReader().read_as_genome_locus_set( from_file( file )));
     }
 
     // Add the regions from map/bim files.
     for( auto const& file : filter_region_bim_.value ) {
-        LOG_MSG2 << "Reading regions MAP/BIM file " << file;
+        LOG_MSG2 << "Reading regions filter MAP/BIM file " << file;
         add_filter_( MapBimReader().read_as_genome_locus_set( from_file( file )));
     }
 
     // Add the regions from vcf files.
     for( auto const& file : filter_region_vcf_.value ) {
-        LOG_MSG2 << "Reading regions VCF/BCF file " << file;
+        LOG_MSG2 << "Reading regions filter VCF/BCF file " << file;
         add_filter_( genome_locus_set_from_vcf_file( file ));
+    }
+
+    // Add the regions from mask files.
+    for( auto const& file : filter_region_mask_fasta_.value ) {
+        LOG_MSG2 << "Reading regions filter FASTA file " << file;
+        add_filter_( read_mask_fasta(
+            from_file( file ), filter_region_mask_min_.value, filter_region_mask_inv_.value
+        ));
     }
 
     // User output.
