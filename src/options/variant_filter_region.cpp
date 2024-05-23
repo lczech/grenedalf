@@ -131,39 +131,41 @@ void VariantFilterRegionOptions::add_region_filter_opts_to_app(
     filter_region_vcf_.option->group( group );
 
     // Add option for genomic region filter by fasta-style mask file.
-    filter_region_mask_fasta_.option = sub->add_option(
-        "--filter-region-mask-fasta",
-        filter_region_mask_fasta_.value,
+    filter_region_fasta_.option = sub->add_option(
+        "--filter-region-fasta",
+        filter_region_fasta_.value,
         "Genomic positions to filter for, as a FASTA-like mask file (such as used by vcftools). "
         "The file contains a sequence of integer digits `[0-9]`, one for each position on the "
         "chromosomes, which specify if the position should be filtered out or not. Any positions "
-        "with digits above the `--filter-region-mask-min` value are removed."
+        "with digits above the `--filter-region-fasta-min` value are removed. "
+        "Note that this conceptually differs from a mask file, and merely uses the same format."
     );
-    filter_region_mask_fasta_.option->check( CLI::ExistingFile );
-    filter_region_mask_fasta_.option->group( group );
+    filter_region_fasta_.option->check( CLI::ExistingFile );
+    filter_region_fasta_.option->group( group );
 
     // Add min threshold option for above mask option.
-    filter_region_mask_min_.option = sub->add_option(
-        "--filter-region-mask-min",
-        filter_region_mask_min_.value,
+    filter_region_fasta_min_.option = sub->add_option(
+        "--filter-region-fasta-min",
+        filter_region_fasta_min_.value,
         "When using `--filter-region-mask-fasta`, set the cutoff threshold for the filtered digits. "
-        "The default is 0, meaning only positions with that value or lower will be kept."
+        "Only positions with that value or lower will be kept. The default is 0, meaning that "
+        "all positions with digits greater than 0 will be removed."
     );
-    filter_region_mask_min_.option->check(CLI::Range(0,9));
-    filter_region_mask_min_.option->group( group );
-    filter_region_mask_min_.option->needs( filter_region_mask_fasta_.option );
+    filter_region_fasta_min_.option->check(CLI::Range(0,9));
+    filter_region_fasta_min_.option->group( group );
+    filter_region_fasta_min_.option->needs( filter_region_fasta_.option );
 
     // Add inversion option for above mask option.
-    filter_region_mask_inv_.option = sub->add_flag(
-        "--filter-region-mask-invert",
-        filter_region_mask_inv_.value,
+    filter_region_fasta_inv_.option = sub->add_flag(
+        "--filter-region-fasta-invert",
+        filter_region_fasta_inv_.value,
         "When using `--filter-region-mask-fasta`, invert the mask. This option has the same effect "
         "as the equivalent in vcftools, but instead of specifying the file, this here is a flag. "
         "When it is set, the mask specified above is inverted."
     );
-    filter_region_mask_inv_.option->check(CLI::Range(0,9));
-    filter_region_mask_inv_.option->group( group );
-    filter_region_mask_inv_.option->needs( filter_region_mask_fasta_.option );
+    filter_region_fasta_inv_.option->check(CLI::Range(0,9));
+    filter_region_fasta_inv_.option->group( group );
+    filter_region_fasta_inv_.option->needs( filter_region_fasta_.option );
 
     // Add the set combination of the genom regions.
     filter_region_set_.option = sub->add_option(
@@ -266,10 +268,10 @@ void VariantFilterRegionOptions::prepare_region_filters() const
     }
 
     // Add the regions from mask files.
-    for( auto const& file : filter_region_mask_fasta_.value ) {
+    for( auto const& file : filter_region_fasta_.value ) {
         LOG_MSG2 << "Reading regions filter FASTA file " << file;
         add_filter_( read_mask_fasta(
-            from_file( file ), filter_region_mask_min_.value, filter_region_mask_inv_.value
+            from_file( file ), filter_region_fasta_min_.value, filter_region_fasta_inv_.value
         ));
     }
 

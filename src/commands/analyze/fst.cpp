@@ -311,9 +311,9 @@ PiVectorTuple get_pi_vectors_(
 
         // We print the values, scaled by number of variants
         // (i.e., the number of values that were added up there in the first place).
-        std::get<0>(result)[i] = cast_calc->get_pi_within()  / processor.processed_count();
-        std::get<1>(result)[i] = cast_calc->get_pi_between() / processor.processed_count();
-        std::get<2>(result)[i] = cast_calc->get_pi_total()   / processor.processed_count();
+        std::get<0>(result)[i] = cast_calc->get_pi_within()  / processor.get_processed_count();
+        std::get<1>(result)[i] = cast_calc->get_pi_between() / processor.get_processed_count();
+        std::get<2>(result)[i] = cast_calc->get_pi_total()   / processor.get_processed_count();
     }
 
     return result;
@@ -411,7 +411,7 @@ void print_output_line_(
     target << window.chromosome();
     target << sep_char << window.first_position();
     target << sep_char << window.last_position();
-    target << sep_char << processor.processed_count();
+    target << sep_char << processor.get_processed_count();
 
     // Write the per-pair FST values in the correct order.
     for( auto const& fst : values ) {
@@ -468,7 +468,7 @@ void print_to_output_files_(
     // Skip empty windows if the user wants to.
     if(
         options.omit_na_windows.value && (
-            processor.processed_count() == 0 ||
+            processor.get_processed_count() == 0 ||
             std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
                 return std::isfinite( v );
             })

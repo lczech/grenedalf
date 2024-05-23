@@ -36,7 +36,9 @@
 #include "genesis/population/filter/variant_filter_positional.hpp"
 #include "genesis/population/filter/variant_filter.hpp"
 #include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/genome_locus_set.hpp"
 #include "genesis/population/function/variant_input_stream.hpp"
+#include "genesis/sequence/functions/dict.hpp"
 #include "genesis/utils/core/algorithm.hpp"
 #include "genesis/utils/core/fs.hpp"
 #include "genesis/utils/core/info.hpp"
@@ -77,9 +79,7 @@ std::vector<
 
 void VariantInputOptions::add_variant_input_opts_to_app(
     CLI::App* sub,
-    bool with_reference_genome_opts,
-    bool with_sample_name_opts,
-    bool with_region_filter_opts,
+    Suboptions const& suboptions,
     std::string const& group
 ) {
 
@@ -87,17 +87,26 @@ void VariantInputOptions::add_variant_input_opts_to_app(
     add_input_files_opts_to_app( sub );
 
     // Additional options next.
-    if( with_reference_genome_opts ) {
+    if( suboptions.with_reference_genome_opts ) {
         reference_genome_options_.add_reference_genome_opts_to_app( sub, group );
     }
-    if( with_sample_name_opts ) {
-        // sample_name_options_.add_sample_name_opts_to_app( sub, group );
+    if( suboptions.with_sample_name_opts ) {
         sample_name_options_.add_sample_name_opts_to_app( sub );
     }
-    if( with_region_filter_opts ) {
-        // region_filter_options_.add_region_filter_opts_to_app( sub, group );
+    if( suboptions.with_region_filter_opts ) {
         region_filter_options_.add_region_filter_opts_to_app( sub );
     }
+    if( suboptions.with_mask_filter_opts ) {
+        mask_filter_options_.add_mask_filter_opts_to_app( sub );
+    }
+}
+
+void VariantInputOptions::add_variant_input_opts_to_app(
+    CLI::App* sub,
+    std::string const& group
+) {
+    auto subopts = Suboptions();
+    add_variant_input_opts_to_app( sub, subopts, group );
 }
 
 // -------------------------------------------------------------------------
@@ -263,6 +272,14 @@ void VariantInputOptions::prepare_inputs_() const
     for( auto const& input_file : input_files_ ) {
         input_file->add_reference_genome( get_reference_genome() );
     }
+
+    // We also do a quick check if the different types of references are compatible with each other.
+    // We can only check those whose formats cover the full length of the genome that we expect.
+    // At the moment, for instance, we do not check that the region filters cover every position,
+    // as that would only make sense for the fasta mask type region filter, which is kind of an
+    // outlyer anyway.
+    // We do test the reference genome and mask file here though, if both are given.
+    mask_filter_options_.check_mask_against_reference( get_reference_dict() );
 }
 
 // -------------------------------------------------------------------------
@@ -419,7 +436,7 @@ void VariantInputOptions::prepare_stream_single_file_() const
     sample_name_options_.rename_samples( stream_.data().sample_names );
     sample_name_options_.add_sample_name_filter( stream_ );
     sample_name_options_.apply_sample_group_merging( stream_ );
-    make_gapless_stream_();
+    conditionally_make_gapless_stream_();
 
     // Copy over the sample names from the stream, so that they are accessible.
     if( sample_names().empty() ) {
@@ -601,7 +618,7 @@ void VariantInputOptions::prepare_stream_from_parallel_stream_(
     sample_name_options_.rename_samples( stream_.data().sample_names );
     sample_name_options_.add_sample_name_filter( stream_ );
     sample_name_options_.apply_sample_group_merging( stream_ );
-    make_gapless_stream_();
+    conditionally_make_gapless_stream_();
 
     // Add an observer that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.
@@ -625,11 +642,34 @@ void VariantInputOptions::prepare_stream_from_parallel_stream_(
 }
 
 // -------------------------------------------------------------------------
-//     make_gapless_stream_
+//     conditionally_make_gapless_stream_
 // -------------------------------------------------------------------------
 
-void VariantInputOptions::make_gapless_stream_() const
+void VariantInputOptions::conditionally_make_gapless_stream_() const
 {
+    using namespace genesis::population;
+    using namespace genesis::sequence;
+
+    // The function checks all cases in which we want to make the stream gapless.
+    // This is the case when either the command set the gapless_stream_ flag,
+    // or if we have a mask file provided. In the latter case, we also set the flag first,
+    // for completeness.
+
+    // If we have a mask file provided, we make this a gapless stream either way.
+    if( mask_filter_options_.get_mask() ) {
+        gapless_stream_ = true;
+        auto const mask_dict = std::make_shared<SequenceDict>(
+            reference_locus_set_to_dict( *mask_filter_options_.get_mask() )
+        );
+        stream_ = make_variant_gapless_input_stream( stream_, mask_dict );
+        return;
+    }
+
+    // Now we check if we want to make a gapless stream, e.g., by demand from a command.
+    // If so, we further check if any references are given, which we then want to use
+    // for the stream in order to properly get the chromosome lengths.
+    // If none are given, the best we can do is to just fill in the gaps in the data, but we will
+    // stop once the end of the data is reached, even if that is not the end of the chromosome.
     if( ! gapless_stream_ ) {
         return;
     }
@@ -661,7 +701,11 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_stream_(
     // For example, filtering out regions there means that everything downstream does not have
     // to deal with positions that we are about to discard anyway.
 
-    // Add the genome region list as a filter.
+    // Add the genome region list as a filter. We do this first, to remove everything that we do
+    // not want to keep anyway from having to be processed downstream as early as we can.
+    // This is also the reason to apply this on each input stream individually: This way, the
+    // filtering can be done in the generic input stream buffering already, and hence use
+    // threading and buffering to our advantage here.
     if( region_filter_options_.get_region_filter() ) {
         stream.add_filter( make_variant_filter_by_region_excluding(
             region_filter_options_.get_region_filter()
@@ -687,6 +731,13 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
     // which is important in the case of parallel input sources: For example, we need to take
     // all of them into account at the same time to get a proper ref and alt base guess,
     // otherwise we might end up with contradicting bases.
+
+    // First we add the processing of the mask file, if one is given. This needs to happen on
+    // the combined stream, after all region filtering, but before any numeric filters.
+    if( mask_filter_options_.get_mask() ) {
+        internal_check( gapless_stream_, "Stream not set to be gapless" );
+        stream.add_transform( mask_filter_options_.make_mask_transform() );
+    }
 
     // Add the addtional filters and transformations that might have been set by the commands.
     for( auto const& func : combined_filters_and_transforms_ ) {

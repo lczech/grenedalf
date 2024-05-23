@@ -28,6 +28,7 @@
 
 #include "options/file_input.hpp"
 #include "options/variant_file.hpp"
+#include "options/variant_filter_mask.hpp"
 #include "options/variant_filter_region.hpp"
 #include "options/variant_sample_names.hpp"
 #include "options/variant_reference_genome.hpp"
@@ -67,6 +68,17 @@ public:
     using Variant = genesis::population::Variant;
     using VariantInputStream = genesis::population::VariantInputStream;
 
+    /**
+     * @brief Helper to avoid having a list of bools in the function parameters.
+     */
+    struct Suboptions
+    {
+        bool with_reference_genome_opts = true;
+        bool with_sample_name_opts      = true;
+        bool with_region_filter_opts    = true;
+        bool with_mask_filter_opts      = true;
+    };
+
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
@@ -88,21 +100,29 @@ public:
      * @brief Add all typical options to the @p sub app that we want for reading any file formats
      * with variant data.
      *
-     * We here allow to add sample name filtering and region filtering, but not the numerical filters,
-     * as those usually need to be tuned a bit more towards the particular command being run.
+     * We here allow to add sample name filtering and region/mask filtering, but not the numerical
+     * filters, as those usually need to be tuned a bit more towards the particular command being run.
      * They hence (as of now) need to be added to each command individually, and then their
      * filters can be added here via add_individual_filter_and_transforms() and
      * add_combined_filter_and_transforms() to run them on the input data.
-     * Note though that not all commands want that: For example, as of now, the way we implemented
-     * the filters, data is "lost" for downstream once filtered out here. However, statistics
-     * such as diversity need to keep track of invariant sites for computing relative Theta values,
-     * and so the filters cannot readily be applied beforehand.
      */
     void add_variant_input_opts_to_app(
         CLI::App* sub,
-        bool with_reference_genome_opts = true,
-        bool with_sample_name_opts = true,
-        bool with_region_filter_opts = true,
+        Suboptions const& suboptions,
+        std::string const& group = "Input Settings"
+    );
+
+    /**
+     * @brief Add all typical options to the @p sub app that we want for reading any file formats
+     * with variant data.
+     *
+     * Same as the above, but with default sub-options, i.e., all sub-options are added.
+     * We unfortunately need this as an overload in order to avoid a stupid compiler bug in gcc
+     * and clang, see https://stackoverflow.com/q/43819314/4184258 and
+     * https://stackoverflow.com/q/53408962/4184258
+     */
+    void add_variant_input_opts_to_app(
+        CLI::App* sub,
         std::string const& group = "Input Settings"
     );
 
@@ -119,7 +139,10 @@ public:
      * @brief Create a gapless stream that iterates over all positions in the genome,
      * even the missing ones.
      *
-     * This has to be set prior to creating the stream.
+     * This has to be set prior to creating the stream. It can be set from any command that needs
+     * the stream to be gapless for its algorithm. It is also possible that this is set internally
+     * here, for instance when using a mask file, in which case we need a gapless stream first,
+     * to which we can then apply the mask.
      */
     void gapless_stream( bool value ) const
     {
@@ -263,7 +286,7 @@ protected:
         genesis::population::VariantParallelInputStream&&
     ) const;
 
-    void make_gapless_stream_() const;
+    void conditionally_make_gapless_stream_() const;
 
 private:
 
@@ -307,6 +330,7 @@ private:
     VariantReferenceGenomeOptions reference_genome_options_;
     VariantSampleNamesOptions     sample_name_options_;
     VariantFilterRegionOptions    region_filter_options_;
+    VariantFilterMaskOptions      mask_filter_options_;
 
     // We also allow to create a gapless stream, which iterates over every position in the genome,
     // even the missing ones. This is implemented a bit ad-hoc here for now, as we only use this

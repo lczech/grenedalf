@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_VARIANT_FILTER_REGION_H_
-#define GRENEDALF_OPTIONS_VARIANT_FILTER_REGION_H_
+#ifndef GRENEDALF_OPTIONS_VARIANT_FILTER_MASK_H_
+#define GRENEDALF_OPTIONS_VARIANT_FILTER_MASK_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -32,6 +32,7 @@
 #include "genesis/population/function/variant_input_stream.hpp"
 #include "genesis/population/genome_locus_set.hpp"
 #include "genesis/population/variant.hpp"
+#include "genesis/sequence/sequence_dict.hpp"
 
 #include <functional>
 #include <string>
@@ -39,13 +40,13 @@
 #include <vector>
 
 // =================================================================================================
-//      Variant Filter Region Options
+//      Variant Filter Mask Options
 // =================================================================================================
 
 /**
  * @brief
  */
-class VariantFilterRegionOptions
+class VariantFilterMaskOptions
 {
 public:
 
@@ -61,22 +62,22 @@ public:
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    VariantFilterRegionOptions()  = default;
-    ~VariantFilterRegionOptions() = default;
+    VariantFilterMaskOptions()  = default;
+    ~VariantFilterMaskOptions() = default;
 
-    VariantFilterRegionOptions( VariantFilterRegionOptions const& other ) = default;
-    VariantFilterRegionOptions( VariantFilterRegionOptions&& )            = default;
+    VariantFilterMaskOptions( VariantFilterMaskOptions const& other ) = default;
+    VariantFilterMaskOptions( VariantFilterMaskOptions&& )            = default;
 
-    VariantFilterRegionOptions& operator= ( VariantFilterRegionOptions const& other ) = default;
-    VariantFilterRegionOptions& operator= ( VariantFilterRegionOptions&& )            = default;
+    VariantFilterMaskOptions& operator= ( VariantFilterMaskOptions const& other ) = default;
+    VariantFilterMaskOptions& operator= ( VariantFilterMaskOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Setup Functions
     // -------------------------------------------------------------------------
 
-    void add_region_filter_opts_to_app(
+    void add_mask_filter_opts_to_app(
         CLI::App* sub,
-        std::string const& group = "Region Filters"
+        std::string const& group = "Masking Filters"
     );
 
     // -------------------------------------------------------------------------
@@ -86,13 +87,28 @@ public:
     /**
      * @brief Parse the region filter files, e.g., BED or GFF, and make a filter from them.
      */
-    void prepare_region_filters() const;
+    void prepare_mask() const;
 
-    std::shared_ptr<GenomeLocusSet> get_region_filter() const
+    /**
+     * @brief Get the mask, where set bits indicate positions that are masked out.
+     */
+    std::shared_ptr<GenomeLocusSet> get_mask() const
     {
-        prepare_region_filters();
-        return region_filter_;
+        prepare_mask();
+        return mask_;
     }
+
+    /**
+     * @brief Check that the mask fits with a given reference genome, if given.
+     */
+    void check_mask_against_reference(
+        std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
+    ) const;
+
+    /**
+     * @brief Create the tranform function to be applied to the stream for masking.
+     */
+    std::function<void( genesis::population::Variant& )> make_mask_transform() const;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -101,20 +117,13 @@ public:
 private:
 
     // Filters for rows and columns
-    CliOption<std::vector<std::string>> filter_region_;
-    CliOption<std::vector<std::string>> filter_region_list_;
-    CliOption<std::vector<std::string>> filter_region_bed_;
-    CliOption<std::vector<std::string>> filter_region_gff_;
-    CliOption<std::vector<std::string>> filter_region_bim_;
-    CliOption<std::vector<std::string>> filter_region_vcf_;
-    CliOption<std::vector<std::string>> filter_region_fasta_;
-    CliOption<size_t>                   filter_region_fasta_min_ = 0;
-    CliOption<bool>                     filter_region_fasta_inv_ = false;
-    CliOption<std::string>              filter_region_set_ = "union";
+    CliOption<std::string> filter_mask_bed_;
+    CliOption<std::string> filter_mask_fasta_;
+    CliOption<size_t>      filter_mask_fasta_min_ = 0;
+    CliOption<bool>        filter_mask_fasta_inv_ = false;
 
-    // We keep the region filter here, so that it can be re-used for all inputs.
-    // This filter is created by combining (union or intersection) all input filter files.
-    mutable std::shared_ptr<GenomeLocusSet> region_filter_;
+    // We keep the mask here. Bits that are set here are masked!
+    mutable std::shared_ptr<GenomeLocusSet> mask_;
 
 };
 
