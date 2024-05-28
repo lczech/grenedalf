@@ -73,19 +73,19 @@ void setup_simulate( CLI::App& app )
     options->random_seed.option->group( "Settings" );
 
     // Pool Sizes
-    options->coverages.option = sub->add_option(
-        "--coverages",
-        options->coverages.value,
-        "Coverages of the samples to simulate, as a comma- or tab-separated list. "
-        "The coverage of each sample is used at the total count per position to randomly distribute "
+    options->read_depths.option = sub->add_option(
+        "--read-depths",
+        options->read_depths.value,
+        "Read depths of the samples to simulate, as a comma- or tab-separated list. "
+        "The read depth of each sample is used at the total count per position to randomly distribute "
         "across nucleotides. Per sample, the list can either contain a single number, which will "
-        "be used as the coverage for that sample at each position, or it can be two numbers "
-        "separated by a slash, which will be used as min/max to generate random coverage at "
+        "be used as the read depth for that sample at each position, or it can be two numbers "
+        "separated by a slash, which will be used as min/max to generate random read depth at "
         "each position. "
         "The length of this list is also used to determine the number of samples to simulate."
     );
-    options->coverages.option->group( "Samples" );
-    options->coverages.option->required();
+    options->read_depths.option->group( "Samples" );
+    options->read_depths.option->required();
 
     // Chromosome
     options->chromosome.option = sub->add_option(
@@ -213,13 +213,13 @@ SimulateFormat get_format( SimulateOptions const& options )
 }
 
 /**
- * @brief Parse the coverages option, which gives the number of samples, and their coverages.
+ * @brief Parse the read depths option, which gives the number of samples, and their read depths.
  */
-std::vector<std::pair<size_t,size_t>> get_coverages_( SimulateOptions const& options )
+std::vector<std::pair<size_t,size_t>> get_read_depths_( SimulateOptions const& options )
 {
     using namespace genesis::utils;
 
-    auto const vals = split( options.coverages.value, ",\t" );
+    auto const vals = split( options.read_depths.value, ",\t" );
     auto result = std::vector<std::pair<size_t,size_t>>( vals.size() );
     for( size_t i = 0; i < vals.size(); ++i ) {
         try {
@@ -231,16 +231,16 @@ std::vector<std::pair<size_t,size_t>> get_coverages_( SimulateOptions const& opt
                 auto const min = convert_from_string<size_t>( trim( minmax[0] ));
                 auto const max = convert_from_string<size_t>( trim( minmax[1] ));
                 if( min > max ) {
-                    throw std::runtime_error("Invalid coverage value with min > max");
+                    throw std::runtime_error("Invalid read depth value with min > max");
                 }
                 result[i] = { min, max };
             } else {
-                throw std::runtime_error("Invalid coverage value.");
+                throw std::runtime_error("Invalid read depth value.");
             }
         } catch(...) {
             throw CLI::ValidationError(
-                options.coverages.option->get_name(),
-                "Invalid coverage value: " + vals[i]
+                options.read_depths.option->get_name(),
+                "Invalid read depth value: " + vals[i]
             );
         }
     }
@@ -302,8 +302,8 @@ void run_simulate( SimulateOptions const& options )
         );
     }
 
-    // Get coverages and sample count (length of coverage list).
-    auto const sample_coverages = get_coverages_( options );
+    // Get read_depths and sample count (length of read depth list).
+    auto const sample_read_depths = get_read_depths_( options );
 
     // Get and check mutation count to avoid infinite loop when picking mutation positions.
     if( ! *options.mutation_count.option && ! *options.mutation_rate.option ) {
@@ -325,8 +325,8 @@ void run_simulate( SimulateOptions const& options )
         );
     }
     LOG_MSG << "Generating genome of length " << options.length.value << " with a total of "
-            << mutation_count << " mutated positions, for " << sample_coverages.size()
-            << " sample" << ( sample_coverages.size() == 1 ? "" : "s" ) << ".";
+            << mutation_count << " mutated positions, for " << sample_read_depths.size()
+            << " sample" << ( sample_read_depths.size() == 1 ? "" : "s" ) << ".";
     if( mutation_count == 0 ) {
         LOG_WARN << "Zero mutations will be produced. All positions in the file will be invariant. "
                  << "Consider increasing " << options.mutation_rate.option->get_name();
@@ -352,10 +352,10 @@ void run_simulate( SimulateOptions const& options )
         options.max_phred_score.value
     );
 
-    // Prepare distributions for per sample coverages.
-    std::vector<std::uniform_int_distribution<size_t>> sample_coverage_distribs;
-    for( auto const& coverage : sample_coverages ) {
-        sample_coverage_distribs.emplace_back( coverage.first, coverage.second );
+    // Prepare distributions for per sample read depths.
+    std::vector<std::uniform_int_distribution<size_t>> sample_read_depth_distribs;
+    for( auto const& depth : sample_read_depths ) {
+        sample_read_depth_distribs.emplace_back( depth.first, depth.second );
     }
 
     // -------------------------------------------------------------------------
@@ -384,9 +384,9 @@ void run_simulate( SimulateOptions const& options )
         (*sim_ofs) << "\t" << allele_to_char_( a1 );
 
         // Go through all samples.
-        for( size_t s = 0; s < sample_coverages.size(); ++s ) {
-            // Simulate a coverage for the sample.
-            auto const coverage = sample_coverage_distribs[s]( engine );
+        for( size_t s = 0; s < sample_read_depths.size(); ++s ) {
+            // Simulate a read depth for the sample.
+            auto const read_depth = sample_read_depth_distribs[s]( engine );
 
             // Draw major allele frequency for the sample. If this is an invariant position,
             // we use a frequency of 1, and with that can simply use the same code for
@@ -397,28 +397,28 @@ void run_simulate( SimulateOptions const& options )
                 : allele_freq_distrib( engine )
             ;
 
-            // Distribute the coverage to the two alleles. For simplicity, we assume
-            // read count = coverage at every position. Might elaborate on this in the future.
+            // Distribute the read depth to the two alleles. For simplicity, we assume
+            // read count = read depth at every position. Might elaborate on this in the future.
             // We use an array of counts to store them, in the order of sync files, ATCG N D.
             // This works for now. For pileup, we just access the two alleles that we need,
             // but ignore the rest.
             std::array<size_t, 6> counts = {{ 0, 0, 0, 0, 0, 0 }};
-            counts[ a1 ] = coverage * fraction;
-            counts[ a2 ] = coverage - counts[ a1 ];
+            counts[ a1 ] = read_depth * fraction;
+            counts[ a2 ] = read_depth - counts[ a1 ];
 
             // Write sample.
             switch( format ) {
                 case SimulateFormat::kPileup: {
                     // Pileup needs repeated chars of each of the two alleles.
                     // For simplicity, we just output both of them in order.
-                    (*sim_ofs) << "\t" << coverage << "\t";
+                    (*sim_ofs) << "\t" << read_depth << "\t";
                     (*sim_ofs) << std::string( counts[ a1 ], allele_to_char_( a1 ) );
                     (*sim_ofs) << std::string( counts[ a2 ], allele_to_char_( a2 ) );
 
                     // Draw and write some random quality scores if needed.
                     if( options.with_quality_scores.value ) {
                         (*sim_ofs) << "\t";
-                        for( size_t i = 0; i < coverage; ++i ) {
+                        for( size_t i = 0; i < read_depth; ++i ) {
                             auto const score = phred_scores_distrib( engine );
                             (*sim_ofs) << quality_encode_from_phred_score( score );
                         }

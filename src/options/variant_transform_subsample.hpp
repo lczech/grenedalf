@@ -83,7 +83,7 @@ public:
 private:
 
     // Sample subsample transform
-    CliOption<size_t> max_coverage_ = 0;
+    CliOption<size_t> max_read_depth_ = 0;
     CliOption<std::string> method_ = "subscale";
 
 };

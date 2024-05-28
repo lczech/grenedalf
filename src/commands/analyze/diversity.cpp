@@ -114,19 +114,19 @@ void setup_diversity( CLI::App& app )
     //     "count are filtered out. Used for the identification of SNPs."
     // )->group( "Settings" );
     //
-    // // Minimum coverage
-    // options->min_coverage.option = sub->add_option(
-    //     "--min-coverage",
-    //     options->min_coverage.value,
-    //     "Minimum coverage of a site. Sites with a lower coverage will not be considered "
-    //     "for SNP identification and coverage estimation."
+    // // Minimum read depth
+    // options->min_read_depth.option = sub->add_option(
+    //     "--min-read-depth",
+    //     options->min_read_depth.value,
+    //     "Minimum read depth of a site. Sites with a lower read depth will not be considered "
+    //     "for SNP identification and read depth estimation."
     // )->group( "Settings" );
     //
-    // // Maximum coverage
-    // options->max_coverage.option = sub->add_option(
-    //     "--max-coverage",
-    //     options->max_coverage.value,
-    //     "Maximum coverage used for SNP identification. Coverage in ALL populations has to be lower "
+    // // Maximum read depth
+    // options->max_read_depth.option = sub->add_option(
+    //     "--max-read-depth",
+    //     options->max_read_depth.value,
+    //     "Maximum read depth used for SNP identification. Read depth in ALL populations has to be lower "
     //     "or equal to this threshold, otherwise no SNP will be called."
     // )->group( "Settings" );
 
@@ -135,11 +135,11 @@ void setup_diversity( CLI::App& app )
     // TODO
     // add tajima d method, and other normalization stuff
 
-    // Minimum coverage fraction
-    // options->min_coverage_fraction.option = sub->add_option(
-    //     "--min-coverage-fraction",
-    //     options->min_coverage_fraction.value,
-    //     "Minimum coverage fraction of a window being between `--min-coverage` and `--max-coverage` "
+    // Minimum read depth fraction
+    // options->min_read_depth_fraction.option = sub->add_option(
+    //     "--min-read-depth-fraction",
+    //     options->min_read_depth_fraction.value,
+    //     "Minimum read depth fraction of a window being between `--min-read-depth` and `--max-read-depth` "
     //     "in ALL populations that needs to be reached in order to compute the diversity measures."
     // )->group( "Settings" );
 
@@ -349,9 +349,9 @@ DiversityOutputData prepare_output_data_(
         std::vector<std::string> fields;
 
         // fields.push_back( "variant_count" );
-        // fields.push_back( "coverage_count" );
+        // fields.push_back( "read_depth_count" );
         fields.push_back( "snp_count" );
-        fields.push_back( "coverage_fraction" );
+        fields.push_back( "read_depth_fraction" );
 
         if( output_data.compute_theta_pi ) {
             // fields.push_back( "theta_pi_abs" );
@@ -450,17 +450,17 @@ void write_output_popoolation_(
         //     stats[SampleCountsFilterTag::kPassed] == results.processed_count,
         //     "stats[SampleCountsFilterTag::kPassed] != results.processed_count"
         // );
-        auto const coverage = static_cast<double>(
+        auto const read_depth = static_cast<double>(
             stats[SampleCountsFilterTag::kPassed] + stats[SampleCountsFilterTag::kNotSnp]
         );
         auto const window_width = static_cast<double>( window.width() );
-        auto const coverage_fraction = coverage / window_width;
+        auto const read_depth_fraction = read_depth / window_width;
 
         // Write fixed columns.
         (*ofs) << window.chromosome();
         (*ofs) << "\t" << anchor_position( window, WindowAnchorType::kIntervalMidpoint );
         (*ofs) << "\t" << stats[SampleCountsFilterTag::kPassed];
-        (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << coverage_fraction;
+        (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << read_depth_fraction;
         if( std::isfinite( value ) ) {
             (*ofs) << "\t" << std::fixed << std::setprecision( 9 ) << value;
         } else {
@@ -544,20 +544,20 @@ void write_output_table_(
 
     // Write the per-pair diversity values in the correct order.
     for( size_t i = 0; i < sample_names.size(); ++i ) {
-        auto const coverage = sample_filter_stats[i][SampleCountsFilterTag::kPassed] + sample_filter_stats[i][SampleCountsFilterTag::kNotSnp];
+        auto const read_depth = sample_filter_stats[i][SampleCountsFilterTag::kPassed] + sample_filter_stats[i][SampleCountsFilterTag::kNotSnp];
         auto const window_width = static_cast<double>( window.width() );
-        auto const coverage_fraction = static_cast<double>( coverage ) / window_width;
+        auto const read_depth_fraction = static_cast<double>( read_depth ) / window_width;
 
         auto const& div_calc = sample_diversity_calculators[i];
-        auto const div_calc_result = div_calc.get_result( coverage );
+        auto const div_calc_result = div_calc.get_result( read_depth );
         // auto const div_calc_result = div_calc.get_result( window.width() );
 
         // Meta info per sample
         // (*table_ofs) << output_data.sep_char << div_calc.variant_count;
-        // (*table_ofs) << output_data.sep_char << div_calc.coverage_count;
+        // (*table_ofs) << output_data.sep_char << div_calc.read_depth_count;
         (*table_ofs) << output_data.sep_char << "TODO"; // TODO sample_filter_stats[SampleCountsFilterTag::kPassed]; // div_calc_result.processed_count;
         (*table_ofs) << output_data.sep_char << std::fixed << std::setprecision( 3 )
-                     << coverage_fraction;
+                     << read_depth_fraction;
 
         // Values
         if( output_data.compute_theta_pi ) {
@@ -642,7 +642,7 @@ void run_diversity( DiversityOptions const& options )
     // TODO right now, the numerical filters are applied in the diversity calculator, instead
     // of on the stream beforehand - this will change soon once we support variant filters
     // with masking properly. but in the meantime, that means that the subsampling will be
-    // applied _before_ the max coverage... need to fix asap!
+    // applied _before_ the max read_depth... need to fix asap!
     options.transform_subsample.add_subsample_transformation( options.variant_input );
 
     // Get all samples names from the input file.

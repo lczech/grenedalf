@@ -461,7 +461,7 @@ void VariantInputOptions::prepare_stream_single_file_() const
     // we want:
     //  - filter for each input source (to skip regions etc), taking a variant
     //  - filter for combined variant of the final stream, eg for ref base guessing
-    //  - filter for each BaseCounts, eg for min coverage per sample
+    //  - filter for each BaseCounts, eg for min read depth per sample
     add_individual_filters_and_transforms_to_stream_( stream_ );
     add_combined_filters_and_transforms_to_stream_( stream_ );
 

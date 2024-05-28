@@ -56,9 +56,9 @@ public:
     // Using defaults from PoPoolation, see Variance-sliding.pl
     CliOption<std::string> measure = "all";
     // CliOption<size_t> min_count = 2;
-    // CliOption<size_t> min_coverage = 4;
-    // CliOption<size_t> max_coverage = 1000000;
-    // CliOption<double> min_coverage_fraction = 0.6;
+    // CliOption<size_t> min_read_depth = 4;
+    // CliOption<size_t> max_read_depth = 1000000;
+    // CliOption<double> min_read_depth_fraction = 0.6;
 
     // Compatibility
     CliOption<bool> with_popoolation_bugs = false;

@@ -38,11 +38,11 @@
 #include <vector>
 
 // =================================================================================================
-//      Sample Pairs Options
+//      Fst Processor Options
 // =================================================================================================
 
 /**
- * @brief Create an Fst Processpr, including the selection of pairs of samples.
+ * @brief Create an Fst Processor, including the selection of pairs of samples.
  *
  * This set of options allows to select a set of sample pairs, for instance to compute pairwise
  * measures such as FST. Using these options, the subset of samples can be selected by the user.

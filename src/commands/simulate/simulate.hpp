@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,8 +45,8 @@ public:
     CliOption<std::string> format = "pileup";
     CliOption<std::uint32_t> random_seed;
 
-    // Sample coverages, as single numbers, or as min/max entries per sample.
-    CliOption<std::string> coverages;
+    // Sample read depths, as single numbers, or as min/max entries per sample.
+    CliOption<std::string> read_depths;
 
     // Chromosome and positions
     CliOption<std::string> chromosome = "A";

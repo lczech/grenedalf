@@ -42,18 +42,18 @@ class FrequencyOptions
 {
 public:
 
-    CliOption<bool> write_sample_counts    = false;
-    CliOption<bool> write_sample_coverage  = false;
-    CliOption<bool> write_sample_ref_freq  = false;
-    CliOption<bool> write_sample_alt_freq  = false;
+    CliOption<bool> write_sample_counts     = false;
+    CliOption<bool> write_sample_read_depth = false;
+    CliOption<bool> write_sample_ref_freq   = false;
+    CliOption<bool> write_sample_alt_freq   = false;
 
-    CliOption<bool> write_total_counts     = false;
-    CliOption<bool> write_total_coverage   = false;
-    CliOption<bool> write_total_frequency  = false;
+    CliOption<bool> write_total_counts      = false;
+    CliOption<bool> write_total_read_depth  = false;
+    CliOption<bool> write_total_frequency   = false;
 
-    CliOption<bool> write_invariants       = false;
-    CliOption<bool> omit_ref_alt_bases     = false;
-    CliOption<bool> omit_alt_bases         = false;
+    CliOption<bool> write_invariants        = false;
+    CliOption<bool> omit_ref_alt_bases      = false;
+    CliOption<bool> omit_alt_bases          = false;
 
     VariantInputOptions variant_input;
     TableOutputOptions  table_output;

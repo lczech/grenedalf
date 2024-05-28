@@ -55,11 +55,11 @@ void setup_frequency( CLI::App& app )
         "If set, write 'REF_CNT' and 'ALT_CNT' columns per sample, "
         "containing the REF and ALT base counts at the position for each sample."
     )->group( "Settings" );
-    options->write_sample_coverage.option = sub->add_flag(
-        "--write-sample-coverage",
-        options->write_sample_coverage.value,
-        "If set, write a 'COV' column per sample, "
-        "containing the coverage (sum of REF and ALT) counts of each sample."
+    options->write_sample_read_depth.option = sub->add_flag(
+        "--write-sample-read-depth",
+        options->write_sample_read_depth.value,
+        "If set, write a 'DEPTH' column per sample, "
+        "containing the read depth (sum of REF and ALT) counts of each sample."
     )->group( "Settings" );
     options->write_sample_ref_freq.option = sub->add_flag(
         "--write-sample-ref-freq",
@@ -83,11 +83,11 @@ void setup_frequency( CLI::App& app )
         "If set, write the 'REF_CNT' and 'ALT_CNT' columns for the total, "
         "which contain the REF and ALT base counts at the position across all samples."
     )->group( "Settings" );
-    options->write_total_coverage.option = sub->add_flag(
-        "--write-total-coverage",
-        options->write_total_coverage.value,
-        "If set, write the 'COV' column for the total, "
-        "containing the coverage (sum of REF and ALT) counts across all samples."
+    options->write_total_read_depth.option = sub->add_flag(
+        "--write-total-read-depth",
+        options->write_total_read_depth.value,
+        "If set, write the 'DEPTH' column for the total, "
+        "containing the read_depth (sum of REF and ALT) counts across all samples."
     )->group( "Settings" );
     options->write_total_frequency.option = sub->add_flag(
         "--write-total-frequency",
@@ -210,8 +210,8 @@ void run_frequency( FrequencyOptions const& options )
         fields.emplace_back( "ALT_CNT" );
         write_anything = true;
     }
-    if( options.write_sample_coverage.value ) {
-        fields.emplace_back( "COV" );
+    if( options.write_sample_read_depth.value ) {
+        fields.emplace_back( "DEPTH" );
         write_anything = true;
     }
     if( options.write_sample_ref_freq.value || options.write_sample_alt_freq.value ) {
@@ -230,8 +230,8 @@ void run_frequency( FrequencyOptions const& options )
         freq_ofs << sep_char << "TOTAL.ALT_CNT";
         write_anything = true;
     }
-    if( options.write_total_coverage.value ) {
-        freq_ofs << sep_char << "TOTAL.COV";
+    if( options.write_total_read_depth.value ) {
+        freq_ofs << sep_char << "TOTAL.DEPTH";
         write_anything = true;
     }
     if( options.write_total_frequency.value ) {
@@ -325,7 +325,7 @@ void run_frequency( FrequencyOptions const& options )
                 freq_ofs << sep_char << ref_cnt;
                 freq_ofs << sep_char << alt_cnt;
             }
-            if( options.write_sample_coverage.value ) {
+            if( options.write_sample_read_depth.value ) {
                 freq_ofs << sep_char << cnt_sum;
             }
             if( options.write_sample_ref_freq.value || options.write_sample_alt_freq.value ) {
@@ -348,7 +348,7 @@ void run_frequency( FrequencyOptions const& options )
             freq_ofs << sep_char << total_ref_cnt;
             freq_ofs << sep_char << total_alt_cnt;
         }
-        if( options.write_total_coverage.value ) {
+        if( options.write_total_read_depth.value ) {
             freq_ofs << sep_char << total_cnt_sum;
         }
         if( options.write_total_frequency.value ) {
