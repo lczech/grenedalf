@@ -52,7 +52,7 @@ void VariantFilterNumericalOptions::add_sample_filter_opts_to_app(
 ) {
     // Add all three types of sample filters.
     add_sample_count_filter_opts_to_app(    sub, true, true, group );
-    add_sample_coverage_filter_opts_to_app( sub, true, true, group );
+    add_sample_read_depth_filter_opts_to_app( sub, true, true, group );
     add_sample_snp_filter_opts_to_app(      sub, true, true, group );
 }
 
@@ -98,35 +98,35 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
     sample_del_count.option->group( group );
 }
 
-void VariantFilterNumericalOptions::add_sample_coverage_filter_opts_to_app(
+void VariantFilterNumericalOptions::add_sample_read_depth_filter_opts_to_app(
     CLI::App* sub,
-    bool add_sample_min_coverage,
-    bool add_sample_max_coverage,
+    bool add_sample_min_read_depth,
+    bool add_sample_max_read_depth,
     std::string const& group
 ) {
-    // Add option for min coverage.
-    if( add_sample_min_coverage ) {
-        sample_min_coverage.option = sub->add_option(
-            "--filter-sample-min-coverage",
-            sample_min_coverage.value,
-            "Minimum coverage expected for a position in a sample to be considered covered. "
+    // Add option for min read depth.
+    if( add_sample_min_read_depth ) {
+        sample_min_read_depth.option = sub->add_option(
+            "--filter-sample-min-read-depth",
+            sample_min_read_depth.value,
+            "Minimum read depth expected for a position in a sample to be considered covered. "
             "If the sum of nucleotide counts (in `ACGT`) at a given position in a sample "
             "is less than the provided value, the sample is ignored at this position."
         );
-        sample_min_coverage.option->group( group );
+        sample_min_read_depth.option->group( group );
     }
 
-    // Add option for max coverage.
-    if( add_sample_max_coverage ) {
-        sample_max_coverage.option = sub->add_option(
-            "--filter-sample-max-coverage",
-            sample_max_coverage.value,
-            "Maximum coverage expected for a position in a sample to be considered covered. "
+    // Add option for max read depth.
+    if( add_sample_max_read_depth ) {
+        sample_max_read_depth.option = sub->add_option(
+            "--filter-sample-max-read-depth",
+            sample_max_read_depth.value,
+            "Maximum read depth expected for a position in a sample to be considered covered. "
             "If the sum of nucleotide counts (in `ACGT`) at a given position in a sample "
             "is greater than the provided value, the sample is ignored at this position. "
-            "This can for example be used to filter spuriously high coverage positions."
+            "This can for example be used to filter spuriously high read depth positions."
         );
-        sample_max_coverage.option->group( group );
+        sample_max_read_depth.option->group( group );
     }
 }
 
@@ -179,41 +179,41 @@ void VariantFilterNumericalOptions::add_total_filter_opts_to_app(
     std::string const& group
 ) {
     // Add all three types of sample filters.
-    add_total_coverage_filter_opts_to_app( sub, true, true, group );
+    add_total_read_depth_filter_opts_to_app( sub, true, true, group );
     add_total_snp_filter_opts_to_app(      sub, true, true, group );
     add_total_snp_count_opts_to_app(       sub, true, true, group );
     add_total_freq_filter_opts_to_app(     sub, group );
 }
 
-void VariantFilterNumericalOptions::add_total_coverage_filter_opts_to_app(
+void VariantFilterNumericalOptions::add_total_read_depth_filter_opts_to_app(
     CLI::App* sub,
-    bool add_total_min_coverage,
-    bool add_total_max_coverage,
+    bool add_total_min_read_depth,
+    bool add_total_max_read_depth,
     std::string const& group
 ) {
-    // Add option for min coverage.
-    if( add_total_min_coverage ) {
-        total_min_coverage.option = sub->add_option(
-            "--filter-total-min-coverage",
-            total_min_coverage.value,
-            "Minimum coverage expected for a position in total to be considered covered. "
+    // Add option for min read depth.
+    if( add_total_min_read_depth ) {
+        total_min_read_depth.option = sub->add_option(
+            "--filter-total-min-read-depth",
+            total_min_read_depth.value,
+            "Minimum read depth expected for a position in total to be considered covered. "
             "If the sum of nucleotide counts (in `ACGT`) at a given position in total "
             "(across all samples) is less than the provided value, the position is ignored."
         );
-        total_min_coverage.option->group( group );
+        total_min_read_depth.option->group( group );
     }
 
-    // Add option for max coverage.
-    if( add_total_max_coverage ) {
-        total_max_coverage.option = sub->add_option(
-            "--filter-total-max-coverage",
-            total_max_coverage.value,
-            "Maximum coverage expected for a position in total to be considered covered. "
+    // Add option for max read depth.
+    if( add_total_max_read_depth ) {
+        total_max_read_depth.option = sub->add_option(
+            "--filter-total-max-read-depth",
+            total_max_read_depth.value,
+            "Maximum read depth expected for a position in total to be considered covered. "
             "If the sum of nucleotide counts (in `ACGT`) at a given position in total "
             "(across all samples) is greater than the provided value, the position is ignored. "
-            "This can for example be used to filter spuriously high coverage positions."
+            "This can for example be used to filter spuriously high read depth positions."
         );
-        total_max_coverage.option->group( group );
+        total_max_read_depth.option->group( group );
     }
 
     // Add deletions count limit
@@ -345,12 +345,12 @@ VariantFilterNumericalOptions::get_sample_filter_params(
         filter_params.deletions_count_limit = sample_del_count.value;
         any_provided = true;
     }
-    if( sample_min_coverage.option && *sample_min_coverage.option ) {
-        filter_params.min_coverage = sample_min_coverage.value;
+    if( sample_min_read_depth.option && *sample_min_read_depth.option ) {
+        filter_params.min_read_depth = sample_min_read_depth.value;
         any_provided = true;
     }
-    if( sample_max_coverage.option && *sample_max_coverage.option ) {
-        filter_params.max_coverage = sample_max_coverage.value;
+    if( sample_max_read_depth.option && *sample_max_read_depth.option ) {
+        filter_params.max_read_depth = sample_max_read_depth.value;
         any_provided = true;
     }
     if( sample_only_snps.option && *sample_only_snps.option ) {
@@ -416,12 +416,12 @@ VariantFilterNumericalOptions::get_total_filter_params(
     bool any_provided = false;
 
     // Same as above.
-    if( total_min_coverage.option && *total_min_coverage.option ) {
-        filter_params.min_coverage = total_min_coverage.value;
+    if( total_min_read_depth.option && *total_min_read_depth.option ) {
+        filter_params.min_read_depth = total_min_read_depth.value;
         any_provided = true;
     }
-    if( total_max_coverage.option && *total_max_coverage.option ) {
-        filter_params.max_coverage = total_max_coverage.value;
+    if( total_max_read_depth.option && *total_max_read_depth.option ) {
+        filter_params.max_read_depth = total_max_read_depth.value;
         any_provided = true;
     }
     if( total_del_count.option && *total_del_count.option ) {

@@ -88,10 +88,10 @@ public:
         std::string const& group = "Numerical Filters"
     );
 
-    void add_sample_coverage_filter_opts_to_app(
+    void add_sample_read_depth_filter_opts_to_app(
         CLI::App* sub,
-        bool add_sample_min_coverage = true,
-        bool add_sample_max_coverage = true,
+        bool add_sample_min_read_depth = true,
+        bool add_sample_max_read_depth = true,
         std::string const& group = "Numerical Filters"
     );
 
@@ -111,10 +111,10 @@ public:
         std::string const& group = "Numerical Filters"
     );
 
-    void add_total_coverage_filter_opts_to_app(
+    void add_total_read_depth_filter_opts_to_app(
         CLI::App* sub,
-        bool add_total_min_coverage = true,
-        bool add_total_max_coverage = true,
+        bool add_total_min_read_depth = true,
+        bool add_total_max_read_depth = true,
         std::string const& group = "Numerical Filters"
     );
 
@@ -215,14 +215,14 @@ public:
     CliOption<size_t> sample_min_count           = 0;
     CliOption<size_t> sample_max_count           = 0;
     CliOption<size_t> sample_del_count           = 0;
-    CliOption<size_t> sample_min_coverage        = 0;
-    CliOption<size_t> sample_max_coverage        = 0;
+    CliOption<size_t> sample_min_read_depth      = 0;
+    CliOption<size_t> sample_max_read_depth      = 0;
     CliOption<bool>   sample_only_snps           = false;
     CliOption<bool>   sample_only_biallelic_snps = false;
 
     // Filters for Variant, modelled after VariantFilter
-    CliOption<size_t> total_min_coverage         = 0;
-    CliOption<size_t> total_max_coverage         = 0;
+    CliOption<size_t> total_min_read_depth       = 0;
+    CliOption<size_t> total_max_read_depth       = 0;
     CliOption<size_t> total_del_count            = 0;
     CliOption<bool>   total_only_snps            = false;
     CliOption<bool>   total_only_biallelic_snps  = false;

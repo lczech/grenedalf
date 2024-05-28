@@ -71,7 +71,7 @@ void setup_diversity( CLI::App& app )
     // on, so that we can keep track of covered invariant sites for the relative theta computation.
     // We also do not add total filters here, as diversity is computed per-sample.
     options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
-    options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
+    options->filter_numerical.add_sample_read_depth_filter_opts_to_app( sub );
 
     // We always need the min count option, and it cannot be 0.
     options->filter_numerical.sample_min_count.option->required();
@@ -131,6 +131,9 @@ void setup_diversity( CLI::App& app )
     // )->group( "Settings" );
 
     // TODO reactivate, but per sample, instead of for all populations
+
+    // TODO
+    // add tajima d method, and other normalization stuff
 
     // Minimum coverage fraction
     // options->min_coverage_fraction.option = sub->add_option(
@@ -261,15 +264,15 @@ DiversityOutputData prepare_output_data_(
                 options.filter_numerical.sample_min_count.option->get_name(),
                 "The pool-seq corrected computation of Tajima's D requires the minimum allele count "
                 "to be exactly 2, according to Kofler et al. In case 2 is insufficient, "
-                "we recommend to subsample the reads to a smaller coverage. "
+                "we recommend to subsample the reads to a smaller read depth. "
                 "Alternatively, deactivate the compuation of Tajima's D."
             );
         }
-        if( options.filter_numerical.sample_min_coverage.value == 0 ) {
+        if( options.filter_numerical.sample_min_read_depth.value == 0 ) {
             throw CLI::ValidationError(
-                options.filter_numerical.sample_min_coverage.option->get_name(),
+                options.filter_numerical.sample_min_read_depth.option->get_name(),
                 "The pool-seq corrected computation of Tajima's D "
-                "requires the minimum coverage to be set to a value greater than 0. "
+                "requires the minimum read depth to be set to a value greater than 0. "
                 "Alternatively, deactivate the compuation of Tajima's D."
             );
         }
@@ -351,12 +354,12 @@ DiversityOutputData prepare_output_data_(
         fields.push_back( "coverage_fraction" );
 
         if( output_data.compute_theta_pi ) {
-            fields.push_back( "theta_pi_abs" );
-            fields.push_back( "theta_pi_rel" );
+            // fields.push_back( "theta_pi_abs" );
+            fields.push_back( "theta_pi" );
         }
         if( output_data.compute_theta_wa ) {
-            fields.push_back( "theta_watterson_abs" );
-            fields.push_back( "theta_watterson_rel" );
+            // fields.push_back( "theta_watterson_abs" );
+            fields.push_back( "theta_watterson" );
         }
         if( output_data.compute_tajima_d ) {
             fields.push_back( "tajimas_d" );
@@ -392,13 +395,17 @@ std::vector<genesis::population::DiversityPoolCalculator> get_diversity_calculat
     // We here re-use the numerical filter settings as provided by the user.
     DiversityPoolSettings pool_settings;
     pool_settings.min_count    = filter.min_count;
-    pool_settings.min_coverage = filter.min_coverage;
-    pool_settings.max_coverage = filter.max_coverage;
+    pool_settings.min_read_depth = filter.min_read_depth;
+    pool_settings.max_read_depth = filter.max_read_depth;
     pool_settings.tajima_denominator_policy
         = options.with_popoolation_bugs.value
         ? TajimaDenominatorPolicy::kWithPopoolatioBugs
         : TajimaDenominatorPolicy::kWithoutPopoolatioBugs
     ;
+
+    // TODO
+    // add the other options here
+
     std::vector<DiversityPoolCalculator> sample_diversity_calculators;
     for( size_t i = 0; i < sample_names.size(); ++i ) {
         sample_diversity_calculators.emplace_back(
@@ -438,10 +445,11 @@ void write_output_popoolation_(
         DiversityPoolCalculator::Result const& results,
         double value
     ) {
-        internal_check(
-            stats[SampleCountsFilterTag::kPassed] == results.processed_count,
-            "stats[SampleCountsFilterTag::kPassed] != results.processed_count"
-        );
+        (void) results; // TODO
+        // internal_check(
+        //     stats[SampleCountsFilterTag::kPassed] == results.processed_count,
+        //     "stats[SampleCountsFilterTag::kPassed] != results.processed_count"
+        // );
         auto const coverage = static_cast<double>(
             stats[SampleCountsFilterTag::kPassed] + stats[SampleCountsFilterTag::kNotSnp]
         );
@@ -451,7 +459,7 @@ void write_output_popoolation_(
         // Write fixed columns.
         (*ofs) << window.chromosome();
         (*ofs) << "\t" << anchor_position( window, WindowAnchorType::kIntervalMidpoint );
-        (*ofs) << "\t" << results.processed_count;
+        (*ofs) << "\t" << stats[SampleCountsFilterTag::kPassed];
         (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << coverage_fraction;
         if( std::isfinite( value ) ) {
             (*ofs) << "\t" << std::fixed << std::setprecision( 9 ) << value;
@@ -473,7 +481,7 @@ void write_output_popoolation_(
                 window,
                 sample_filter_stats[i],
                 div_calc_result,
-                div_calc_result.theta_pi_relative
+                div_calc_result.theta_pi
             );
         }
 
@@ -484,7 +492,7 @@ void write_output_popoolation_(
                 window,
                 sample_filter_stats[i],
                 div_calc_result,
-                div_calc_result.theta_watterson_relative
+                div_calc_result.theta_watterson
             );
         }
 
@@ -547,18 +555,18 @@ void write_output_table_(
         // Meta info per sample
         // (*table_ofs) << output_data.sep_char << div_calc.variant_count;
         // (*table_ofs) << output_data.sep_char << div_calc.coverage_count;
-        (*table_ofs) << output_data.sep_char << div_calc_result.processed_count;
+        (*table_ofs) << output_data.sep_char << "TODO"; // TODO sample_filter_stats[SampleCountsFilterTag::kPassed]; // div_calc_result.processed_count;
         (*table_ofs) << output_data.sep_char << std::fixed << std::setprecision( 3 )
                      << coverage_fraction;
 
         // Values
         if( output_data.compute_theta_pi ) {
-            write_table_field_( div_calc_result.theta_pi_absolute );
-            write_table_field_( div_calc_result.theta_pi_relative );
+            // write_table_field_( div_calc_result.theta_pi_absolute );
+            write_table_field_( div_calc_result.theta_pi );
         }
         if( output_data.compute_theta_wa ) {
-            write_table_field_( div_calc_result.theta_watterson_absolute );
-            write_table_field_( div_calc_result.theta_watterson_relative );
+            // write_table_field_( div_calc_result.theta_watterson_absolute );
+            write_table_field_( div_calc_result.theta_watterson );
         }
         if( output_data.compute_tajima_d ) {
             write_table_field_( div_calc_result.tajima_d );

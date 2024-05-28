@@ -93,8 +93,8 @@ void setup_fst_cathedral( CLI::App& app )
     // We do not add the only-SNP filter here as a user option, as we always filter out invariant
     // (non-SNP) sites below anyway. They do not contribute to the FST computation.
     options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
-    options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
-    options->filter_numerical.add_total_coverage_filter_opts_to_app( sub );
+    options->filter_numerical.add_sample_read_depth_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_read_depth_filter_opts_to_app( sub );
     options->filter_numerical.add_total_snp_filter_opts_to_app( sub, false, true );
     options->filter_numerical.add_total_snp_count_opts_to_app( sub );
     options->filter_numerical.add_total_freq_filter_opts_to_app( sub );
@@ -241,6 +241,8 @@ void run_fst_cathedral( FstCathedralOptions const& options )
             );
         }
     }
+
+    // TODO implement with proper window averaging and the other new options
 
     // -------------------------------------------------------------------------
     //     Main Loop

@@ -78,8 +78,8 @@ void setup_fst( CLI::App& app )
     // We do not add the only-SNP filter here as a user option, as we always filter out invariant
     // (non-SNP) sites below anyway. They do not contribute to the FST computation.
     options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
-    options->filter_numerical.add_sample_coverage_filter_opts_to_app( sub );
-    options->filter_numerical.add_total_coverage_filter_opts_to_app( sub );
+    options->filter_numerical.add_sample_read_depth_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_read_depth_filter_opts_to_app( sub );
     options->filter_numerical.add_total_snp_filter_opts_to_app( sub, false, true );
     options->filter_numerical.add_total_snp_count_opts_to_app( sub );
     options->filter_numerical.add_total_freq_filter_opts_to_app( sub );
@@ -261,7 +261,8 @@ void prepare_output_files_(
         target = options.file_output.get_output_target( base_name, "csv" );
 
         // Write the header line to it.
-        (*target) << "chrom" << sep_char << "start" << sep_char << "end" << sep_char << "snps";
+        // TODO fix
+        (*target) << "chrom" << sep_char << "start" << sep_char << "end"; // << sep_char << "snps";
         for( auto const& pair : sample_pairs ) {
             (*target) << sep_char << sample_names[pair.first] << ":" << sample_names[pair.second];
         }
@@ -311,9 +312,10 @@ PiVectorTuple get_pi_vectors_(
 
         // We print the values, scaled by number of variants
         // (i.e., the number of values that were added up there in the first place).
-        std::get<0>(result)[i] = cast_calc->get_pi_within()  / processor.get_processed_count();
-        std::get<1>(result)[i] = cast_calc->get_pi_between() / processor.get_processed_count();
-        std::get<2>(result)[i] = cast_calc->get_pi_total()   / processor.get_processed_count();
+        // TODO fix
+        std::get<0>(result)[i] = cast_calc->get_pi_within()  ; // / processor.get_processed_count();
+        std::get<1>(result)[i] = cast_calc->get_pi_between() ; // / processor.get_processed_count();
+        std::get<2>(result)[i] = cast_calc->get_pi_total()   ; // / processor.get_processed_count();
     }
 
     return result;
@@ -411,7 +413,9 @@ void print_output_line_(
     target << window.chromosome();
     target << sep_char << window.first_position();
     target << sep_char << window.last_position();
-    target << sep_char << processor.get_processed_count();
+    // TODO fix
+    // target << sep_char << processor.get_processed_count();
+    (void) processor;
 
     // Write the per-pair FST values in the correct order.
     for( auto const& fst : values ) {
@@ -441,7 +445,8 @@ void print_to_output_files_(
     FstCommandState& state
 ) {
     // Get the results and check them.
-    auto const& window_fst = processor.get_result();
+    auto const window_length = window.width();
+    auto const& window_fst = processor.get_result( window_length );
     internal_check(
         window_fst.size() == sample_pairs.size(),
         "Inconsistent size of window fst values and sample pairs."
@@ -468,7 +473,8 @@ void print_to_output_files_(
     // Skip empty windows if the user wants to.
     if(
         options.omit_na_windows.value && (
-            processor.get_processed_count() == 0 ||
+            // TODO fix
+            // processor.get_processed_count() == 0 ||
             std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
                 return std::isfinite( v );
             })

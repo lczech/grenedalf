@@ -1,5 +1,5 @@
-#ifndef GRENEDALF_OPTIONS_FST_PROCESSOR_H_
-#define GRENEDALF_OPTIONS_FST_PROCESSOR_H_
+#ifndef GRENEDALF_OPTIONS_WINDOW_AVERAGE_H_
+#define GRENEDALF_OPTIONS_WINDOW_AVERAGE_H_
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
@@ -26,63 +26,46 @@
 
 #include "CLI/CLI.hpp"
 
-#include "options/poolsizes.hpp"
-#include "options/window_average.hpp"
 #include "tools/cli_option.hpp"
 
-#include "genesis/population/function/fst_pool_processor.hpp"
+#include "genesis/population/function/window_average.hpp"
 
 #include <string>
-#include <utility>
-#include <tuple>
 #include <vector>
 
 // =================================================================================================
-//      Sample Pairs Options
+//      Window Average Options
 // =================================================================================================
 
 /**
- * @brief Create an Fst Processpr, including the selection of pairs of samples.
+ * @brief Window averaging options.
  *
- * This set of options allows to select a set of sample pairs, for instance to compute pairwise
- * measures such as FST. Using these options, the subset of samples can be selected by the user.
+ * We have several commands that want to compute averages of statistics across windows. There
+ * are different ways of doing that, so we offer this option here to select.
  */
-class FstProcessorOptions
+class WindowAverageOptions
 {
 public:
-
-    // -------------------------------------------------------------------------
-    //     Typedefs and Enums
-    // -------------------------------------------------------------------------
-
-    enum class FstMethod
-    {
-        kUnbiasedNei,
-        kUnbiasedHudson,
-        kKofler,
-        kKarlsson
-    };
 
     // -------------------------------------------------------------------------
     //     Constructor and Rule of Five
     // -------------------------------------------------------------------------
 
-    FstProcessorOptions()  = default;
-    virtual ~FstProcessorOptions() = default;
+    WindowAverageOptions()  = default;
+    ~WindowAverageOptions() = default;
 
-    FstProcessorOptions( FstProcessorOptions const& other ) = default;
-    FstProcessorOptions( FstProcessorOptions&& )            = default;
+    WindowAverageOptions( WindowAverageOptions const& other ) = default;
+    WindowAverageOptions( WindowAverageOptions&& )            = default;
 
-    FstProcessorOptions& operator= ( FstProcessorOptions const& other ) = default;
-    FstProcessorOptions& operator= ( FstProcessorOptions&& )            = default;
+    WindowAverageOptions& operator= ( WindowAverageOptions const& other ) = default;
+    WindowAverageOptions& operator= ( WindowAverageOptions&& )            = default;
 
     // -------------------------------------------------------------------------
     //     Setup Functions
     // -------------------------------------------------------------------------
 
-    void add_fst_processor_opts_to_app(
+    CLI::Option* add_window_average_opt_to_app(
         CLI::App* sub,
-        bool all_methods = true,
         std::string const& group = "Settings"
     );
 
@@ -90,18 +73,7 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
-    bool is_all_to_all() const;
-
-    FstMethod get_fst_method() const;
-
-    std::vector<std::pair<size_t, size_t>> get_sample_pairs(
-        std::vector<std::string> const& sample_names
-    ) const;
-
-    genesis::population::FstPoolProcessor get_fst_pool_processor(
-        std::vector<std::string> const& sample_names,
-        std::vector<std::pair<size_t, size_t>> const& sample_pairs
-    ) const;
+    genesis::population::WindowAveragePolicy get_window_average_policy() const;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -109,15 +81,7 @@ public:
 
 private:
 
-    CliOption<std::string> method = "unbiased-nei";
-    PoolsizesOptions       poolsizes;
-    WindowAverageOptions   window_average_policy;
-
-    CliOption<std::string> comparand = "";
-    CliOption<std::string> second_comparand = "";
-    CliOption<std::string> comparand_list = "";
-
-    CliOption<size_t> threading_threshold = 4096;
+    CliOption<std::string> window_average_;
 
 };
 

@@ -107,9 +107,12 @@ void FstProcessorOptions::add_fst_processor_opts_to_app(
     method.option->group( group );
     method.option->required();
 
-    // Settings: Pool sizes. When not all methods are selected, we only offer the unbiased ones,
+    // Pool sizes. When not all methods are selected, we only offer the unbiased ones,
     // which do need pool sizes, so then we require this to be provided.
     poolsizes.add_poolsizes_opt_to_app( sub, !all_methods, group );
+
+    // Window averaging
+    window_average_policy.add_window_average_opt_to_app( sub, group );
 
     // -------------------------------------------------------------------------
     //     Sample Pairs
@@ -360,30 +363,35 @@ genesis::population::FstPoolProcessor FstProcessorOptions::get_fst_pool_processo
         "Inconsistent number of samples and number of pool sizes."
     );
 
+    // Get the window average policy to use for all processors.
+    auto const win_avg_policy = window_average_policy.get_window_average_policy();
+
     // Make the type of processor that we need for the provided method.
     FstPoolProcessor processor;
     switch( method ) {
         case FstMethod::kUnbiasedNei: {
             processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kNei
+                win_avg_policy, sample_pairs, pool_sizes,
+                FstPoolCalculatorUnbiased::Estimator::kNei
             );
             break;
         }
         case FstMethod::kUnbiasedHudson: {
             processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                sample_pairs, pool_sizes, FstPoolCalculatorUnbiased::Estimator::kHudson
+                win_avg_policy, sample_pairs, pool_sizes,
+                FstPoolCalculatorUnbiased::Estimator::kHudson
             );
             break;
         }
         case FstMethod::kKofler: {
             processor = make_fst_pool_processor<FstPoolCalculatorKofler>(
-                sample_pairs, pool_sizes
+                win_avg_policy, sample_pairs, pool_sizes
             );
             break;
         }
         case FstMethod::kKarlsson: {
             processor = make_fst_pool_processor<FstPoolCalculatorKarlsson>(
-                sample_pairs, pool_sizes
+                win_avg_policy, sample_pairs, pool_sizes
             );
             break;
         }

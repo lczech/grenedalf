@@ -35,6 +35,7 @@
 #include "genesis/population/genome_region.hpp"
 #include "genesis/utils/core/logging.hpp"
 #include "genesis/utils/core/std.hpp"
+#include "genesis/utils/text/string.hpp"
 
 #include <cassert>
 #include <memory>
@@ -261,22 +262,23 @@ void WindowOptions::add_window_opts_to_app(
 
 WindowOptions::WindowType WindowOptions::window_type() const
 {
-    if( window_type_.value == "interval" ) {
+    auto const win_type = genesis::utils::to_lower( window_type_.value );
+    if( win_type == "interval" ) {
         return WindowType::kInterval;
-    } else if( window_type_.value == "queue" ) {
+    } else if( win_type == "queue" ) {
         return WindowType::kQueue;
-    } else if( window_type_.value == "single" ) {
+    } else if( win_type == "single" ) {
         return WindowType::kSingle;
-    } else if( window_type_.value == "regions" ) {
+    } else if( win_type == "regions" ) {
         return WindowType::kRegions;
-    } else if( window_type_.value == "chromosomes" ) {
+    } else if( win_type == "chromosomes" ) {
         return WindowType::kChromosomes;
-    } else if( window_type_.value == "genome" ) {
+    } else if( win_type == "genome" ) {
         return WindowType::kGenome;
     } else {
         throw CLI::ValidationError(
             window_type_.option->get_name(),
-            "Invalid window type '" + window_type_.value + "'."
+            "Invalid window type '" + window_type_.value + "'"
         );
     }
 }
@@ -345,7 +347,7 @@ std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
 
     // Add logging to the stream, and return it.
     using VariantWindowType = genesis::population::Window<genesis::population::Variant>;
-    result->add_observer([ this ]( VariantWindowType const& window ){
+    result->add_on_enter_observer([ this ]( VariantWindowType const& window ){
         ++num_windows_;
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"
@@ -442,7 +444,7 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
 
     // Add logging to the stream, and return it.
     using VariantWindowViewType = genesis::population::WindowView<genesis::population::Variant>;
-    result->add_observer([ this ]( VariantWindowViewType const& window ){
+    result->add_on_enter_observer([ this ]( VariantWindowViewType const& window ){
         ++num_windows_;
         LOG_MSG2 << "    At window "
                  << window.chromosome() << ":"

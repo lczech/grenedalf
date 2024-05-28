@@ -450,7 +450,7 @@ void VariantInputOptions::prepare_stream_single_file_() const
     // Add an observer that checks chromosome order and length. We need to check order here,
     // as the single stream does not do this already (as opposed to the parallel one below).
     // Without a dict (when sequence_dict_ is nullptr), this checks lexicographically.
-    stream_.add_observer(
+    stream_.add_on_enter_observer(
         genesis::population::make_variant_input_stream_sequence_order_observer(
             get_reference_dict()
         )
@@ -623,7 +623,7 @@ void VariantInputOptions::prepare_stream_from_parallel_stream_(
     // Add an observer that checks chromosome length. We do not need to check order,
     // as this is done with the above sequence dict already internally.
     if( get_reference_dict() ) {
-        stream_.add_observer(
+        stream_.add_on_enter_observer(
             make_variant_input_stream_sequence_length_observer( get_reference_dict() )
         );
     }
@@ -748,11 +748,19 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
     // We always print out where the input is at, at the moment. That makes sure that we always
     // get some progress update, which is probably more useful for the user than waiting too long
     // without any.
+    // We use the on-leave observer here, so that this plays a bit more nicely with the windowing:
+    // Our window streams need to read the next position after their current window, in order to
+    // determine that they are done with the window. If we used the on-enter observer here, this
+    // would hence lead to user output stating that we are at a new chromosome, when in fact we are
+    // still processing the previous window. Then, when the window does its own output for the user
+    // to tell that we are in that last window of the previous chromosome, that looks confusing.
+    // So, as a hot fix, we just report the chromsome once we move on from the position, instead of
+    // when arrived there.
     // Note though that region filters are applied per input file, and so might have already removed
     // chromosomes, so that they won't be printed here. We use lambda capture by value to create
     // a copy of current_chr that is kept in the lambda, and updated there. We are not in C++14 yet.
     std::string current_chr;
-    stream.add_observer(
+    stream.add_on_leave_observer(
         [ current_chr, this ]( Variant const& variant ) mutable {
             ++num_positions_;
             if( current_chr != variant.chromosome ) {
@@ -766,7 +774,7 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
     // If we have a reference genome, we also check that its bases match what we find in the
     // input files, and report if that's not fitting.
     if( get_reference_genome() ) {
-        stream.add_observer(
+        stream.add_on_enter_observer(
             [ this ]( Variant const& variant ) mutable {
                 auto const var_base = genesis::utils::to_upper( variant.reference_base );
                 auto const ref_base = get_reference_genome()->get_base(

@@ -69,13 +69,13 @@ CLI::Option* VariantFileFrequencyTableOptions::add_file_input_opt_to_app_(
 
     // Int factor
     int_factor_.option = sub->add_option(
-        "--frequency-table-cov-factor",
+        "--frequency-table-depth-factor",
         int_factor_.value,
         "For frequency table input that only contains allele frequencies, without any information "
-        "on coverage, we need to transform those frequencies into counts for our internal processing. "
+        "on read depth, we need to transform those frequencies into counts for our internal processing. "
         "This number is multiplied by the frequency to obtain these pseudo-counts. By default, "
         "we use 1000000, to get a reasonable interger approximation of the floating point frequency. "
-        "This is of course above any typical coverage, but allows for more accurate counts when "
+        "This is of course above any typical read depth, but allows for more accurate counts when "
         "using for instance haplotype-corrected frequencies such as those from HAF-pipe."
     );
     int_factor_.option->group( group );
@@ -198,16 +198,16 @@ void VariantFileFrequencyTableOptions::add_extra_file_input_opts_to_app_(
     usr_smp_frq_name_.option->group( group );
     usr_smp_frq_name_.option->needs( file_input_.option() );
 
-    // Sample coverage column
+    // Sample read depth column
     usr_smp_cov_name_.option = sub->add_option(
-        "--frequency-table-sample-cov-column",
+        "--frequency-table-sample-depth-column",
         usr_smp_cov_name_.value,
-        "Specify the exact prefix or suffix of the per-sample coverage (i.e., depth) columns "
-        "in the header, case sensitive. "
-        "By default, we look for column names having \"coverage\", \"cov\", \"depth\", or \"ad\", "
-        "case insensitive, and ignoring any extra punctuation marks, as a prefix or suffix, "
+        "Specify the exact prefix or suffix of the per-sample read depth columns in the header, "
+        "case sensitive. "
+        "By default, we look for column names having \"readdepth\", \"depth\", \"coverage\", \"cov\", "
+        "or \"ad\", case insensitive, and ignoring any extra punctuation marks, as a prefix or suffix, "
         "with the remainder of the column name used as the sample name. "
-        "For example, \"S1.cov\" indicates the coverage column for sample \"S1\"."
+        "For example, \"S1.read-depth\" indicates the read depth column for sample \"S1\"."
     );
     usr_smp_cov_name_.option->group( group );
     usr_smp_cov_name_.option->needs( file_input_.option() );
@@ -261,7 +261,7 @@ VariantFileFrequencyTableOptions::VariantInputStream VariantFileFrequencyTableOp
         reader.header_sample_frequency_substring( usr_smp_frq_name_.value );
     }
     if( *usr_smp_cov_name_.option ) {
-        reader.header_sample_coverage_substring( usr_smp_cov_name_.value );
+        reader.header_sample_read_depth_substring( usr_smp_cov_name_.value );
     }
 
     // Prepare the stream.

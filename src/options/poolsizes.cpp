@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ size_t PoolsizesOptions::convert_poolsize_( std::string const& str ) const
 
     // Convert a pool size to a number, or throw.
     try {
-        auto lower = to_lower( trim( str ));
+        auto const lower = to_lower( trim( str ));
         if( lower == "na" || lower == "nan" ) {
             // Poolsize is mostly used for Bessel's correction, so 0 just gives 0 or invalid
             // values in the computation, which is what we want.
