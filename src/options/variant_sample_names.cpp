@@ -330,8 +330,19 @@ void VariantSampleNamesOptions::apply_sample_group_merging(
     }
 
     // We inline replace the stream with a new one, that captures the existing one
-    // in its lambda capture internally.
+    // in its lambda capture internally, and log a bit for the user.
+    auto const orig_smp_cnt = stream.data().sample_names.size();
     stream = make_variant_merging_input_stream( stream, sample_name_to_group );
+    LOG_MSG1
+        << "Merging " << orig_smp_cnt << " samples into "
+        << stream.data().sample_names.size() << " sample groups"
+    ;
+    if( orig_smp_cnt != sample_name_to_group.size() ) {
+        LOG_MSG1
+            << "Note that a total of " << sample_name_to_group.size() << " sample name assignments "
+            << "are given, but not all appear in the input and are hence ignored"
+        ;
+    }
 }
 
 // -------------------------------------------------------------------------
