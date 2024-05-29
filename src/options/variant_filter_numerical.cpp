@@ -308,7 +308,7 @@ void VariantFilterNumericalOptions::add_total_freq_filter_opts_to_app(
         "Minimum allele frequency that needs to be reached for a position to be used. "
         "Positions where the allele frequency `af` across all samples, or `1 - af`, "
         "is below this value, are ignored. If both the reference and alternative base are known, "
-        "allele frequencies are ocmputed based on those; if only the reference base is known, "
+        "allele frequencies are computed based on those; if only the reference base is known, "
         "the most frequent non-reference base is used as the alternative; if neither is known, "
         "the first and second most frequent bases are used to compute the frequency."
     );
@@ -465,6 +465,7 @@ VariantFilterNumericalOptions::make_total_filter() const
     }
 
     // If provided, make a filter function.
+    // We only tag the variant, but do not remove it here.
     return [ filter_params, this ]( genesis::population::Variant& variant ){
         genesis::population::apply_variant_filter_numerical(
             variant, filter_params, this->total_stats_
@@ -482,6 +483,7 @@ VariantFilterNumericalOptions::make_total_filter(
     filter_params = filter_pair.first;
 
     // Always make a filter function.
+    // We only tag the variant, but do not remove it here.
     return [ filter_params, this ]( genesis::population::Variant& variant ){
         genesis::population::apply_variant_filter_numerical(
             variant, filter_params, this->total_stats_
@@ -498,12 +500,12 @@ void VariantFilterNumericalOptions::print_report() const
 {
     using namespace genesis::population;
 
-    auto const sample_text = print_sample_counts_filter_stats( sample_stats_ );
+    auto const sample_text = print_sample_counts_filter_category_stats( sample_stats_ );
     if( ! sample_text.empty() ) {
         LOG_MSG1 << "Sample filter summary (summed up across all samples):\n"
                  << sample_text << "\n";
     }
-    auto const total_text = print_variant_filter_stats( total_stats_ );
+    auto const total_text = print_variant_filter_category_stats( total_stats_ );
     if( ! total_text.empty() ) {
         LOG_MSG1 << "Total filter summary (after applying all sample filters):\n"
                  << total_text << "\n";

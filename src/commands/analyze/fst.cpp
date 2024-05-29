@@ -87,10 +87,11 @@ void setup_fst( CLI::App& app )
     // We amend the existing biallelic SNP filter option description here.
     auto& tobs = options->filter_numerical.total_only_biallelic_snps.option;
     tobs->description(
-        tobs->get_description() + "\nBy default, we already filter out invariant sites, so that "
-        "only SNPs remain. With this option however, this is further reduced to only biallelic "
-        "(pure) SNPs. Note that with `--method karlsson`, we implicitly also activate to filter "
-        "for biallelic SNPs only, as the method requires it."
+        tobs->get_description() + "\nBy default, we already filter for invariant sites, so that "
+        "only SNPs remain for the computation. With this option however, this is further reduced "
+        "to only biallelic (pure) SNPs."
+        // " Note that with `--method karlsson`, we implicitly also activate to filter "
+        // "for biallelic SNPs only, as the method requires it."
     );
 
     // Settings for the windowing.
@@ -109,22 +110,28 @@ void setup_fst( CLI::App& app )
         options->write_pi_tables.value,
         "When using either of the two unbiased (Nei or Hudson) estimators, also write tables "
         "of the involved pi values (within, between, and total). See our equations for details. "
-        "We here scale the values by the number of variant sites (which is printed in the output "
-        "table column `snps`); multiplying the pi and the snps per row gives the absolute sum of pi "
-        " values, which can be used if a different scaling is required instead."
+        "We scale the values using the same `--window-average-policy` that is used for FST."
     );
     options->write_pi_tables.option->group( "Settings" );
 
-    // TODO need to check if this is still needed when filtering for snps...
     // Settings: Omit Empty Windows
-    options->omit_na_windows.option = sub->add_flag(
-        "--omit-na-windows",
-        options->omit_na_windows.value,
-        "Do not output windows where all values are n/a (e.g., without any SNPs). This is "
-        "particularly relevant with small window sizes (or individual positions), "
-        "in order to not produce output for invariant positions in the genome."
+    options->no_extra_columns.option = sub->add_flag(
+        "--no-extra-columns",
+        options->no_extra_columns.value,
+        "Do not output the extra columns containing counts for each position and sample pair "
+        "that summarize the effects of the filtering. Only the window coordinates and the fst values "
+        "are printed in that case."
     );
-    options->omit_na_windows.option->group( "Settings" );
+    options->no_extra_columns.option->group( "Settings" );
+
+    // Settings: Omit Empty Windows
+    options->no_nan_windows.option = sub->add_flag(
+        "--no-nan-windows",
+        options->no_nan_windows.value,
+        "Do not output windows where all values are n/a. This is can be relevant "
+        "with small window sizes (or individual positions), to reduce output clutter."
+    );
+    options->no_nan_windows.option->group( "Settings" );
 
     // -------------------------------------------------------------------------
     //     Output
@@ -255,16 +262,35 @@ void prepare_output_files_(
     // Helper function to write the header of our per-window file formats
     auto open_file_and_write_header_ = [&](
         std::shared_ptr<::genesis::utils::BaseOutputTarget>& target,
-        std::string const& base_name
+        std::string const& value_name
     ) {
         // Make an output target, i.e., get the file name, and open the file
-        target = options.file_output.get_output_target( base_name, "csv" );
+        target = options.file_output.get_output_target( value_name, "csv" );
 
-        // Write the header line to it.
-        // TODO fix
-        (*target) << "chrom" << sep_char << "start" << sep_char << "end"; // << sep_char << "snps";
+        // Write the header line to it. We have some fixed columns, such as the chromsome and window,
+        // and the total (variant) filters, as well as some per-sample columns, for the sample
+        // filters, and the actual FST value.
+        (*target) << "chrom" << sep_char << "start" << sep_char << "end";
+
+        // Print the extra column headers if needed.
+        // Need to make sure that this is the same order as used in print_total_stats_()
+        // and print_sample_stats_(). Change all occurrences if needed.
+        if( !options.no_extra_columns.value ) {
+            (*target) << sep_char << "total.masked";
+            (*target) << sep_char << "total.missing";
+            (*target) << sep_char << "total.empty";
+            (*target) << sep_char << "total.numeric";
+            (*target) << sep_char << "total.invariant";
+            (*target) << sep_char << "total.passed";
+        }
         for( auto const& pair : sample_pairs ) {
-            (*target) << sep_char << sample_names[pair.first] << ":" << sample_names[pair.second];
+            auto const pair_name = sample_names[pair.first] + ":" + sample_names[pair.second];
+            if( !options.no_extra_columns.value ) {
+                (*target) << sep_char << pair_name << ".missing";
+                (*target) << sep_char << pair_name << ".numeric";
+                (*target) << sep_char << pair_name << ".passed";
+            }
+            (*target) << sep_char << pair_name << "." << value_name;
         }
         (*target) << "\n";
     };
@@ -281,44 +307,65 @@ void prepare_output_files_(
 }
 
 // -------------------------------------------------------------------------
-//     get_pi_vectors_
+//     print_total_stats_
 // -------------------------------------------------------------------------
 
-/**
- * @brief Get the pi values for all pairs of samples.
- *
- * We here currently need to dynamically cast the FstPoolCalculator instances, which is ugly.
- * Might want to refactor later, but good enough for now to get it working.
- *
- * Returns vectors for pi within, between, and total, in that order.
- */
-PiVectorTuple get_pi_vectors_(
-     ::genesis::population::FstPoolProcessor const& processor
+void print_total_stats_(
+    FstOptions const& options,
+    genesis::population::VariantFilterStats const& variant_filter_stats,
+    std::shared_ptr<genesis::utils::BaseOutputTarget>& target
 ) {
-    using namespace ::genesis::population;
+    using namespace genesis::population;
 
-    // Prepare the result vectors.
-    PiVectorTuple result;
-    auto const result_size = processor.calculators().size();
-    std::get<0>(result).resize( result_size );
-    std::get<1>(result).resize( result_size );
-    std::get<2>(result).resize( result_size );
-
-    // Get the pi values from all calculators, assuming that they are of the correct type.
-    for( size_t i = 0; i < result_size; ++i ) {
-        auto& raw_calc = processor.calculators()[i];
-        auto cast_calc = dynamic_cast<FstPoolCalculatorUnbiased const*>( raw_calc.get() );
-        internal_check( cast_calc, "Unbiased Nei/Hudson calculator expected." );
-
-        // We print the values, scaled by number of variants
-        // (i.e., the number of values that were added up there in the first place).
-        // TODO fix
-        std::get<0>(result)[i] = cast_calc->get_pi_within()  ; // / processor.get_processed_count();
-        std::get<1>(result)[i] = cast_calc->get_pi_between() ; // / processor.get_processed_count();
-        std::get<2>(result)[i] = cast_calc->get_pi_total()   ; // / processor.get_processed_count();
+    // Check if we want to print this at all.
+    if( options.no_extra_columns.value ) {
+        return;
     }
 
-    return result;
+    // Summarize the exact statistics into their category summaries.
+    // Good enough for the user output here. We do not need to know which exact filter
+    // failed each time; it is good enough that it was a numerical one etc.
+    auto const total_stats = variant_filter_stats_category_counts(
+        variant_filter_stats
+    );
+    auto const sep_char = options.table_output.get_separator_char();
+
+    // Print the counters.
+    // This obviously requires the column header line to exactly match this order.
+    // Change both if needed, throughout this file.
+    (*target) << sep_char << total_stats[ VariantFilterTagCategory::kMasked ];
+    (*target) << sep_char << total_stats[ VariantFilterTagCategory::kMissingInvalid ];
+    (*target) << sep_char << total_stats[ VariantFilterTagCategory::kSamplesFailed ];
+    (*target) << sep_char << total_stats[ VariantFilterTagCategory::kNumeric ];
+    (*target) << sep_char << total_stats[ VariantFilterTagCategory::kInvariant ];
+    (*target) << sep_char << total_stats[ VariantFilterTagCategory::kPassed ];
+}
+
+// -------------------------------------------------------------------------
+//     print_sample_stats_
+// -------------------------------------------------------------------------
+
+void print_sample_stats_(
+    FstOptions const& options,
+    genesis::population::SampleCountsFilterStats const& sample_counts_filter_stats,
+    std::shared_ptr<genesis::utils::BaseOutputTarget>& target
+) {
+    using namespace genesis::population;
+
+    // Check if we want to print this at all.
+    if( options.no_extra_columns.value ) {
+        return;
+    }
+
+    // See above for details; same here, but for the sample stats.
+    // Make sure that this order is matched when writing the column header line!
+    auto const sample_stats = sample_counts_filter_stats_category_counts(
+        sample_counts_filter_stats
+    );
+    auto const sep_char = options.table_output.get_separator_char();
+    (*target) << sep_char << sample_stats[ SampleCountsFilterTagCategory::kMissingInvalid ];
+    (*target) << sep_char << sample_stats[ SampleCountsFilterTagCategory::kNumeric ];
+    (*target) << sep_char << sample_stats[ SampleCountsFilterTagCategory::kPassed ];
 }
 
 // -------------------------------------------------------------------------
@@ -333,27 +380,52 @@ PiVectorTuple get_pi_vectors_(
  */
 void print_pairwise_value_list_(
     FstOptions const& options,
-    std::string const& out_file_basename,
+    std::string const& value_name,
+    ::genesis::population::FstPoolProcessor const& processor,
     std::vector<double> const& values,
     std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
+    using namespace genesis::population;
     using namespace genesis::utils;
 
     // Get basic options.
     auto const& sample_names = options.variant_input.sample_names();
     auto const sep_char = options.table_output.get_separator_char();
+    internal_check( sample_pairs.size() == values.size() );
+    internal_check( sample_pairs.size() == processor.calculators().size() );
 
     // For whole genome FST, we fill a list with all pairs.
-    std::shared_ptr<BaseOutputTarget> output_target;
-    output_target = options.file_output.get_output_target( out_file_basename + "-list", "csv" );
-    (*output_target) << "first" << sep_char << "second" << sep_char << "FST\n";
-    assert( sample_pairs.size() == values.size() );
+    std::shared_ptr<BaseOutputTarget> target;
+    target = options.file_output.get_output_target( value_name + "-list", "csv" );
+    (*target) << "first" << sep_char << "second";
+
+    // Print the additional column headers, if needed.
+    // Need to make sure that this is the same order as used in print_total_stats_()
+    // and print_sample_stats_(). Change all occurrences if needed.
+    if( !options.no_extra_columns.value ) {
+        (*target) << sep_char << "total.masked";
+        (*target) << sep_char << "total.missing";
+        (*target) << sep_char << "total.empty";
+        (*target) << sep_char << "total.numeric";
+        (*target) << sep_char << "total.invariant";
+        (*target) << sep_char << "total.passed";
+        (*target) << sep_char << "sample.missing";
+        (*target) << sep_char << "sample.numeric";
+        (*target) << sep_char << "sample.passed";
+    }
+    (*target) << sep_char << replace_all( value_name, "-", "." ) << "\n";
 
     // Write all pairs.
     for( size_t i = 0; i < sample_pairs.size(); ++i ) {
         auto const& pair = sample_pairs[i];
-        (*output_target) << sample_names[pair.first] << sep_char << sample_names[pair.second];
-        (*output_target) << sep_char << values[i] << "\n";
+        (*target) << sample_names[pair.first] << sep_char << sample_names[pair.second];
+
+        // Print the extra columns as needed.
+        print_total_stats_( options, processor.get_filter_stats(), target );
+        print_sample_stats_( options, processor.calculators()[i]->get_filter_stats(), target );
+
+        // Now print the actual value we want.
+        (*target) << sep_char << values[i] << "\n";
     }
 }
 
@@ -370,7 +442,7 @@ void print_pairwise_value_list_(
  */
 void print_pairwise_value_matrix_(
     FstOptions const& options,
-    std::string const& out_file_basename,
+    std::string const& value_name,
     std::vector<double> const& values,
     std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
@@ -390,9 +462,11 @@ void print_pairwise_value_matrix_(
 
     // For whole genome all-to-all FST, we fill a matrix with all samples.
     std::shared_ptr<BaseOutputTarget> output_target;
-    output_target = options.file_output.get_output_target( out_file_basename + "-matrix", "csv" );
+    output_target = options.file_output.get_output_target( value_name + "-matrix", "csv" );
     auto writer = MatrixWriter<double>( std::string( 1, sep_char ));
-    writer.write( mat, output_target, sample_names, sample_names, "sample" );
+    writer.write(
+        mat, output_target, sample_names, sample_names, replace_all( value_name, "-", "." )
+    );
 }
 
 // -------------------------------------------------------------------------
@@ -404,28 +478,32 @@ void print_output_line_(
     ::genesis::population::FstPoolProcessor const& processor,
     VariantWindowView const& window,
     std::vector<double> const& values,
-    ::genesis::utils::BaseOutputTarget& target
+    std::shared_ptr<genesis::utils::BaseOutputTarget>& target
 ) {
+    internal_check(
+        processor.calculators().size() == values.size(),
+        "Inconsistent number of values and calculators."
+    );
+
     // Get the separator char to use for table entries.
     auto const sep_char = options.table_output.get_separator_char();
 
     // Write fixed columns.
-    target << window.chromosome();
-    target << sep_char << window.first_position();
-    target << sep_char << window.last_position();
-    // TODO fix
-    // target << sep_char << processor.get_processed_count();
-    (void) processor;
+    (*target) << window.chromosome();
+    (*target) << sep_char << window.first_position();
+    (*target) << sep_char << window.last_position();
+    print_total_stats_( options, processor.get_filter_stats(), target );
 
     // Write the per-pair FST values in the correct order.
-    for( auto const& fst : values ) {
-        if( std::isfinite( fst ) ) {
-            target << sep_char << fst;
+    for( size_t i = 0; i < values.size(); ++i ) {
+        print_sample_stats_( options, processor.calculators()[i]->get_filter_stats(), target );
+        if( std::isfinite( values[i] ) ) {
+            (*target) << sep_char << values[i];
         } else {
-            target << sep_char << options.table_output.get_na_entry();
+            (*target) << sep_char << options.table_output.get_na_entry();
         }
     }
-    target << "\n";
+    (*target) << "\n";
 }
 
 // -------------------------------------------------------------------------
@@ -453,7 +531,7 @@ void print_to_output_files_(
     );
 
     // In case that we want to print the pi values for the unbiased estimator, get those.
-    PiVectorTuple pi_vectors;
+    PiVectorTuple const* pi_vectors;
     if( options.write_pi_tables.value ) {
         // Assert that we indeed are computing one of the unbiased estimators.
         internal_check(
@@ -463,18 +541,16 @@ void print_to_output_files_(
         );
 
         // Get the values to be printed here
-        pi_vectors = get_pi_vectors_( processor );
-        internal_check( std::get<0>(pi_vectors).size() == sample_pairs.size() );
-        internal_check( std::get<1>(pi_vectors).size() == sample_pairs.size() );
-        internal_check( std::get<2>(pi_vectors).size() == sample_pairs.size() );
+        pi_vectors = &processor.get_pi_vectors( window_length );
+        internal_check( std::get<0>(*pi_vectors).size() == sample_pairs.size() );
+        internal_check( std::get<1>(*pi_vectors).size() == sample_pairs.size() );
+        internal_check( std::get<2>(*pi_vectors).size() == sample_pairs.size() );
     }
 
     // Write the values, unless all of them are nan, then we might skip.
     // Skip empty windows if the user wants to.
     if(
-        options.omit_na_windows.value && (
-            // TODO fix
-            // processor.get_processed_count() == 0 ||
+        options.no_nan_windows.value && (
             std::none_of( window_fst.begin(), window_fst.end(), []( double v ) {
                 return std::isfinite( v );
             })
@@ -483,16 +559,16 @@ void print_to_output_files_(
         ++state.skipped_count;
     } else {
         ++state.used_count;
-        print_output_line_( options, processor, window, window_fst, *state.fst_output_target );
+        print_output_line_( options, processor, window, window_fst, state.fst_output_target );
         if( options.write_pi_tables.value ) {
             print_output_line_(
-                options, processor, window, std::get<0>(pi_vectors), *state.pi_within_output_target
+                options, processor, window, std::get<0>(*pi_vectors), state.pi_within_output_target
             );
             print_output_line_(
-                options, processor, window, std::get<1>(pi_vectors), *state.pi_between_output_target
+                options, processor, window, std::get<1>(*pi_vectors), state.pi_between_output_target
             );
             print_output_line_(
-                options, processor, window, std::get<2>(pi_vectors), *state.pi_total_output_target
+                options, processor, window, std::get<2>(*pi_vectors), state.pi_total_output_target
             );
         }
     }
@@ -500,16 +576,16 @@ void print_to_output_files_(
     // For whole genome, and then also for all-to-all, we produce special tables on top.
     if( state.is_whole_genome ) {
         internal_check( options.window.get_num_windows() == 1, "Whole genome with multiple windows" );
-        print_pairwise_value_list_( options, "fst", window_fst, sample_pairs );
+        print_pairwise_value_list_( options, "fst", processor, window_fst, sample_pairs );
         if( options.write_pi_tables.value ) {
             print_pairwise_value_list_(
-                options, "pi-within",  std::get<0>(pi_vectors), sample_pairs
+                options, "pi-within",  processor, std::get<0>(*pi_vectors), sample_pairs
             );
             print_pairwise_value_list_(
-                options, "pi-between", std::get<1>(pi_vectors), sample_pairs
+                options, "pi-between", processor, std::get<1>(*pi_vectors), sample_pairs
             );
             print_pairwise_value_list_(
-                options, "pi-total",   std::get<2>(pi_vectors), sample_pairs
+                options, "pi-total",   processor, std::get<2>(*pi_vectors), sample_pairs
             );
         }
 
@@ -517,13 +593,13 @@ void print_to_output_files_(
             print_pairwise_value_matrix_( options, "fst", window_fst, sample_pairs );
             if( options.write_pi_tables.value ) {
                 print_pairwise_value_matrix_(
-                    options, "pi-within",  std::get<0>(pi_vectors), sample_pairs
+                    options, "pi-within",  std::get<0>(*pi_vectors), sample_pairs
                 );
                 print_pairwise_value_matrix_(
-                    options, "pi-between", std::get<1>(pi_vectors), sample_pairs
+                    options, "pi-between", std::get<1>(*pi_vectors), sample_pairs
                 );
                 print_pairwise_value_matrix_(
-                    options, "pi-total",   std::get<2>(pi_vectors), sample_pairs
+                    options, "pi-total",   std::get<2>(*pi_vectors), sample_pairs
                 );
             }
         }
@@ -556,8 +632,6 @@ void run_fst( FstOptions const& options )
     // We use a variant filter that always filters out non-SNP positions here.
     // There might still be pairs of samples between which a position is invariant,
     // but that's okay, as that will be caught by the fst computation anyway.
-    // We many use this pre-filter here for speed gains,
-    // to get rid of invariants before they even get to the FST computation functions.
     options.variant_input.add_combined_filter_and_transforms(
         options.filter_numerical.make_sample_filter()
     );
@@ -603,14 +677,19 @@ void run_fst( FstOptions const& options )
         processor.reset();
 
         // Compute diversity over samples.
-        // #pragma omp parallel for
+        size_t processed_cnt = 0;
         for( auto const& variant : window ) {
             internal_check(
                 variant.samples.size() == sample_names.size(),
                 "Inconsistent number of samples in input file."
             );
             processor.process( variant );
+            ++processed_cnt;
         }
+        internal_check(
+            processed_cnt == processor.get_filter_stats().sum(),
+            "Number of processed positions does not equal filter sum"
+        );
 
         // Print the output to all files that we want.
         print_to_output_files_( options, processor, window, sample_pairs, state );
