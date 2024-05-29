@@ -73,6 +73,9 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
+    /**
+     * @brief Get the user-provided policy.
+     */
     genesis::population::WindowAveragePolicy get_window_average_policy() const;
 
     // -------------------------------------------------------------------------
@@ -81,7 +84,7 @@ public:
 
 private:
 
-    CliOption<std::string> window_average_;
+    CliOption<std::string> window_average_policy_;
 
 };
 

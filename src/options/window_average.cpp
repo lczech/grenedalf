@@ -32,6 +32,20 @@
 #include <stdexcept>
 
 // =================================================================================================
+//      Enum Mapping
+// =================================================================================================
+
+using namespace genesis::population;
+
+std::vector<std::pair<std::string, WindowAveragePolicy>> const window_average_policy_map = {
+    { "window-length",  WindowAveragePolicy::kWindowLength },
+    { "available-loci", WindowAveragePolicy::kAvailableLoci },
+    { "valid-loci",     WindowAveragePolicy::kValidLoci },
+    { "valid-snps",     WindowAveragePolicy::kValidSnps },
+    { "absolute-sum",   WindowAveragePolicy::kAbsoluteSum }
+};
+
+// =================================================================================================
 //      Setup Functions
 // =================================================================================================
 
@@ -41,14 +55,14 @@ CLI::Option* WindowAverageOptions::add_window_average_opt_to_app(
 ) {
     // Correct setup check.
     internal_check(
-        window_average_.option == nullptr,
+        window_average_policy_.option == nullptr,
         "Cannot use the same WindowAverageOptions object multiple times."
     );
 
     // Add the option. We need quite the bit of documentation here...
-    window_average_.option = sub->add_option(
+    window_average_policy_.option = sub->add_option(
         "--window-average-policy",
-        window_average_.value,
+        window_average_policy_.value,
         "Denominator to use when computing the average of a metric in a window: "
         "\n(1) `window-length`: Simply use the window length, which likely underestimates the metric, "
         "in particular in regions with low coverage and high missing data."
@@ -61,13 +75,13 @@ CLI::Option* WindowAverageOptions::add_window_average_opt_to_app(
         "but can be useful when the data only consists of SNPs."
         "\n(5) `absolute-sum`: Simply report the sum of the per-site values, with no averaging "
         "applied to it. This can be used to apply custom averaging later."
-    )->transform(
-        CLI::IsMember({
-            "window-length", "available-loci", "valid-loci", "valid-snps", "absolute-sum"
-        }, CLI::ignore_case )
     );
-    window_average_.option->group( group );
-    return window_average_.option;
+    window_average_policy_.option->transform(
+        CLI::IsMember( enum_map_keys( window_average_policy_map ), CLI::ignore_case )
+    );
+    window_average_policy_.option->group( group );
+    window_average_policy_.option->required();
+    return window_average_policy_.option;
 }
 
 // =================================================================================================
@@ -76,21 +90,8 @@ CLI::Option* WindowAverageOptions::add_window_average_opt_to_app(
 
 genesis::population::WindowAveragePolicy WindowAverageOptions::get_window_average_policy() const
 {
-    auto const lower = genesis::utils::to_lower( window_average_.value );
-    if( lower == "window-length" ) {
-        return genesis::population::WindowAveragePolicy::kWindowLength;
-    } else if( lower == "available-loci" ) {
-        return genesis::population::WindowAveragePolicy::kAvailableLoci;
-    } else if( lower == "valid-loci" ) {
-        return genesis::population::WindowAveragePolicy::kValidLoci;
-    } else if( lower == "valid-snps" ) {
-        return genesis::population::WindowAveragePolicy::kValidSnps;
-    } else if( lower == "absolute-sum" ) {
-        return genesis::population::WindowAveragePolicy::kAbsoluteSum;
-    } else {
-        throw CLI::ValidationError(
-            window_average_.option->get_name(),
-            "Invalid window average policy '" + window_average_.value + "'"
-        );
-    }
+    return get_enum_map_value(
+        window_average_policy_map,
+        window_average_policy_.value
+    );
 }
