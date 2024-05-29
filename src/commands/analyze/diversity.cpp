@@ -399,8 +399,8 @@ std::vector<genesis::population::DiversityPoolCalculator> get_diversity_calculat
     pool_settings.max_read_depth = filter.max_read_depth;
     pool_settings.tajima_denominator_policy
         = options.with_popoolation_bugs.value
-        ? TajimaDenominatorPolicy::kWithPopoolatioBugs
-        : TajimaDenominatorPolicy::kWithoutPopoolatioBugs
+        ? TajimaDenominatorPolicy::kWithPopoolationBugs
+        : TajimaDenominatorPolicy::kProvidedMinReadDepth
     ;
 
     // TODO

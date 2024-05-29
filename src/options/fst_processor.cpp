@@ -159,10 +159,10 @@ void FstProcessorOptions::add_fst_processor_opts_to_app(
     threading_threshold.option = sub->add_option(
         "--threading-threshold",
         threading_threshold.value,
-        "When only computing FST beween a few pairs of samples, doing so in individual threads "
+        "When only computing FST beween a few pairs of samples, using individual threads for each "
         "usually incurs a substantial overhead due to thread synchronozation. Hence, we only want "
-        "to use threads for the FST computation if many pairs of samples are being computed. "
-        "This setting determiens the number of sample pairs at which threads are used for FST. "
+        "to use threads for the computation if many pairs of samples are being processed. "
+        "This setting determiens the number of sample pairs at which threads are used. "
         "(Note that we still always use threads for input file parsing.)"
     );
     threading_threshold.option->group( "" );
