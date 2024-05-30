@@ -540,7 +540,7 @@ void make_wiki_home_page( WikiOptions const& options )
 
     // If we found direct subcommands of the main, make a commands table of them.
     if( ! direct_subcommands.empty() ) {
-        os << "### Commands\n\n";
+        os << "# Commands\n\n";
         make_subcommands_table( direct_subcommands, os, "Command" );
     }
 

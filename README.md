@@ -42,9 +42,7 @@ The commands have the general structure:
 
     grenedalf <command> <options>
 
-Use the `--help` flag of grenedalf or of each command for usage information.
-See [**the Wiki pages**](https://github.com/lczech/grenedalf/wiki)
-for the full list of all subcommands and their documentation.
+See [**the Wiki pages**](https://github.com/lczech/grenedalf/wiki) for the list of all commands and their documentation.
 
 <!-- # grenedalf
 Genome Analyses of Differential Allele Frequencies -->
