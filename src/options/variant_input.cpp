@@ -655,13 +655,27 @@ void VariantInputOptions::conditionally_make_gapless_stream_() const
     // or if we have a mask file provided. In the latter case, we also set the flag first,
     // for completeness.
 
+    // If additionally some region filters were provided, we need the gapless stream to be aware.
+    // This is because we make the parallel stream gapless _after_ the region filtering,
+    // so that any regions that are meant to be filtered would actually be re-introduced
+    // as filled gaps with missing data - which is not what we want.
+    // We could somehow reverse the order of that above, but that would negate the benefit
+    // of filtering out regions while reading the input already, which is the more common use case.
+    // This all is not ideal and a bit inefficient, as the gapless stream in its current
+    // implemenation will loop a bit over positions to find the ones that are not filtered out.
+    // But hopefully that is not a huge bottleneck, as we typically spend more time on the input
+    // parsing of these positions either way.
+    // The following is a shared pointer that is null if no region filters were provided.
+    // We can just hand it to the make_variant_gapless_input_stream() function as-is.
+    auto region_filter = region_filter_options_.get_region_filter();
+
     // If we have a mask file provided, we make this a gapless stream either way.
     if( mask_filter_options_.get_mask() ) {
         gapless_stream_ = true;
         auto const mask_dict = std::make_shared<SequenceDict>(
             reference_locus_set_to_dict( *mask_filter_options_.get_mask() )
         );
-        stream_ = make_variant_gapless_input_stream( stream_, mask_dict );
+        stream_ = make_variant_gapless_input_stream( stream_, mask_dict, region_filter );
         return;
     }
 
@@ -674,14 +688,14 @@ void VariantInputOptions::conditionally_make_gapless_stream_() const
         return;
     }
     if( get_reference_genome() ) {
-        stream_ = make_variant_gapless_input_stream( stream_, get_reference_genome() );
+        stream_ = make_variant_gapless_input_stream( stream_, get_reference_genome(), region_filter );
         return;
     }
     if( get_reference_dict() ) {
-        stream_ = make_variant_gapless_input_stream( stream_, get_reference_dict() );
+        stream_ = make_variant_gapless_input_stream( stream_, get_reference_dict(), region_filter );
         return;
     }
-    stream_ = make_variant_gapless_input_stream( stream_ );
+    stream_ = make_variant_gapless_input_stream( stream_, region_filter );
 }
 
 // =================================================================================================
