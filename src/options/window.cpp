@@ -42,6 +42,30 @@
 #include <stdexcept>
 
 // =================================================================================================
+//      Enum Mapping
+// =================================================================================================
+
+// Map our command line key words to an enum, so that all terms are in a single place.
+// We have the `all` map for all types, and the `window` map for only those window stream types
+// that use a Window, and not a WindowStream. That is important for some algorithms.
+
+std::vector<std::pair<std::string, WindowOptions::WindowType>> const window_type_all_map_ = {
+    { "interval",    WindowOptions::WindowType::kInterval },
+    { "queue",       WindowOptions::WindowType::kQueue },
+    { "single",      WindowOptions::WindowType::kSingle },
+    { "regions",     WindowOptions::WindowType::kRegions },
+    { "chromosomes", WindowOptions::WindowType::kChromosomes },
+    { "genome",      WindowOptions::WindowType::kGenome }
+};
+
+std::vector<std::pair<std::string, WindowOptions::WindowType>> const window_type_window_map_ = {
+    { "interval",    WindowOptions::WindowType::kInterval },
+    { "queue",       WindowOptions::WindowType::kQueue },
+    { "single",      WindowOptions::WindowType::kSingle },
+    { "regions",     WindowOptions::WindowType::kRegions },
+};
+
+// =================================================================================================
 //      Setup Functions
 // =================================================================================================
 
@@ -68,7 +92,7 @@ void WindowOptions::add_window_opts_to_app(
         "in the genome. "
         "\n(3) `single`: Treat each position of the input data as an individual window of size 1. "
         "This is typically used to process single SNPs, and equivalent to `interval` or `queue` "
-        "with a width/count of 1. "
+        "with a width/count of 1, except that positions that are removed by some filter are skipped. "
         "\n(4) `regions`: Windows corresponding to some regions of interest, such as genes. "
         "The regions need to be provided, and can be overlapping or nested as needed. " +
         (
@@ -88,17 +112,11 @@ void WindowOptions::add_window_opts_to_app(
     // also conditionally add these extra options, as done for example for the interval windows below.
     if( include_window_view_types_ ) {
         window_type_.option->transform(
-            CLI::IsMember(
-                { "interval", "queue", "single", "regions", "chromosomes", "genome" },
-                CLI::ignore_case
-            )
+            CLI::IsMember( enum_map_keys( window_type_all_map_ ), CLI::ignore_case )
         );
     } else {
         window_type_.option->transform(
-            CLI::IsMember(
-                { "interval", "queue", "single", "regions" },
-                CLI::ignore_case
-            )
+            CLI::IsMember( enum_map_keys( window_type_window_map_ ), CLI::ignore_case )
         );
     }
 
@@ -139,7 +157,7 @@ void WindowOptions::add_window_opts_to_app(
         "Number of positions in the genome in each window. This is most commonly used when also "
         "filtering for variant positions such as (biallelic) SNPs (which most commands do "
         "implicitly), so that each window of the analysis conists of a fixed number of SNPs, "
-        "instead of a fixed length alogn the genome."
+        "instead of a fixed length along the genome."
     );
     queue_count_.option->group( group );
     // queue_count_.option->required();
@@ -262,25 +280,9 @@ void WindowOptions::add_window_opts_to_app(
 
 WindowOptions::WindowType WindowOptions::window_type() const
 {
-    auto const win_type = genesis::utils::to_lower( window_type_.value );
-    if( win_type == "interval" ) {
-        return WindowType::kInterval;
-    } else if( win_type == "queue" ) {
-        return WindowType::kQueue;
-    } else if( win_type == "single" ) {
-        return WindowType::kSingle;
-    } else if( win_type == "regions" ) {
-        return WindowType::kRegions;
-    } else if( win_type == "chromosomes" ) {
-        return WindowType::kChromosomes;
-    } else if( win_type == "genome" ) {
-        return WindowType::kGenome;
-    } else {
-        throw CLI::ValidationError(
-            window_type_.option->get_name(),
-            "Invalid window type '" + window_type_.value + "'"
-        );
-    }
+    // We have two maps of window types, but one is a subset of the other,
+    // so we can just use the `all` map, and it will work for both.
+    return get_enum_map_value( window_type_all_map_, window_type_.value );
 }
 
 // -------------------------------------------------------------------------
@@ -323,7 +325,7 @@ std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
             break;
         }
         case WindowType::kSingle: {
-            result = genesis::utils::make_unique<VariantIntervalWindowStream>(
+            result = genesis::utils::make_unique<VariantPositionWindowStream>(
                 get_variant_window_stream_single_( input_stream )
             );
             break;
@@ -499,7 +501,7 @@ void WindowOptions::check_options_() const
     }
 
     // Check that no queue window opts are provided unless queue window was selected.
-    bool const has_queue_opt   = ( *queue_count_.option || *queue_stride_.option );
+    bool const has_queue_opt = ( *queue_count_.option || *queue_stride_.option );
     if( has_queue_opt && window_type_.value != "queue" ) {
         throw CLI::ValidationError(
             window_type_.option->get_name(),
@@ -586,16 +588,13 @@ WindowOptions::get_variant_window_stream_queue_(
 //     get_variant_window_stream_single_
 // -------------------------------------------------------------------------
 
-WindowOptions::VariantIntervalWindowStream
+WindowOptions::VariantPositionWindowStream
 WindowOptions::get_variant_window_stream_single_(
     genesis::population::VariantInputStream& input
 ) const {
-    // Always return a interval interval stream with window width 1.
-    return genesis::population::make_default_interval_window_stream(
-        input.begin(), input.end(), 1, 1
+    return genesis::population::make_passing_variant_position_window_stream(
+        input.begin(), input.end()
     );
-
-    // TODO change this to not use a interval window, but just a view based on the stream!
 }
 
 // -------------------------------------------------------------------------

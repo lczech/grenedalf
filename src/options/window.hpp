@@ -36,6 +36,7 @@
 #include "genesis/population/window/chromosome_window_stream.hpp"
 #include "genesis/population/window/genome_window_stream.hpp"
 #include "genesis/population/window/interval_window_stream.hpp"
+#include "genesis/population/window/position_window_stream.hpp"
 #include "genesis/population/window/queue_window_stream.hpp"
 #include "genesis/population/window/region_window_stream.hpp"
 #include "genesis/population/window/variant_window_stream.hpp"
@@ -113,6 +114,9 @@ public:
         genesis::population::VariantInputStream::Iterator
     >;
     using VariantQueueWindowStream = genesis::population::QueueWindowStream<
+        genesis::population::VariantInputStream::Iterator
+    >;
+    using VariantPositionWindowStream = genesis::population::PositionWindowStream<
         genesis::population::VariantInputStream::Iterator
     >;
     using VariantRegionWindowStream = genesis::population::RegionWindowStream<
@@ -238,7 +242,7 @@ private:
         genesis::population::VariantInputStream& input
     ) const;
 
-    VariantIntervalWindowStream get_variant_window_stream_single_(
+    VariantPositionWindowStream get_variant_window_stream_single_(
         genesis::population::VariantInputStream& input
     ) const;
 
