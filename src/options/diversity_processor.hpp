@@ -85,6 +85,21 @@ public:
         genesis::population::SampleCountsFilterNumericalParams filter_params
     ) const;
 
+    bool compute_theta_pi() const
+    {
+        return ! no_theta_pi.value;
+    }
+
+    bool compute_theta_watterson() const
+    {
+        return ! no_theta_watterson.value;
+    }
+
+    bool compute_tajima_d() const
+    {
+        return ! no_tajima_d.value;
+    }
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
@@ -98,11 +113,12 @@ private:
     CliOption<bool> no_tajima_d        = false;
 
     // General settings
-    PoolsizesOptions       poolsizes;
-    WindowAverageOptions   window_average_policy;
+    PoolsizesOptions     poolsizes;
+    WindowAverageOptions window_average_policy;
 
     // Remnant settings. These are simply re-used from the numerical filters now.
     // Kept here for reference, just in case they are needed for later.
+    // Using defaults from PoPoolation, see Variance-sliding.pl
     // CliOption<size_t> min_count = 2;
     // CliOption<size_t> min_read_depth = 4;
     // CliOption<size_t> max_read_depth = 1000000;

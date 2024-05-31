@@ -102,7 +102,7 @@ void setup_fst( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Fst Processor
-    options->fst_processor.add_fst_processor_opts_to_app( sub, true, "Settings" );
+    options->fst_processor.add_fst_processor_opts_to_app( sub, true );
 
     // Settings: Write pi tables
     options->write_pi_tables.option = sub->add_flag(
@@ -273,8 +273,8 @@ void prepare_output_files_(
         (*target) << "chrom" << sep_char << "start" << sep_char << "end";
 
         // Print the extra column headers if needed.
-        // Need to make sure that this is the same order as used in print_total_stats_()
-        // and print_sample_stats_(). Change all occurrences if needed.
+        // Need to make sure that this is the same order as used in write_total_stats_()
+        // and write_sample_stats_(). Change all occurrences if needed.
         if( !options.no_extra_columns.value ) {
             (*target) << sep_char << "total.masked";
             (*target) << sep_char << "total.missing";
@@ -307,10 +307,10 @@ void prepare_output_files_(
 }
 
 // -------------------------------------------------------------------------
-//     print_total_stats_
+//     write_total_stats_
 // -------------------------------------------------------------------------
 
-void print_total_stats_(
+void write_total_stats_(
     FstOptions const& options,
     genesis::population::VariantFilterStats const& variant_filter_stats,
     std::shared_ptr<genesis::utils::BaseOutputTarget>& target
@@ -342,10 +342,10 @@ void print_total_stats_(
 }
 
 // -------------------------------------------------------------------------
-//     print_sample_stats_
+//     write_sample_stats_
 // -------------------------------------------------------------------------
 
-void print_sample_stats_(
+void write_sample_stats_(
     FstOptions const& options,
     genesis::population::SampleCountsFilterStats const& sample_counts_filter_stats,
     std::shared_ptr<genesis::utils::BaseOutputTarget>& target
@@ -369,7 +369,7 @@ void print_sample_stats_(
 }
 
 // -------------------------------------------------------------------------
-//     print_pairwise_value_list_
+//     write_pairwise_value_list_
 // -------------------------------------------------------------------------
 
 /**
@@ -378,7 +378,7 @@ void print_sample_stats_(
  * This is meant for whole genome computations, where we have a single value per pair of samples.
  * This function then prints these values, in rows of the form "Sample1 Sample2 value".
  */
-void print_pairwise_value_list_(
+void write_pairwise_value_list_(
     FstOptions const& options,
     std::string const& value_name,
     ::genesis::population::FstPoolProcessor const& processor,
@@ -400,8 +400,8 @@ void print_pairwise_value_list_(
     (*target) << "first" << sep_char << "second";
 
     // Print the additional column headers, if needed.
-    // Need to make sure that this is the same order as used in print_total_stats_()
-    // and print_sample_stats_(). Change all occurrences if needed.
+    // Need to make sure that this is the same order as used in write_total_stats_()
+    // and write_sample_stats_(). Change all occurrences if needed.
     if( !options.no_extra_columns.value ) {
         (*target) << sep_char << "total.masked";
         (*target) << sep_char << "total.missing";
@@ -421,8 +421,8 @@ void print_pairwise_value_list_(
         (*target) << sample_names[pair.first] << sep_char << sample_names[pair.second];
 
         // Print the extra columns as needed.
-        print_total_stats_( options, processor.get_filter_stats(), target );
-        print_sample_stats_( options, processor.calculators()[i]->get_filter_stats(), target );
+        write_total_stats_( options, processor.get_filter_stats(), target );
+        write_sample_stats_( options, processor.calculators()[i]->get_filter_stats(), target );
 
         // Now print the actual value we want.
         (*target) << sep_char << values[i] << "\n";
@@ -430,7 +430,7 @@ void print_pairwise_value_list_(
 }
 
 // -------------------------------------------------------------------------
-//     print_pairwise_value_matrix_
+//     write_pairwise_value_matrix_
 // -------------------------------------------------------------------------
 
 /**
@@ -440,7 +440,7 @@ void print_pairwise_value_list_(
  * This function then prints these values, as a symmetrical matrix, with the samples in the rows
  * and columns.
  */
-void print_pairwise_value_matrix_(
+void write_pairwise_value_matrix_(
     FstOptions const& options,
     std::string const& value_name,
     std::vector<double> const& values,
@@ -470,10 +470,10 @@ void print_pairwise_value_matrix_(
 }
 
 // -------------------------------------------------------------------------
-//     print_output_line_
+//     write_output_line_
 // -------------------------------------------------------------------------
 
-void print_output_line_(
+void write_output_line_(
     FstOptions const& options,
     ::genesis::population::FstPoolProcessor const& processor,
     VariantWindowView const& window,
@@ -492,11 +492,11 @@ void print_output_line_(
     (*target) << window.chromosome();
     (*target) << sep_char << window.first_position();
     (*target) << sep_char << window.last_position();
-    print_total_stats_( options, processor.get_filter_stats(), target );
+    write_total_stats_( options, processor.get_filter_stats(), target );
 
     // Write the per-pair FST values in the correct order.
     for( size_t i = 0; i < values.size(); ++i ) {
-        print_sample_stats_( options, processor.calculators()[i]->get_filter_stats(), target );
+        write_sample_stats_( options, processor.calculators()[i]->get_filter_stats(), target );
         if( std::isfinite( values[i] ) ) {
             (*target) << sep_char << values[i];
         } else {
@@ -507,7 +507,7 @@ void print_output_line_(
 }
 
 // -------------------------------------------------------------------------
-//     print_fst_files_
+//     write_fst_files_
 // -------------------------------------------------------------------------
 
 /**
@@ -515,7 +515,7 @@ void print_output_line_(
  *
  * This function is called once per window, and writes out the per-pair results to the output file.
  */
-void print_to_output_files_(
+void write_to_output_files_(
     FstOptions const& options,
     ::genesis::population::FstPoolProcessor const& processor,
     VariantWindowView const& window,
@@ -559,15 +559,15 @@ void print_to_output_files_(
         ++state.skipped_count;
     } else {
         ++state.used_count;
-        print_output_line_( options, processor, window, window_fst, state.fst_output_target );
+        write_output_line_( options, processor, window, window_fst, state.fst_output_target );
         if( options.write_pi_tables.value ) {
-            print_output_line_(
+            write_output_line_(
                 options, processor, window, std::get<0>(*pi_vectors), state.pi_within_output_target
             );
-            print_output_line_(
+            write_output_line_(
                 options, processor, window, std::get<1>(*pi_vectors), state.pi_between_output_target
             );
-            print_output_line_(
+            write_output_line_(
                 options, processor, window, std::get<2>(*pi_vectors), state.pi_total_output_target
             );
         }
@@ -576,29 +576,29 @@ void print_to_output_files_(
     // For whole genome, and then also for all-to-all, we produce special tables on top.
     if( state.is_whole_genome ) {
         internal_check( options.window.get_num_windows() == 1, "Whole genome with multiple windows" );
-        print_pairwise_value_list_( options, "fst", processor, window_fst, sample_pairs );
+        write_pairwise_value_list_( options, "fst", processor, window_fst, sample_pairs );
         if( options.write_pi_tables.value ) {
-            print_pairwise_value_list_(
+            write_pairwise_value_list_(
                 options, "pi-within",  processor, std::get<0>(*pi_vectors), sample_pairs
             );
-            print_pairwise_value_list_(
+            write_pairwise_value_list_(
                 options, "pi-between", processor, std::get<1>(*pi_vectors), sample_pairs
             );
-            print_pairwise_value_list_(
+            write_pairwise_value_list_(
                 options, "pi-total",   processor, std::get<2>(*pi_vectors), sample_pairs
             );
         }
 
         if( state.is_all_to_all ) {
-            print_pairwise_value_matrix_( options, "fst", window_fst, sample_pairs );
+            write_pairwise_value_matrix_( options, "fst", window_fst, sample_pairs );
             if( options.write_pi_tables.value ) {
-                print_pairwise_value_matrix_(
+                write_pairwise_value_matrix_(
                     options, "pi-within",  std::get<0>(*pi_vectors), sample_pairs
                 );
-                print_pairwise_value_matrix_(
+                write_pairwise_value_matrix_(
                     options, "pi-between", std::get<1>(*pi_vectors), sample_pairs
                 );
-                print_pairwise_value_matrix_(
+                write_pairwise_value_matrix_(
                     options, "pi-total",   std::get<2>(*pi_vectors), sample_pairs
                 );
             }
@@ -676,7 +676,7 @@ void run_fst( FstOptions const& options )
         // Reset all calculator accumulators to zero for this window.
         processor.reset();
 
-        // Compute diversity over samples.
+        // Compute FST between pairs of samples.
         size_t processed_cnt = 0;
         for( auto const& variant : window ) {
             internal_check(
@@ -691,8 +691,8 @@ void run_fst( FstOptions const& options )
             "Number of processed positions does not equal filter sum"
         );
 
-        // Print the output to all files that we want.
-        print_to_output_files_( options, processor, window, sample_pairs, state );
+        // Write the output to all files that we want.
+        write_to_output_files_( options, processor, window, sample_pairs, state );
     }
     internal_check(
         state.used_count + state.skipped_count == options.window.get_num_windows(),

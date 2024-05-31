@@ -172,6 +172,16 @@ genesis::population::DiversityPoolProcessor DiversityProcessorOptions::get_diver
 ) const {
     using namespace genesis::population;
 
+    // User input check
+    if( no_theta_pi.value && no_theta_watterson.value && no_tajima_d.value ) {
+        throw CLI::ValidationError(
+            no_theta_pi.option->get_name() + ", " +
+            no_theta_watterson.option->get_name() + ", " +
+            no_tajima_d.option->get_name(),
+            "All diversity metrics have been deactivate. Nothing is being computed."
+        );
+    }
+
     // Get and check the pool sizes.
     auto const pool_sizes = poolsizes.get_pool_sizes( sample_names );
     internal_check(

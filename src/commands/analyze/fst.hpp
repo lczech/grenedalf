@@ -53,9 +53,9 @@ public:
 
     // Specific settings
     FstProcessorOptions fst_processor;
-    CliOption<bool>     write_pi_tables = false;
+    CliOption<bool>     write_pi_tables  = false;
     CliOption<bool>     no_extra_columns = false;
-    CliOption<bool>     no_nan_windows = false;
+    CliOption<bool>     no_nan_windows   = false;
 
     // Output options
     TableOutputOptions table_output;

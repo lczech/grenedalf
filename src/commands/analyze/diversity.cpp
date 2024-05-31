@@ -38,10 +38,8 @@
 
 #include <cassert>
 
-// Keep it simple...
 using namespace genesis::population;
 using namespace genesis::utils;
-using VariantWindowView = WindowView<genesis::population::Variant>;
 
 // =================================================================================================
 //      Setup
@@ -53,8 +51,8 @@ void setup_diversity( CLI::App& app )
     auto options = std::make_shared<DiversityOptions>();
     auto sub = app.add_subcommand(
         "diversity",
-        "Compute pool-sequencing corrected diversity measures Theta Pi, "
-        "Theta Watterson, and Tajima's D."
+        "Compute pool-sequencing corrected diversity measures "
+        "Theta Pi, Theta Watterson, and Tajima's D."
     );
 
     // -------------------------------------------------------------------------
@@ -66,12 +64,14 @@ void setup_diversity( CLI::App& app )
     // options->variant_input.add_sample_name_opts_to_app( sub );
     // options->variant_input.add_region_filter_opts_to_app( sub );
 
-    // Individual settings for numerical filtering.
-    // We do not add the SNP filters here as user options, as we want to do our own filtering later
-    // on, so that we can keep track of covered invariant sites for the relative theta computation.
-    // We also do not add total filters here, as diversity is computed per-sample.
+    // We do not add the only-SNP filter here as a user option, as we always filter out invariant
+    // (non-SNP) sites below anyway. They do not contribute to the diversity.
     options->filter_numerical.add_sample_count_filter_opts_to_app( sub );
     options->filter_numerical.add_sample_read_depth_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_read_depth_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_snp_filter_opts_to_app( sub, false, true );
+    options->filter_numerical.add_total_snp_count_opts_to_app( sub );
+    options->filter_numerical.add_total_freq_filter_opts_to_app( sub );
 
     // We always need the min count option, and it cannot be 0.
     options->filter_numerical.sample_min_count.option->required();
@@ -87,78 +87,27 @@ void setup_diversity( CLI::App& app )
     //     Settings
     // -------------------------------------------------------------------------
 
-    // Settings: Pool sizes
-    options->poolsizes.add_poolsizes_opt_to_app( sub );
+    // Diversity Processor
+    options->diversity_processor.add_diversity_processor_opts_to_app( sub );
 
-    // Measure
-    options->measure.option = sub->add_option(
-        "--measure",
-        options->measure.value,
-        "Diversity measure to compute."
+    // Settings: Omit Empty Windows
+    options->no_extra_columns.option = sub->add_flag(
+        "--no-extra-columns",
+        options->no_extra_columns.value,
+        "Do not output the extra columns containing counts for each position and sample pair "
+        "that summarize the effects of the filtering. Only the window coordinates and the fst values "
+        "are printed in that case."
     );
-    options->measure.option->group( "Settings" );
-    options->measure.option->transform(
-        CLI::IsMember({ "all", "theta-pi", "theta-watterson", "tajimas-d" }, CLI::ignore_case )
-    );
+    options->no_extra_columns.option->group( "Settings" );
 
-    // Below options are deactivated, as we use the more standardized numerical filters instead now.
-    // However, we currently to not apply them in the input stream, as we want to keep track
-    // of invariant positions, so that for file formats that contain data for all variants,
-    // we can accurately compute the relative Theta values.
-
-    // // Minimum allele count
-    // options->min_count.option = sub->add_option(
-    //     "--min-allele-count",
-    //     options->min_count.value,
-    //     "Minimum allele count needed for a base count (`ACGT`) to be considered. Bases below this "
-    //     "count are filtered out. Used for the identification of SNPs."
-    // )->group( "Settings" );
-    //
-    // // Minimum read depth
-    // options->min_read_depth.option = sub->add_option(
-    //     "--min-read-depth",
-    //     options->min_read_depth.value,
-    //     "Minimum read depth of a site. Sites with a lower read depth will not be considered "
-    //     "for SNP identification and read depth estimation."
-    // )->group( "Settings" );
-    //
-    // // Maximum read depth
-    // options->max_read_depth.option = sub->add_option(
-    //     "--max-read-depth",
-    //     options->max_read_depth.value,
-    //     "Maximum read depth used for SNP identification. Read depth in ALL populations has to be lower "
-    //     "or equal to this threshold, otherwise no SNP will be called."
-    // )->group( "Settings" );
-
-    // TODO reactivate, but per sample, instead of for all populations
-
-    // TODO
-    // add tajima d method, and other normalization stuff
-
-    // Minimum read depth fraction
-    // options->min_read_depth_fraction.option = sub->add_option(
-    //     "--min-read-depth-fraction",
-    //     options->min_read_depth_fraction.value,
-    //     "Minimum read depth fraction of a window being between `--min-read-depth` and `--max-read-depth` "
-    //     "in ALL populations that needs to be reached in order to compute the diversity measures."
-    // )->group( "Settings" );
-
-    // -------------------------------------------------------------------------
-    //     Formatting and Compatibility
-    // -------------------------------------------------------------------------
-
-    // Add table output options.
-    auto sep_opt = options->table_output.add_separator_char_opt_to_app( sub );
-    auto nan_opt = options->table_output.add_na_entry_opt_to_app( sub );
-
-    // Add an option to purposely activate the PoPoolation bugs that we discovered.
-    options->with_popoolation_bugs.option = sub->add_flag(
-        "--popoolation-corrected-tajimas-d",
-        options->with_popoolation_bugs.value,
-        "If set, use the pool-sequencing correction term for Tajima's D as implemented in "
-        "PoPoolation <=1.2.2, which contains two major bugs that alter numerical results. "
-        "We here offer to imitate these bugs for comparability with PoPoolation."
-    )->group( "Compatibility" );
+    // // Settings: Omit Empty Windows
+    // options->no_nan_windows.option = sub->add_flag(
+    //     "--no-nan-windows",
+    //     options->no_nan_windows.value,
+    //     "Do not output windows where all values are n/a. This is can be relevant "
+    //     "with small window sizes (or individual positions), to reduce output clutter."
+    // );
+    // options->no_nan_windows.option->group( "Settings" );
 
     // PoPoolation output format
     options->popoolation_format.option = sub->add_flag(
@@ -167,16 +116,20 @@ void setup_diversity( CLI::App& app )
         "If set, instead of writing one output table for all measures and all samples, "
         "write the results in separate files for each sample and for each measure of "
         "Theta Pi, Theta Watterson, and Tajima's D, following the format of PoPoolation."
-    )->group( "Compatibility" );
+    )->group( "Settings" );
+
+    // -------------------------------------------------------------------------
+    //     Output
+    // -------------------------------------------------------------------------
+
+    // Add table output options.
+    auto sep_opt = options->table_output.add_separator_char_opt_to_app( sub );
+    auto nan_opt = options->table_output.add_na_entry_opt_to_app( sub );
 
     // Exclude separator char option and na entry in PoPoolation compatibility mode,
     // as we have to use their values in that case.
     sep_opt->excludes( options->popoolation_format.option );
     nan_opt->excludes( options->popoolation_format.option );
-
-    // -------------------------------------------------------------------------
-    //     Output
-    // -------------------------------------------------------------------------
 
     // Output
     options->file_output.add_default_output_opts_to_app( sub );
@@ -201,13 +154,13 @@ void setup_diversity( CLI::App& app )
 // =================================================================================================
 
 // -------------------------------------------------------------------------
-//     DiversityOutputData
+//     Diversity Command State
 // -------------------------------------------------------------------------
 
 /**
  * @brief Collect all output_data that we might need in one place.
  */
-struct DiversityOutputData
+struct DiversityCommandState
 {
     // Which values are actually being computed?
     bool compute_theta_pi;
@@ -217,6 +170,7 @@ struct DiversityOutputData
     // Store the column separator and nan entry, so that we do not need to look them up every time.
     char sep_char;
     std::string na_entry;
+    bool write_extra_columns;
 
     // We need all pointers, for our format and for the PoPoolation format,
     // in order to avoid code duplication in the output.
@@ -233,32 +187,27 @@ struct DiversityOutputData
 /**
  * @brief Prepare output file and write fixed header fields.
  */
-DiversityOutputData prepare_output_data_(
+DiversityCommandState prepare_output_data_(
     DiversityOptions const& options,
     std::vector<std::string> const& sample_names
 ) {
-    DiversityOutputData output_data;
+    DiversityCommandState output;
 
     // Get the measures to compute. At least one of them will be active.
-    auto const measure = to_lower( options.measure.value );
-    output_data.compute_theta_pi = ( measure == "all" || measure == "theta-pi" );
-    output_data.compute_theta_wa = ( measure == "all" || measure == "theta-watterson" );
-    output_data.compute_tajima_d = ( measure == "all" || measure == "tajimas-d" );
-    assert(
-        output_data.compute_theta_pi ||
-        output_data.compute_theta_wa ||
-        output_data.compute_tajima_d
-    );
+    output.compute_theta_pi = options.diversity_processor.compute_theta_pi();
+    output.compute_theta_wa = options.diversity_processor.compute_theta_watterson();
+    output.compute_tajima_d = options.diversity_processor.compute_tajima_d();
 
     // Get the separator char to use for table entries.
-    output_data.sep_char = options.table_output.get_separator_char();
-    output_data.na_entry = options.table_output.get_na_entry();
+    output.sep_char = options.table_output.get_separator_char();
+    output.na_entry = options.table_output.get_na_entry();
+    output.write_extra_columns = !options.no_extra_columns.value;
 
     // -----------------------------------
     //     Settings checks
     // -----------------------------------
 
-    if( output_data.compute_tajima_d ) {
+    if( output.compute_tajima_d ) {
         if( options.filter_numerical.sample_min_count.value != 2 ) {
             throw CLI::ValidationError(
                 options.filter_numerical.sample_min_count.option->get_name(),
@@ -284,17 +233,17 @@ DiversityOutputData prepare_output_data_(
 
     if( options.popoolation_format.value ) {
         for( auto const& sample_name : sample_names ) {
-            if( output_data.compute_theta_pi ) {
+            if( output.compute_theta_pi ) {
                 options.file_output.check_output_files_nonexistence(
                     "diversity-" + sample_name + "-theta-pi", "csv"
                 );
             }
-            if( output_data.compute_theta_wa ) {
+            if( output.compute_theta_wa ) {
                 options.file_output.check_output_files_nonexistence(
                     "diversity-" + sample_name + "-theta-watterson", "csv"
                 );
             }
-            if( output_data.compute_tajima_d ) {
+            if( output.compute_tajima_d ) {
                 options.file_output.check_output_files_nonexistence(
                     "diversity-" + sample_name + "-tajimas-d", "csv"
                 );
@@ -312,22 +261,22 @@ DiversityOutputData prepare_output_data_(
 
         // Open the three PoPoolation file formats for each sample.
         for( auto const& sample_name : sample_names ) {
-            if( output_data.compute_theta_pi ) {
-                output_data.popoolation_theta_pi_ofss.emplace_back(
+            if( output.compute_theta_pi ) {
+                output.popoolation_theta_pi_ofss.emplace_back(
                     options.file_output.get_output_target(
                         "diversity-" + sample_name + "-theta-pi", "csv"
                     )
                 );
             }
-            if( output_data.compute_theta_wa ) {
-                output_data.popoolation_theta_wa_ofss.emplace_back(
+            if( output.compute_theta_wa ) {
+                output.popoolation_theta_wa_ofss.emplace_back(
                     options.file_output.get_output_target(
                         "diversity-" + sample_name + "-theta-watterson", "csv"
                     )
                 );
             }
-            if( output_data.compute_tajima_d ) {
-                output_data.popoolation_tajima_d_ofss.emplace_back(
+            if( output.compute_tajima_d ) {
+                output.popoolation_tajima_d_ofss.emplace_back(
                     options.file_output.get_output_target(
                         "diversity-" + sample_name + "-tajimas-d", "csv"
                     )
@@ -342,95 +291,59 @@ DiversityOutputData prepare_output_data_(
     } else {
 
         // Open and prepare our table format
-        output_data.table_ofs = options.file_output.get_output_target( "diversity", "csv" );
-        (*output_data.table_ofs) << "chrom" << output_data.sep_char << "start" << output_data.sep_char << "end";
+        output.table_ofs = options.file_output.get_output_target( "diversity", "csv" );
+        (*output.table_ofs) << "chrom" << output.sep_char << "start" << output.sep_char << "end";
+
+        // Print the extra column headers if needed.
+        if( output.write_extra_columns ) {
+            (*output.table_ofs) << output.sep_char << "total.masked";
+            (*output.table_ofs) << output.sep_char << "total.missing";
+            (*output.table_ofs) << output.sep_char << "total.empty";
+            (*output.table_ofs) << output.sep_char << "total.numeric";
+            (*output.table_ofs) << output.sep_char << "total.invariant";
+            (*output.table_ofs) << output.sep_char << "total.passed";
+        }
 
         // Make the header per-sample fields.
         std::vector<std::string> fields;
-
-        // fields.push_back( "variant_count" );
-        // fields.push_back( "read_depth_count" );
-        fields.push_back( "snp_count" );
-        fields.push_back( "read_depth_fraction" );
-
-        if( output_data.compute_theta_pi ) {
-            // fields.push_back( "theta_pi_abs" );
+        if( output.write_extra_columns ) {
+            fields.push_back( "missing" );
+            fields.push_back( "numeric" );
+            fields.push_back( "passed" );
+        }
+        if( output.compute_theta_pi ) {
             fields.push_back( "theta_pi" );
         }
-        if( output_data.compute_theta_wa ) {
-            // fields.push_back( "theta_watterson_abs" );
+        if( output.compute_theta_wa ) {
             fields.push_back( "theta_watterson" );
         }
-        if( output_data.compute_tajima_d ) {
+        if( output.compute_tajima_d ) {
             fields.push_back( "tajimas_d" );
         }
 
         // Write all fields for all samples.
         for( auto const& sample : sample_names ) {
             for( auto const& field : fields ) {
-                (*output_data.table_ofs) << output_data.sep_char << sample << "." << field;
+                (*output.table_ofs) << output.sep_char << sample << "." << field;
             }
         }
-        (*output_data.table_ofs) << "\n";
+        (*output.table_ofs) << "\n";
     }
 
-    return output_data;
+    return output;
 }
 
 // -------------------------------------------------------------------------
-//     get_diversity_calculators_
-// -------------------------------------------------------------------------
-
-/**
- * @brief Get the calculators for all samples.
- */
-std::vector<genesis::population::DiversityPoolCalculator> get_diversity_calculators_(
-    DiversityOptions const& options,
-    SampleCountsFilterNumericalParams const& filter,
-    std::vector<std::string> const& sample_names,
-    std::vector<size_t> const& pool_sizes,
-    DiversityOutputData const& output_data
-) {
-    // Prepare pool settings for each sample.
-    // We here re-use the numerical filter settings as provided by the user.
-    DiversityPoolSettings pool_settings;
-    pool_settings.min_count    = filter.min_count;
-    pool_settings.min_read_depth = filter.min_read_depth;
-    pool_settings.max_read_depth = filter.max_read_depth;
-    pool_settings.tajima_denominator_policy
-        = options.with_popoolation_bugs.value
-        ? TajimaDenominatorPolicy::kWithPopoolationBugs
-        : TajimaDenominatorPolicy::kProvidedMinReadDepth
-    ;
-
-    // TODO
-    // add the other options here
-
-    std::vector<DiversityPoolCalculator> sample_diversity_calculators;
-    for( size_t i = 0; i < sample_names.size(); ++i ) {
-        sample_diversity_calculators.emplace_back(
-            pool_settings, pool_sizes[i]
-        );
-        sample_diversity_calculators.back().enable_theta_pi( output_data.compute_theta_pi );
-        sample_diversity_calculators.back().enable_theta_watterson( output_data.compute_theta_wa );
-        sample_diversity_calculators.back().enable_tajima_d( output_data.compute_tajima_d );
-    }
-    return sample_diversity_calculators;
-}
-
-// -------------------------------------------------------------------------
-//     write_output_popoolation_
+//     write_output_popoolation_line_
 // -------------------------------------------------------------------------
 
 /**
  * @brief Write output for PoPoolation style tables
  */
-void write_output_popoolation_(
-    std::vector<std::string> const& sample_names,
+void write_output_popoolation_line_(
     VariantWindowView const& window,
-    std::vector<DiversityPoolCalculator> const& sample_diversity_calculators,
-    std::vector<SampleCountsFilterStats> const& sample_filter_stats,
-    DiversityOutputData& output_data
+    genesis::population::DiversityPoolProcessor const& processor,
+    DiversityCommandState& output
 ) {
     using namespace genesis::population;
 
@@ -441,17 +354,16 @@ void write_output_popoolation_(
     auto write_popoolation_line_ = [](
         std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
         VariantWindowView const& window,
-        SampleCountsFilterStats const& stats,
-        DiversityPoolCalculator::Result const& results,
+        VariantFilterCategoryStats const& variant_stats,
+        SampleCountsFilterCategoryStats const& sample_stats,
         double value
     ) {
-        (void) results; // TODO
-        // internal_check(
-        //     stats[SampleCountsFilterTag::kPassed] == results.processed_count,
-        //     "stats[SampleCountsFilterTag::kPassed] != results.processed_count"
-        // );
+        // TODO Check if that is actually the correct way to do it.
+        // This is a bit messy, as our approach of handling sample vs total filters differs
+        // from PoPoolation, but this is as close as we can get, I think.
         auto const read_depth = static_cast<double>(
-            stats[SampleCountsFilterTag::kPassed] + stats[SampleCountsFilterTag::kNotSnp]
+            variant_stats[VariantFilterTagCategory::kInvariant] +
+            sample_stats[SampleCountsFilterTagCategory::kPassed]
         );
         auto const window_width = static_cast<double>( window.width() );
         auto const read_depth_fraction = read_depth / window_width;
@@ -459,7 +371,7 @@ void write_output_popoolation_(
         // Write fixed columns.
         (*ofs) << window.chromosome();
         (*ofs) << "\t" << anchor_position( window, WindowAnchorType::kIntervalMidpoint );
-        (*ofs) << "\t" << stats[SampleCountsFilterTag::kPassed];
+        (*ofs) << "\t" << sample_stats[SampleCountsFilterTagCategory::kPassed];
         (*ofs) << "\t" << std::fixed << std::setprecision( 3 ) << read_depth_fraction;
         if( std::isfinite( value ) ) {
             (*ofs) << "\t" << std::fixed << std::setprecision( 9 ) << value;
@@ -469,135 +381,158 @@ void write_output_popoolation_(
         (*ofs) << "\n";
     };
 
+    // Get the results for the whole set of calculators.
+    auto const results = processor.get_result( window.width() );
+    auto const total_stats = variant_filter_stats_category_counts(
+        processor.get_filter_stats()
+    );
+
     // Write to all individual files for each sample and each value.
-    for( size_t i = 0; i < sample_names.size(); ++i ) {
-        auto const& div_calc = sample_diversity_calculators[i];
-        auto const div_calc_result = div_calc.get_result( window.width() );
+    for( size_t i = 0; i < processor.calculators().size(); ++i ) {
+        auto const& calculator = processor.calculators()[i];
+        auto const sample_stats = sample_counts_filter_stats_category_counts(
+            calculator.get_filter_stats()
+        );
 
         // Theta Pi
-        if( output_data.compute_theta_pi ) {
+        if( output.compute_theta_pi ) {
             write_popoolation_line_(
-                output_data.popoolation_theta_pi_ofss[i],
+                output.popoolation_theta_pi_ofss[i],
                 window,
-                sample_filter_stats[i],
-                div_calc_result,
-                div_calc_result.theta_pi
+                total_stats,
+                sample_stats,
+                results[i].theta_pi
             );
         }
 
         // Theta Watterson
-        if( output_data.compute_theta_wa ) {
+        if( output.compute_theta_wa ) {
             write_popoolation_line_(
-                output_data.popoolation_theta_wa_ofss[i],
+                output.popoolation_theta_wa_ofss[i],
                 window,
-                sample_filter_stats[i],
-                div_calc_result,
-                div_calc_result.theta_watterson
+                total_stats,
+                sample_stats,
+                results[i].theta_watterson
             );
         }
 
         // Tajima's D
-        if( output_data.compute_tajima_d ) {
+        if( output.compute_tajima_d ) {
             write_popoolation_line_(
-                output_data.popoolation_tajima_d_ofss[i],
+                output.popoolation_tajima_d_ofss[i],
                 window,
-                sample_filter_stats[i],
-                div_calc_result,
-                div_calc_result.tajima_d
+                total_stats,
+                sample_stats,
+                results[i].tajima_d
             );
         }
     }
 }
 
 // -------------------------------------------------------------------------
-//     write_output_table_
+//     write_output_table_line_
 // -------------------------------------------------------------------------
 
 /**
  * @brief Write output for our table format
  */
-void write_output_table_(
-    std::vector<std::string> const& sample_names,
+void write_output_table_line_(
     VariantWindowView const& window,
-    std::vector<DiversityPoolCalculator> const& sample_diversity_calculators,
-    std::vector<SampleCountsFilterStats> const& sample_filter_stats,
-    DiversityOutputData& output_data
+    genesis::population::DiversityPoolProcessor const& processor,
+    DiversityCommandState& output
 ) {
     // Shorthand
     using namespace genesis::population;
-    auto& table_ofs = output_data.table_ofs;
+    auto& table_ofs = output.table_ofs;
+    auto const sep_char = output.sep_char;
 
     // Helper function to write a field value to one of the tables.
     auto write_table_field_ = [&]( double value ){
         if( std::isfinite( value ) ) {
-            (*table_ofs) << output_data.sep_char;
+            (*table_ofs) << sep_char;
             (*table_ofs) << std::defaultfloat << std::setprecision( 9 ) << value;
         } else {
-            (*table_ofs) << output_data.sep_char << output_data.na_entry;
+            (*table_ofs) << sep_char << output.na_entry;
         }
     };
 
     // Write fixed columns.
     (*table_ofs) << window.chromosome();
-    (*table_ofs) << output_data.sep_char << window.first_position();
-    (*table_ofs) << output_data.sep_char << window.last_position();
+    (*table_ofs) << sep_char << window.first_position();
+    (*table_ofs) << sep_char << window.last_position();
+    if( output.write_extra_columns ) {
+        // Summarize the exact statistics into their category summaries.
+        // Good enough for the user output here. We do not need to know which exact filter
+        // failed each time; it is good enough that it was a numerical one etc.
+        auto const total_stats = variant_filter_stats_category_counts(
+            processor.get_filter_stats()
+        );
+        // Print the counters.
+        // This obviously requires the column header line to exactly match this order.
+        // Change both if needed, throughout this file.
+        (*table_ofs) << sep_char << total_stats[ VariantFilterTagCategory::kMasked ];
+        (*table_ofs) << sep_char << total_stats[ VariantFilterTagCategory::kMissingInvalid ];
+        (*table_ofs) << sep_char << total_stats[ VariantFilterTagCategory::kSamplesFailed ];
+        (*table_ofs) << sep_char << total_stats[ VariantFilterTagCategory::kNumeric ];
+        (*table_ofs) << sep_char << total_stats[ VariantFilterTagCategory::kInvariant ];
+        (*table_ofs) << sep_char << total_stats[ VariantFilterTagCategory::kPassed ];
+    }
+
+    // Get the results for the whole set of calculators.
+    auto const results = processor.get_result( window.width() );
+
+    // Write to all individual files for each sample and each value.
+    for( size_t i = 0; i < processor.calculators().size(); ++i ) {
+    }
 
     // Write the per-pair diversity values in the correct order.
-    for( size_t i = 0; i < sample_names.size(); ++i ) {
-        auto const read_depth = sample_filter_stats[i][SampleCountsFilterTag::kPassed] + sample_filter_stats[i][SampleCountsFilterTag::kNotSnp];
-        auto const window_width = static_cast<double>( window.width() );
-        auto const read_depth_fraction = static_cast<double>( read_depth ) / window_width;
+    for( size_t i = 0; i < processor.calculators().size(); ++i ) {
+        auto const& calculator = processor.calculators()[i];
+        auto const sample_stats = sample_counts_filter_stats_category_counts(
+            calculator.get_filter_stats()
+        );
 
-        auto const& div_calc = sample_diversity_calculators[i];
-        auto const div_calc_result = div_calc.get_result( read_depth );
-        // auto const div_calc_result = div_calc.get_result( window.width() );
-
-        // Meta info per sample
-        // (*table_ofs) << output_data.sep_char << div_calc.variant_count;
-        // (*table_ofs) << output_data.sep_char << div_calc.read_depth_count;
-        (*table_ofs) << output_data.sep_char << "TODO"; // TODO sample_filter_stats[SampleCountsFilterTag::kPassed]; // div_calc_result.processed_count;
-        (*table_ofs) << output_data.sep_char << std::fixed << std::setprecision( 3 )
-                     << read_depth_fraction;
-
-        // Values
-        if( output_data.compute_theta_pi ) {
-            // write_table_field_( div_calc_result.theta_pi_absolute );
-            write_table_field_( div_calc_result.theta_pi );
+        // Write all columns. The extra ones need to match the ones written in the header,
+        // so if either needs updating, both need to be changed.
+        if( output.write_extra_columns ) {
+            (*table_ofs) << sep_char << sample_stats[ SampleCountsFilterTagCategory::kMissingInvalid ];
+            (*table_ofs) << sep_char << sample_stats[ SampleCountsFilterTagCategory::kNumeric ];
+            (*table_ofs) << sep_char << sample_stats[ SampleCountsFilterTagCategory::kPassed ];
         }
-        if( output_data.compute_theta_wa ) {
-            // write_table_field_( div_calc_result.theta_watterson_absolute );
-            write_table_field_( div_calc_result.theta_watterson );
+        if( output.compute_theta_pi ) {
+            write_table_field_( results[i].theta_pi );
         }
-        if( output_data.compute_tajima_d ) {
-            write_table_field_( div_calc_result.tajima_d );
+        if( output.compute_theta_wa ) {
+            write_table_field_( results[i].theta_watterson );
+        }
+        if( output.compute_tajima_d ) {
+            write_table_field_( results[i].tajima_d );
         }
     }
     (*table_ofs) << "\n";
 }
 
 // -------------------------------------------------------------------------
-//     write_output_
+//     write_output_line_
 // -------------------------------------------------------------------------
 
 /**
- * @brief Write output to output_data
+ * @brief Write output to output
  */
-void write_output_(
+void write_output_line_(
     DiversityOptions const& options,
-    std::vector<std::string> const& sample_names,
     VariantWindowView const& window,
-    std::vector<DiversityPoolCalculator> const& sample_diversity_calculators,
-    std::vector<SampleCountsFilterStats> const& sample_filter_stats,
-    DiversityOutputData& output_data
+    genesis::population::DiversityPoolProcessor const& processor,
+    DiversityCommandState& output
 ) {
     // Write the data, depending on the format.
     if( options.popoolation_format.value ) {
-        write_output_popoolation_(
-            sample_names, window, sample_diversity_calculators, sample_filter_stats, output_data
+        write_output_popoolation_line_(
+            window, processor, output
         );
     } else {
-        write_output_table_(
-            sample_names, window, sample_diversity_calculators, sample_filter_stats, output_data
+        write_output_table_line_(
+            window, processor, output
         );
     }
 }
@@ -609,122 +544,71 @@ void write_output_(
 void run_diversity( DiversityOptions const& options )
 {
     // -------------------------------------------------------------------------
-    //     Settings
+    //     Options Preparation
     // -------------------------------------------------------------------------
 
-    // Warn the user about the PoPoolation bugs.
-    if( options.with_popoolation_bugs.value ) {
-        LOG_WARN << "Option `" << options.with_popoolation_bugs.option->get_name()
-                 << "` was activated. Note that this yields numerically different results "
-                 << "from the intended measure as described by the publication of Kofler et al, "
-                 << "and that this option is provided solely for comparability with results "
-                 << "obtained from PoPoolation.";
-    }
+    // Before accessing the variant input, we need to add the filters to it.
+    // We use a variant filter that always filters out non-SNP positions here.
+    // There might still be samples where a position is invariant,
+    // but that's okay, as that will be caught by the diversity computation anyway.
+    options.variant_input.add_combined_filter_and_transforms(
+        options.filter_numerical.make_sample_filter()
+    );
+    genesis::population::VariantFilterNumericalParams total_filter;
+    total_filter.only_snps = true;
+    options.variant_input.add_combined_filter_and_transforms(
+        options.filter_numerical.make_total_filter( total_filter )
+    );
 
-    // Add a filter for just SNPs, per sample. Invariant sites don't change the absolute diversity.
-    // Right now, we however use the invariant sites to compute relative Theta, and so we do not
-    // want to filter them out beforehand. This is instead done in the actual processing,
-    // sample by sample. Bit slower, but not by much.
-    // SampleCountsFilterNumericalParams snp_filter;
-    // snp_filter.only_snps = true;
-    // options.variant_input.add_combined_filter_and_transforms(
-    //     [snp_filter]( genesis::population::Variant& variant ){
-    //         return genesis::population::filter_base_counts( variant, snp_filter );
-    //     }
-    // );
+    // TODO Previously, we used SampleCountsFilterNumericalParams::only_snps here instead of the
+    // only_snps filter for the total Variant. This is what we documented now, and the old
+    // behaviour can be achieved by simply running each sample indivudally. But maybe there is a
+    // better way, where this can be made a user option instead?
 
-    // Prepare the base counts filter. We default the snps filter,
-    // and then override everything else with the user provided values.
-    SampleCountsFilterNumericalParams filter_params;
-    filter_params.only_snps = true;
-    filter_params = options.filter_numerical.get_sample_filter_params( filter_params ).first;
-
-    // TODO right now, the numerical filters are applied in the diversity calculator, instead
-    // of on the stream beforehand - this will change soon once we support variant filters
-    // with masking properly. but in the meantime, that means that the subsampling will be
-    // applied _before_ the max read_depth... need to fix asap!
+    // Lastly, apply the subsampling. It is important that this happens after the above numercial
+    // filters above, as otherwise we might subsample to a lower read depth, and then want to apply
+    // a read depth filter, which would not work any more.
     options.transform_subsample.add_subsample_transformation( options.variant_input );
 
-    // Get all samples names from the input file.
+    // Get all samples names from the input file, and make a processor for them.
     auto const& sample_names = options.variant_input.sample_names();
-
-    // Get the pool sizes.
-    auto const pool_sizes = options.poolsizes.get_pool_sizes( sample_names );
-    internal_check(
-        pool_sizes.size() == sample_names.size(),
-        "Inconsistent number of pool sizes and samples."
+    auto processor = options.diversity_processor.get_diversity_pool_processor(
+        sample_names, options.filter_numerical.get_sample_filter_params().first
     );
 
     // Prepare file output_data and print headers.
     auto output_data = prepare_output_data_( options, sample_names );
 
-    // Prepare pool settings for each sample.
-    auto sample_diversity_calculators = get_diversity_calculators_(
-        options, filter_params, sample_names, pool_sizes, output_data
-    );
-    std::vector<SampleCountsFilterStats> sample_filter_stats{ sample_names.size() };
-
     // -------------------------------------------------------------------------
     //     Main Loop
     // -------------------------------------------------------------------------
 
-    // Iterate the file and compute per-window diversitye measures.
+    // Iterate the file and compute per-window diversity measures.
     // We run the samples in parallel, storing their results before writing to the output file.
-    // For now, we compute all of them, in not the very most efficient way, but the easiest.
     auto window_it = options.window.get_variant_window_view_stream( options.variant_input );
     for( auto cur_it = window_it->begin(); cur_it != window_it->end(); ++cur_it ) {
-        auto& window = *cur_it;
+        auto const& window = *cur_it;
 
         // Reset all calculator accumulators to zero for this window.
-        for( size_t i = 0; i < sample_diversity_calculators.size(); ++i ) {
-            sample_diversity_calculators[i].reset();
-            sample_filter_stats[i].clear();
-        }
+        processor.reset();
 
         // Compute diversity over samples.
-        // #pragma omp parallel for
-        for( auto& variant : window ) {
+        size_t processed_cnt = 0;
+        for( auto const& variant : window ) {
             internal_check(
                 variant.samples.size() == sample_names.size(),
                 "Inconsistent number of samples in input file."
             );
-
-            // TODO refine the below to apply the filtering beforehand?!
-            // that would make computing relative theta more tricky though.
-
-            // Compute diversity for each sample.
-            for( size_t i = 0; i < sample_names.size(); ++i ) {
-                if( apply_sample_counts_filter_numerical(
-                    variant.samples[i], filter_params, sample_filter_stats[i] )
-                ) {
-                    sample_diversity_calculators[i].process( variant.samples[i] );
-                }
-            }
-
-            // It does not help here to parallelize, at least with the current layout...
-            // We lose too much to the synchronization overhead.
-            // if( sample_names.size() > 1 ) {
-            //     global_options.thread_pool()->parallel_for(
-            //         0, sample_names.size(),
-            //         [&]( size_t i ){
-            //             // Currently, we need to do some filtering here...
-            //             if( filter_base_counts( variant.samples[i], filter, sample_filter_stats[i] )) {
-            //                 sample_diversity_calculators[i].process( variant.samples[i] );
-            //             }
-            //         }
-            //     ).wait();
-            // } else if( sample_names.size() == 1 ) {
-            //     if( filter_base_counts( variant.samples[0], filter, sample_filter_stats[0] )) {
-            //         sample_diversity_calculators[0].process( variant.samples[0] );
-            //     }
-            // }
+            processor.process( variant );
+            ++processed_cnt;
         }
+        internal_check(
+            processed_cnt == processor.get_filter_stats().sum(),
+            "Number of processed positions does not equal filter sum"
+        );
 
         // Write the output to files.
-        write_output_(
-            options, sample_names, window,
-            sample_diversity_calculators, sample_filter_stats, output_data
-        );
+        write_output_line_( options, window, processor, output_data );
     }
 
     // Final user output.

@@ -53,8 +53,8 @@ void VariantTransformSubsampleOptions::add_subsample_opts_to_app(
         "--subsample-max-read-depth",
         max_read_depth_.value,
         "If provided, the nucleotide counts of each sample are subsampled so that they do not "
-        "exceed this given maximum total read depth (sum of the four nucleotide counts, as well as "
-        "the any `N` and deleted `D` counts). "
+        "exceed this given maximum total read depth (sum of the four nucleotide counts `ACGT`, "
+        "as well as the any `N` and deleted `D` counts). "
         "If they are below this value anyway, they are not changed. "
         "This transformation is useful to limit the maximum read depth. For instance, the diversity "
         "estimators for Theta Pi and Theta Watterson have terms that depend on read depth. "
@@ -63,8 +63,9 @@ void VariantTransformSubsampleOptions::add_subsample_opts_to_app(
         "Furthermore, a very low Tajima's D, usually indicative of a selective sweep, may be found "
         "as an artifact in highly covered regions, as such regions have just more sequencing errors. "
         "To avoid these kinds of biases we recommend to subsample to an uniform read depth. "
-        // "This transformation is applied after any filters, so that, e.g., filters high read depth "
-        // "remove any unwanted positions first. See `--subsample-method` for the subsampling method."
+        "This transformation is applied after the numerical filters, so that, e.g., filters for "
+        "high read depth are able to remove any unwanted positions first. "
+        "See `--subsample-method` for the subsampling method."
     );
     max_read_depth_.option->group( group );
 
