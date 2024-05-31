@@ -109,15 +109,6 @@ void setup_diversity( CLI::App& app )
     // );
     // options->no_nan_windows.option->group( "Settings" );
 
-    // PoPoolation output format
-    options->popoolation_format.option = sub->add_flag(
-        "--popoolation-format",
-        options->popoolation_format.value,
-        "If set, instead of writing one output table for all measures and all samples, "
-        "write the results in separate files for each sample and for each measure of "
-        "Theta Pi, Theta Watterson, and Tajima's D, following the format of PoPoolation."
-    )->group( "Settings" );
-
     // -------------------------------------------------------------------------
     //     Output
     // -------------------------------------------------------------------------
@@ -125,6 +116,15 @@ void setup_diversity( CLI::App& app )
     // Add table output options.
     auto sep_opt = options->table_output.add_separator_char_opt_to_app( sub );
     auto nan_opt = options->table_output.add_na_entry_opt_to_app( sub );
+
+    // PoPoolation output format
+    options->popoolation_format.option = sub->add_flag(
+        "--popoolation-format",
+        options->popoolation_format.value,
+        "If set, instead of writing one output table for all measures and all samples, "
+        "write the results in separate files for each sample and for each measure of "
+        "Theta Pi, Theta Watterson, and Tajima's D, following the format of PoPoolation."
+    )->group( "Formatting" );
 
     // Exclude separator char option and na entry in PoPoolation compatibility mode,
     // as we have to use their values in that case.
