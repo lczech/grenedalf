@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,7 +113,7 @@ Citation const& get_citation( std::string const& key )
 
     if(
         entry.authors.empty() || entry.title.empty() ||
-        entry.journal.empty() || entry.year.empty() // TODO reinstate once our paper as a doi || entry.doi.empty()
+        entry.journal.empty() || entry.year.empty()  || entry.doi.empty()
     ) {
         throw std::runtime_error( "Citation is missing some information: " + key );
     }
