@@ -2,8 +2,8 @@
 
 General usage
 
-  * [Build instructions](../wiki/Build-instructions)
+  * [Setup](../wiki/Setup)
   * [Overview](../wiki/Overview)
-  * [Input formats](../wiki/Input-formats)
+  * [Input](../wiki/Input)
   * [Filtering](../wiki/Filtering)
   * [Windowing](../wiki/Windowing)

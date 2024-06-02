@@ -61,12 +61,18 @@ void VariantFilterMaskOptions::add_mask_filter_opts_to_app(
     filter_mask_bed_.option = sub->add_option(
         "--filter-mask-bed",
         filter_mask_bed_.value,
-        "Genomic positions to mask (mark as missing), as a BED file. This only uses the chromosome, "
-        "as well as start and end information per line, and ignores everything else in the file. "
-        "Note that BED uses 0-based positions, and a half-open `[)` interval for the end position; "
-        "simply using columns extracted from other file formats (such as vcf or gff) will not work. "
-        "The regions listed in the BED file are masked; this is in line with, e.g., smcpp, but "
-        "differs from the above usage of a BED file for selection regions."
+        "Genomic positions to mask (mark as missing), as a BED file."
+        "\nThe regions listed in the BED file are masked; this is in line with, e.g., smcpp, but "
+        "is the inverse of the above usage of a BED file for selection regions, where instead "
+        "the listed regions are kept. "
+        "Note that this also conceptually differs from the region BED above. We here do not remove "
+        "the masked positions, but instead just mark them as masked, so that they can still "
+        "contribute to, e.g., denominators in the statistics for certain settings."
+        "\nThis only uses the chromosome, as well as start and end information per line, and "
+        "ignores everything else in the file. Note that BED uses 0-based positions, and a half-open "
+        "`[)` interval for the end position; simply using columns extracted from other file formats "
+        "(such as vcf or gff) will not work."
+
     );
     filter_mask_bed_.option->check( CLI::ExistingFile );
     filter_mask_bed_.option->group( group );
@@ -78,9 +84,10 @@ void VariantFilterMaskOptions::add_mask_filter_opts_to_app(
         "Genomic positions to mask, as a FASTA-like mask file (such as used by vcftools). "
         "The file contains a sequence of integer digits `[0-9]`, one for each position on the "
         "chromosomes, which specify if the position should be masked or not. Any positions "
-        "with digits above the `--filter-mask-fasta-min` value are tagged as being masked."
+        "with digits above the `--filter-mask-fasta-min` value are tagged as being masked. "
         "Note that this conceptually differs from the region fasta above. We here do not remove the "
-        "masked positions, so that they contribute to, e.g., denominators in the statistics."
+        "the masked positions, but instead just mark them as masked, so that they can still "
+        "contribute to, e.g., denominators in the statistics for certain settings."
     );
     filter_mask_fasta_.option->check( CLI::ExistingFile );
     filter_mask_fasta_.option->group( group );
