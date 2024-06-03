@@ -12,6 +12,7 @@ However, being written in C++, grenedalf is much faster and needs less memory.
   * [Input](../wiki/Input)
   * [Filtering](../wiki/Filtering)
   * [Windowing](../wiki/Windowing)
+  * [Output](../wiki/Output)
 
 # Command Line Interface
 

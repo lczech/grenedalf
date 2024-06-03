@@ -7,3 +7,4 @@ General usage
   * [Input](../wiki/Input)
   * [Filtering](../wiki/Filtering)
   * [Windowing](../wiki/Windowing)
+  * [Output](../wiki/Output)

@@ -79,6 +79,10 @@ void DiversityProcessorOptions::add_diversity_processor_opts_to_app(
     //     Basic Diversity Settings
     // -------------------------------------------------------------------------
 
+    // Pool sizes and window averaging
+    poolsizes.add_poolsizes_opt_to_app( sub, true, group );
+    window_average_policy.add_window_average_opt_to_app( sub, group );
+
     // Settings: Tajima Denominator Policy
     tajima_d_denominator_policy.option = sub->add_option(
         "--tajima-d-denominator-policy",
@@ -108,10 +112,6 @@ void DiversityProcessorOptions::add_diversity_processor_opts_to_app(
     );
     tajima_d_denominator_policy.option->group( group );
     // tajima_d_denominator_policy.option->required();
-
-    // Pool sizes and window averaging
-    poolsizes.add_poolsizes_opt_to_app( sub, true, group );
-    window_average_policy.add_window_average_opt_to_app( sub, group );
 
     // Also add some switches to turn off specific parts of the computation.
 

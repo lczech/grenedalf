@@ -23,15 +23,13 @@ as well as [poolfstat](https://cran.r-project.org/web/packages/poolfstat/index.h
 and [npstat](https://github.com/lucaferretti/npstat). However, compared to those, grenedalf
 is significantly more scalable, more user friendly, and offers more settings and input file formats.
 
-**Remark:** grenedalf is quite young and in activate development. The interface will change frequently
-in the near future. Everything is considered to be in beta status.
 [Feedback](https://github.com/lczech/grenedalf/issues) on functionality, interface, and features
 is highly appreciated!
 
 Setup
 -------------------
 
-We recommend to first try the pre-compiled binaries of the latest [Release](https://github.com/lczech/grenedalf/releases), by downloading the binary for your system from the "Assets" list below the release. If that does not work, grenedalf can be build from source as follows. If that does not work, grenedalf can be build from source as described [here](https://github.com/lczech/grenedalf/wiki/Build).
+We recommend to first try the pre-compiled binaries of the latest [Release](https://github.com/lczech/grenedalf/releases), by downloading the binary for your system from the "Assets" list below the release. If that does not work, grenedalf can be build from source as described [here](https://github.com/lczech/grenedalf/wiki/Setup).
 
 Usage and Documentation
 -------------------
