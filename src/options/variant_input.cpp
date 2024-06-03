@@ -239,13 +239,14 @@ void VariantInputOptions::print_report() const
     // If phrasing here is changed, it should also be changed in WindowOptions::print_report()
     auto const chr_cnt = num_chromosomes_;
     auto const pos_cnt = num_positions_;
-    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
-            << " with " << pos_cnt << " (non-filtered) position" << ( pos_cnt != 1 ? "s" : "" ) << ".";
+    LOG_MSG << "Processed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
+            << " with " << pos_cnt << " position" << ( pos_cnt != 1 ? "s" : "" ) << ".";
     if( num_mismatch_bases_ > 0 ) {
         LOG_WARN << "Out of these, " << num_mismatch_bases_ << " positions had a mismatch between "
                  << "the bases as determined from the input file(s) compared to the provided "
                  << "reference genome. Please check that you provided a fitting reference genome!";
     }
+    VariantFilterNumericalOptions::print_report( sample_stats_, total_stats_ );
 }
 
 // =================================================================================================
@@ -757,6 +758,17 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
     for( auto const& func : combined_filters_and_transforms_ ) {
         stream.add_transform_filter( func );
     }
+
+    // Finally, we apply an observer that counts our statistics.
+    // This is done after all filters are applied, so that we get the last numbers in the report.
+    stream.add_on_enter_observer(
+        [ this ]( Variant const& variant ) mutable {
+            ++this->total_stats_[variant.status.get()];
+            for( auto const& sample : variant.samples ) {
+                ++this->sample_stats_[sample.status.get()];
+            }
+        }
+    );
 
     // In addition to the transforms and filters, we here also add an observer function.
     // We always print out where the input is at, at the moment. That makes sure that we always

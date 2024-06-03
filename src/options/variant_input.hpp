@@ -29,6 +29,7 @@
 #include "options/file_input.hpp"
 #include "options/variant_file.hpp"
 #include "options/variant_filter_mask.hpp"
+#include "options/variant_filter_numerical.hpp"
 #include "options/variant_filter_region.hpp"
 #include "options/variant_sample_names.hpp"
 #include "options/variant_reference_genome.hpp"
@@ -365,6 +366,11 @@ private:
     mutable size_t num_chromosomes_ = 0;
     mutable size_t num_positions_ = 0;
     mutable size_t num_mismatch_bases_ = 0;
+
+    // Same for the overall filter stats. We keep them here, so that we report
+    // the final results after all filters and such have been applied.
+    mutable genesis::population::SampleCountsFilterStats sample_stats_;
+    mutable genesis::population::VariantFilterStats      total_stats_;
 
 };
 

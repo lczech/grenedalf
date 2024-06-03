@@ -356,6 +356,9 @@ std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
                  << window.first_position() << "-"
                  << window.last_position();
     });
+    // result->add_end_callback([this](){
+    //     this->print_report();
+    // });
     return result;
 }
 
@@ -453,6 +456,9 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
                  << window.first_position() << "-"
                  << window.last_position();
     });
+    // result->add_end_callback([this](){
+    //     this->print_report();
+    // });
     return result;
 }
 
@@ -473,11 +479,13 @@ void WindowOptions::print_report() const
     }
 
     // If phrasing here is changed, it should also be changed in VariantInputOptions::print_report()
-    auto const chr_cnt = variant_input_->get_num_chromosomes();
-    auto const pos_cnt = variant_input_->get_num_positions();
-    LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
-            << " with " << pos_cnt << " (non-filtered) position" << ( pos_cnt != 1 ? "s" : "" )
-            << " in " << num_windows_ << " window" << ( num_windows_ != 1 ? "s" : "" ) << ".";
+    // auto const chr_cnt = variant_input_->get_num_chromosomes();
+    // auto const pos_cnt = variant_input_->get_num_positions();
+    // LOG_MSG << "\nProcessed " << chr_cnt << " chromosome" << ( chr_cnt != 1 ? "s" : "" )
+    //         << " with " << pos_cnt << " position" << ( pos_cnt != 1 ? "s" : "" )
+    //         << " in " << num_windows_ << " window" << ( num_windows_ != 1 ? "s" : "" ) <<
+    LOG_BOLD;
+    LOG_MSG << "Processed " << num_windows_ << " window" << ( num_windows_ != 1 ? "s" : "" ) << ".";
 }
 
 // =================================================================================================

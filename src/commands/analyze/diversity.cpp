@@ -613,5 +613,6 @@ void run_diversity( DiversityOptions const& options )
 
     // Final user output.
     options.window.print_report();
-    options.filter_numerical.print_report();
+    options.variant_input.print_report();
+    // options.filter_numerical.print_report();
 }

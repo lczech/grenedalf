@@ -205,6 +205,14 @@ public:
      */
     void print_report() const;
 
+    /**
+     * @brief Print a report of the statistics of filtering.
+     */
+    static void print_report(
+        genesis::population::SampleCountsFilterStats const& sample_stats,
+        genesis::population::VariantFilterStats const& total_stats
+    );
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
@@ -232,7 +240,9 @@ public:
 
 private:
 
-    // Run variables.
+    // Filter stats. Kept here for reference, but only used internally.
+    // We instead print the final reports using the stat counters in the VariantInputOptions
+    // so that the very final numbers are reported from there, after all filters etc.
     mutable genesis::population::SampleCountsFilterStats sample_stats_;
     mutable genesis::population::VariantFilterStats      total_stats_;
 

@@ -705,5 +705,6 @@ void run_fst( FstOptions const& options )
         LOG_MSG << "Thereof, skipped " << state.skipped_count << " window"
                 << ( state.skipped_count != 1 ? "s" : "" ) << " without any FST values.";
     }
-    options.filter_numerical.print_report();
+    options.variant_input.print_report();
+    // options.filter_numerical.print_report();
 }

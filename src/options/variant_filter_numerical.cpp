@@ -383,11 +383,6 @@ VariantFilterNumericalOptions::make_sample_filter() const
         genesis::population::apply_sample_counts_filter_numerical(
             variant, filter_params, this->total_stats_, this->sample_stats_ //, all_need_pass
         );
-        for( auto const& sample : variant.samples ) {
-            if( sample.status.passing() ) {
-                ++this->sample_stats_[genesis::population::SampleCountsFilterTag::kPassed];
-            }
-        }
         return true;
     };
 }
@@ -406,11 +401,6 @@ VariantFilterNumericalOptions::make_sample_filter(
         genesis::population::apply_sample_counts_filter_numerical(
             variant, filter_params, this->total_stats_, this->sample_stats_ //, all_need_pass
         );
-        for( auto const& sample : variant.samples ) {
-            if( sample.status.passing() ) {
-                ++this->sample_stats_[genesis::population::SampleCountsFilterTag::kPassed];
-            }
-        }
         return true;
     };
 }
@@ -480,9 +470,6 @@ VariantFilterNumericalOptions::make_total_filter() const
         genesis::population::apply_variant_filter_numerical(
             variant, filter_params, this->total_stats_
         );
-        if( variant.status.passing() ) {
-            ++this->total_stats_[genesis::population::VariantFilterTag::kPassed];
-        }
         return true;
     };
 }
@@ -501,9 +488,6 @@ VariantFilterNumericalOptions::make_total_filter(
         genesis::population::apply_variant_filter_numerical(
             variant, filter_params, this->total_stats_
         );
-        if( variant.status.passing() ) {
-            ++this->total_stats_[genesis::population::VariantFilterTag::kPassed];
-        }
         return true;
     };
 }
@@ -514,15 +498,24 @@ VariantFilterNumericalOptions::make_total_filter(
 
 void VariantFilterNumericalOptions::print_report() const
 {
+    print_report( sample_stats_, total_stats_ );
+}
+
+void VariantFilterNumericalOptions::print_report(
+    genesis::population::SampleCountsFilterStats const& sample_stats,
+    genesis::population::VariantFilterStats const& total_stats
+) {
     using namespace genesis::population;
 
-    auto const sample_text = print_sample_counts_filter_category_stats( sample_stats_ );
+    auto const sample_text = print_sample_counts_filter_category_stats( sample_stats );
     if( ! sample_text.empty() ) {
+        LOG_MSG1;
         LOG_MSG1 << "Sample filter summary (summed up across all samples):\n"
                  << sample_text << "\n";
     }
-    auto const total_text = print_variant_filter_category_stats( total_stats_ );
+    auto const total_text = print_variant_filter_category_stats( total_stats );
     if( ! total_text.empty() ) {
+        LOG_MSG1;
         LOG_MSG1 << "Total filter summary (after applying all sample filters):\n"
                  << total_text << "\n";
     }
