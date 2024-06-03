@@ -54,7 +54,10 @@ CLI::Option* VariantFileSamOptions::add_file_input_opt_to_app_(
 
     // Add the option
     file_input_.add_multi_file_input_opt_to_app(
-        sub, "sam", "sam/bam/cram", "(sam(\\.gz)?|bam|cram)", ".sam[.gz]|.bam|.cram", required, group
+        sub, "sam", "sam/bam/cram",
+        "(sam(\\.gz)?|bam(\\.gz)?|cram)",
+        ".sam[.gz]|.bam[.gz]|.cram",
+        required, group
     );
 
     // Min mapping quality
