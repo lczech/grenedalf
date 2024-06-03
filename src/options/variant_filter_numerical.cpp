@@ -383,6 +383,11 @@ VariantFilterNumericalOptions::make_sample_filter() const
         genesis::population::apply_sample_counts_filter_numerical(
             variant, filter_params, this->total_stats_, this->sample_stats_ //, all_need_pass
         );
+        for( auto const& sample : variant.samples ) {
+            if( sample.status.passing() ) {
+                ++this->sample_stats_[genesis::population::SampleCountsFilterTag::kPassed];
+            }
+        }
         return true;
     };
 }
@@ -401,6 +406,11 @@ VariantFilterNumericalOptions::make_sample_filter(
         genesis::population::apply_sample_counts_filter_numerical(
             variant, filter_params, this->total_stats_, this->sample_stats_ //, all_need_pass
         );
+        for( auto const& sample : variant.samples ) {
+            if( sample.status.passing() ) {
+                ++this->sample_stats_[genesis::population::SampleCountsFilterTag::kPassed];
+            }
+        }
         return true;
     };
 }
@@ -470,6 +480,9 @@ VariantFilterNumericalOptions::make_total_filter() const
         genesis::population::apply_variant_filter_numerical(
             variant, filter_params, this->total_stats_
         );
+        if( variant.status.passing() ) {
+            ++this->total_stats_[genesis::population::VariantFilterTag::kPassed];
+        }
         return true;
     };
 }
@@ -488,6 +501,9 @@ VariantFilterNumericalOptions::make_total_filter(
         genesis::population::apply_variant_filter_numerical(
             variant, filter_params, this->total_stats_
         );
+        if( variant.status.passing() ) {
+            ++this->total_stats_[genesis::population::VariantFilterTag::kPassed];
+        }
         return true;
     };
 }
