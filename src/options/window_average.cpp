@@ -42,7 +42,7 @@ std::vector<std::pair<std::string, WindowAveragePolicy>> const window_average_po
     { "available-loci", WindowAveragePolicy::kAvailableLoci },
     { "valid-loci",     WindowAveragePolicy::kValidLoci },
     { "valid-snps",     WindowAveragePolicy::kValidSnps },
-    { "absolute-sum",   WindowAveragePolicy::kAbsoluteSum }
+    { "sum",            WindowAveragePolicy::kAbsoluteSum }
 };
 
 // =================================================================================================
@@ -73,7 +73,7 @@ CLI::Option* WindowAverageOptions::add_window_average_opt_to_app(
         "quality, and is the recommended policy when the input contains data for all positions."
         "\n(4) `valid-snps`: Use the number of SNPs only. This might overestimate the metric, "
         "but can be useful when the data only consists of SNPs."
-        "\n(5) `absolute-sum`: Simply report the sum of the per-site values, with no averaging "
+        "\n(5) `sum`: Simply report the sum of the per-site values, with no averaging "
         "applied to it. This can be used to apply custom averaging later."
     );
     window_average_policy_.option->transform(
