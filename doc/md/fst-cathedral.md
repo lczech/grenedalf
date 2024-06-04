@@ -22,6 +22,8 @@ Note that the command processes all given pairs of samples at the same time. We 
 positions. Hence, for a large number of samples, this can result in high memory usage. If that is the
 case, simply run this command individually on subsets of sample pairs.
 
+Also, we here do not account for missing data in the windows. That is, the pi values involved in the computation of FST are not normalized per window, and instead simply their sum is used to compute the Nei/Hudson estimators for each window. Properly accounting for missing data would entail to keep information on that during the computation per pixel as well, which we have opted not to implement at this time. As cathedral plots are meant as a visual explorative tool anyway, this should be okay. It will not make a large difference unless there is extremely uneven coverage between the samples. If you need this though, please [let us know](https://github.com/lczech/grenedalf/issues).
+
 # FST Cathedral Plots
 
 ![FST Cathedral Plot.](https://github.com/lczech/grenedalf/blob/master/doc/png/fst_cathedral.png?raw=true)

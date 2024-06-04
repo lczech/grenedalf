@@ -42,7 +42,7 @@ std::vector<std::pair<std::string, WindowAveragePolicy>> const window_average_po
     { "available-loci", WindowAveragePolicy::kAvailableLoci },
     { "valid-loci",     WindowAveragePolicy::kValidLoci },
     { "valid-snps",     WindowAveragePolicy::kValidSnps },
-    { "sum",            WindowAveragePolicy::kAbsoluteSum }
+    { "sum",            WindowAveragePolicy::kSum }
 };
 
 // =================================================================================================

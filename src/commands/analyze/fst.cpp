@@ -102,7 +102,7 @@ void setup_fst( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Fst Processor
-    options->fst_processor.add_fst_processor_opts_to_app( sub, true );
+    options->fst_processor.add_fst_processor_opts_to_app( sub );
 
     // Settings: Write pi tables
     options->write_pi_tables.option = sub->add_flag(

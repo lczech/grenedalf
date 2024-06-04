@@ -71,7 +71,7 @@ std::vector<std::pair<std::string, FstProcessorOptions::FstMethod>> const fst_me
 
 void FstProcessorOptions::add_fst_processor_opts_to_app(
     CLI::App* sub,
-    bool all_methods,
+    Params const& fst_processor_params,
     std::string const& group
 ) {
 
@@ -80,7 +80,7 @@ void FstProcessorOptions::add_fst_processor_opts_to_app(
     // -------------------------------------------------------------------------
 
     // Settings: FST Method
-    if( all_methods ) {
+    if( fst_processor_params.with_all_methods ) {
         method.option = sub->add_option(
             "--method",
             method.value,
@@ -109,10 +109,13 @@ void FstProcessorOptions::add_fst_processor_opts_to_app(
 
     // Pool sizes. When not all methods are selected, we only offer the unbiased ones,
     // which do need pool sizes, so then we require this to be provided.
-    poolsizes.add_poolsizes_opt_to_app( sub, !all_methods, group );
+    poolsizes.add_poolsizes_opt_to_app( sub, !fst_processor_params.with_all_methods, group );
 
     // Window averaging
-    window_average_policy.add_window_average_opt_to_app( sub, group );
+    if( fst_processor_params.with_window_average_policy ) {
+        window_average_policy.add_window_average_opt_to_app( sub, group );
+    }
+    params = fst_processor_params;
 
     // -------------------------------------------------------------------------
     //     Sample Pairs
@@ -364,34 +367,38 @@ genesis::population::FstPoolProcessor FstProcessorOptions::get_fst_pool_processo
     );
 
     // Get the window average policy to use for all processors.
-    auto const win_avg_policy = window_average_policy.get_window_average_policy();
+    auto const win_avg_policy = (
+        params.with_window_average_policy
+        ? window_average_policy.get_window_average_policy()
+        : params.fix_window_average_policy
+    );
 
     // Make the type of processor that we need for the provided method.
     FstPoolProcessor processor;
     switch( method ) {
         case FstMethod::kUnbiasedNei: {
             processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                win_avg_policy, sample_pairs, pool_sizes,
+                sample_pairs, pool_sizes, win_avg_policy,
                 FstPoolCalculatorUnbiased::Estimator::kNei
             );
             break;
         }
         case FstMethod::kUnbiasedHudson: {
             processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
-                win_avg_policy, sample_pairs, pool_sizes,
+                sample_pairs, pool_sizes, win_avg_policy,
                 FstPoolCalculatorUnbiased::Estimator::kHudson
             );
             break;
         }
         case FstMethod::kKofler: {
             processor = make_fst_pool_processor<FstPoolCalculatorKofler>(
-                win_avg_policy, sample_pairs, pool_sizes
+                sample_pairs, pool_sizes
             );
             break;
         }
         case FstMethod::kKarlsson: {
             processor = make_fst_pool_processor<FstPoolCalculatorKarlsson>(
-                win_avg_policy, sample_pairs, pool_sizes
+                sample_pairs, pool_sizes
             );
             break;
         }
