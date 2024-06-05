@@ -320,7 +320,11 @@ jobs:
       - name: Run Test
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
         run: |
-          ./test/run.sh
+          # We run the test scripts directly here, instead of via the bash script,
+          # as this one fails to locate the above installation... Ah fun.
+          ./test/execute_tests.py
+          ./test/evaluate.py
+          # ./test/run.sh
 
       - name: Upload Tests
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
