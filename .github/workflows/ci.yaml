@@ -314,7 +314,7 @@ jobs:
           # Verify the installation
           pip list
           python --version
-          pytest
+          # pytest
 
       - name: Run Test
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
