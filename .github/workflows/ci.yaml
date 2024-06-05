@@ -297,23 +297,20 @@ jobs:
       # For the same versions that we use for the binaries above,
       # we also run the test case, comparing grenedalf against our independent implementation.
       # This covers Ubuntu and two Mac versions, so hopefully good enough.
-      - name: Python Setup
-        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
       - name: Install Test Dependencies
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
         run: |
+          # We do not use the github action to install python and pip,
+          # see https://stackoverflow.com/a/70228289/4184258
+          sudo apt-get install python3 pip3
+
           # Install the dependencies for the tests
-          python -m venv venv
+          python3 -m venv venv
           source venv/bin/activate
-          pip install -r test/pip.txt
+          pip3 install -r test/pip.txt
 
           # Verify the installation
-          pip list
-          python --version
+          pip3 list
           python3 --version
           # pytest
 
@@ -322,8 +319,8 @@ jobs:
         run: |
           # We run the test scripts directly here, instead of via the bash script,
           # as this one fails to locate the above installation... Ah fun.
-          ./test/execute_tests.py
-          ./test/evaluate.py
+          python3 ./test/execute_tests.py
+          python3 ./test/evaluate.py
           # ./test/run.sh
 
       - name: Upload Tests
