@@ -316,7 +316,9 @@ jobs:
       - name: Run Test
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
         run: |
-          ./test/run.sh
+          cd test
+          ./run.sh
+          cd ..
 
       - name: Upload Tests
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
