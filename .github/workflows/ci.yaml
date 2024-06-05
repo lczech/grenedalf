@@ -302,7 +302,7 @@ jobs:
         run: |
           # We do not use the github action to install python and pip,
           # see https://stackoverflow.com/a/70228289/4184258
-          sudo apt-get install python3 pip3
+          sudo apt-get install python3 python3-pip
 
           # Install the dependencies for the tests
           python3 -m venv venv
