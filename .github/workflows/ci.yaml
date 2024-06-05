@@ -250,7 +250,7 @@ jobs:
           cmake -S . -B ./build ${GRENEDALF_BUILD_STATIC}
 
       # -------------------------------------------------------
-      #     Build & Test
+      #     Build
       # -------------------------------------------------------
 
       - name: Build
@@ -280,6 +280,8 @@ jobs:
       #     Upload Binaries
       # -------------------------------------------------------
 
+      # We upload the static binaries for the most important systems.
+      # These are the ones that we want to publish with release versions.
       - name: Upload Binaries
         if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
         uses: actions/upload-artifact@v4
@@ -287,3 +289,42 @@ jobs:
           name: binary-${{ matrix.os }}
           path: |
             bin/grenedalf
+
+      # -------------------------------------------------------
+      #     Test
+      # -------------------------------------------------------
+
+      # For the same versions that we use for the binaries above,
+      # we also run the test case, comparing grenedalf against our independent implementation.
+      # This covers Ubuntu and two Mac versions, so hopefully good enough.
+      - name: Python Setup
+        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Test Dependencies
+        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        run: |
+          # Install the dependencies for the tests
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r test/pip.txt
+
+          # Verify the installation
+          pip list
+          python --version
+          pytest
+
+      - name: Run Test
+        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        run: |
+          ./test/run.sh
+
+      - name: Upload Tests
+        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ matrix.os }}
+          path: |
+            test

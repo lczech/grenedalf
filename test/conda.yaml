@@ -1,0 +1,15 @@
+name: grenedalf_test
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - matplotlib
+  - numpy
+  - pandas
+  - scipy
+  - seaborn
+  - tqdm
+  - pip
+  - pip:
+      - typing-extensions

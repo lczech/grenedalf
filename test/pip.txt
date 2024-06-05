@@ -1,0 +1,7 @@
+matplotlib
+numpy
+pandas
+scipy
+seaborn
+tqdm
+typing-extensions
