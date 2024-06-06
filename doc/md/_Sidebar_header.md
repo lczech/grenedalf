@@ -8,3 +8,4 @@ General usage
   * [Filtering](../wiki/Filtering)
   * [Windowing](../wiki/Windowing)
   * [Output](../wiki/Output)
+  * [Example](../wiki/Example)
