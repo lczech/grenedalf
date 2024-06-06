@@ -69,7 +69,8 @@ def run_script( script, args ):
     script_path = os.path.dirname(os.path.realpath(script))
     script_name = os.path.basename(os.path.realpath(script))
     script_args = " ".join([ key + "=" + str(val) for key, val in args.items() ])
-    command = "/usr/bin/time -v " + script + " " + script_args + " 2>&1"
+    # command = "/usr/bin/time -v " + script + " " + script_args + " 2>&1"
+    command = script + " " + script_args + " 2>&1"
 
     # Start the process, capturing everything, and terminating on failure
     try:
