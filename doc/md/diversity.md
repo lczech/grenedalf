@@ -14,4 +14,9 @@ As described there, we recommend to be careful when numerically interpreting Taj
 
 The estimators use the following filter settings internally as well as part of their corrections: `--filter-sample-min-count`, `--filter-sample-min-read-depth`, and `--filter-sample-max-read-depth`. See the equations document above for details on how these parameters influence the estimators. Note that the `total` filters are applied for filtering here as well (as far as provided), but have no influence on the estimators themselves. We offer them here for convenience only.
 
-The values per window are computed using the window averaging as described [here](../wiki/Windowing#window-averaging-policy), in order to scale the results per base pair. See [Output](../wiki/Output) for a description of the columns of the produced table.
+The `--filter-sample-min-count` has to be set to exactly 2 when computing Tajima's D. This is a consequence of the equations, which only work out when exactly filtering out singleton counts, according to Kofler et al. Furthermore, the correction terms for Theta Pi and Theta Watterson make use of the `--filter-sample-min-read-depth`, by computing a sum over values in that range. Due to the exact way that this correction works, it is recommended to use a minimum read depth of at least twice the minimum per-base count:
+
+    --filter-sample-min-count 2
+    --filter-sample-min-read-depth 4
+
+Lastly, the values per window are computed using the window averaging as described [here](../wiki/Windowing#window-averaging-policy), in order to scale the results per base pair. See [Output](../wiki/Output) for a description of the columns of the produced table.

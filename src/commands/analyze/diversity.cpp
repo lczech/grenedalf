@@ -212,9 +212,9 @@ DiversityCommandState prepare_output_data_(
             throw CLI::ValidationError(
                 options.filter_numerical.sample_min_count.option->get_name(),
                 "The pool-seq corrected computation of Tajima's D requires the minimum allele count "
-                "to be exactly 2, according to Kofler et al. In case 2 is insufficient, "
-                "we recommend to subsample the reads to a smaller read depth. "
-                "Alternatively, deactivate the compuation of Tajima's D."
+                "to be exactly 2, i.e., exclusing singletons, according to Kofler et al. "
+                "In case 2 is insufficient, we recommend to subsample the reads to a smaller "
+                "read depth. Alternatively, deactivate the compuation of Tajima's D."
             );
         }
         if( options.filter_numerical.sample_min_read_depth.value == 0 ) {
