@@ -21,7 +21,7 @@ import create_files
 # ------------------------------------------------------------
 
 # File to write to
-outtable = "test_results.tsv"
+outtable = "test_results.csv"
 
 # We here set up the param space, following the notation of independent_check.py
 

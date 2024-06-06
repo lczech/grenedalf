@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
-# libraries
+# Matplotlib shenennigans...
+# https://stackoverflow.com/a/71511579/4184258
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
+# matplotlib.use('TkAgg')
 
+# libraries
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import numpy as np
@@ -22,7 +25,7 @@ out_dir_png = "figures_png"
 out_dir_pdf = "figures_pdf"
 out_dir_svg = "figures_svg"
 
-infile = "test_results.tsv"
+infile = "test_results.csv"
 df = pd.read_csv(infile, sep='\t')
 
 # ------------------------------------------------------------
