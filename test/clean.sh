@@ -14,7 +14,7 @@ rm -r popoolation/fst
 rm -r popoolation/logs
 
 # Remove the test result files
-rm -r test_results.csv
+# rm -r test_results.csv
 rm -r figures_*
 
 # Also remove unnecessary py stuff

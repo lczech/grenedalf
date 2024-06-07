@@ -23,6 +23,9 @@ import create_files
 # File to write to
 outtable = "test_results.csv"
 
+# Do we also want to test PoPoolation 1/2?
+with_popoolation = False
+
 # We here set up the param space, following the notation of independent_check.py
 
 # For two samples (1, 2):
@@ -330,6 +333,13 @@ def run_popoolation( params, df ):
     run_popoolation_diversity( n2, c2, k2, w, df, 2 )
     run_popoolation_fst( n1, n2, c1, c2, k1, k2, w, df )
 
+# Check that the population sources are there
+if with_popoolation:
+    popoo1 = "popoolation/popoolation/Variance-sliding.pl"
+    popoo2 = "popoolation/popoolation2/fst-sliding.pl"
+    if not os.path.isfile(popoo1) or not os.path.isfile(popoo2):
+        raise Exception("PoPoolation scripts not found. Please see README on where to put them.")
+
 # ------------------------------------------------------------
 #     Main
 # ------------------------------------------------------------
@@ -389,7 +399,8 @@ def main():
         # Run all implementations
         run_independent_implementation( params, df )
         run_grenedalf( params, df )
-        # run_popoolation( params, df )
+        if with_popoolation:
+            run_popoolation( params, df )
 
     # Store the whole dataframe
     df.to_csv(outtable, index=False, sep='\t')
