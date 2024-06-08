@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2023 Lucas Czech
+    Copyright (C) 2020-2024 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 
 #include "options/file_output.hpp"
 #include "options/variant_input.hpp"
+#include "options/variant_filter_numerical.hpp"
+#include "options/variant_transform_subsample.hpp"
 
 #include <string>
 #include <vector>
@@ -41,6 +43,8 @@ class SyncOptions
 public:
 
     VariantInputOptions variant_input;
+    VariantFilterNumericalOptions    filter_numerical;
+    VariantTransformSubsampleOptions transform_subsample;
 
     CliOption<bool> without_header  = false;
     CliOption<bool> without_missing = false;

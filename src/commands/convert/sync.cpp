@@ -49,6 +49,13 @@ void setup_sync( CLI::App& app )
     // Required input of some frequency format (mpileup or vcf at the moment).
     options->variant_input.add_variant_input_opts_to_app( sub );
 
+    // Add the numerical filters
+    options->filter_numerical.add_sample_filter_opts_to_app( sub );
+    options->filter_numerical.add_total_filter_opts_to_app( sub );
+
+    // Also offer subsampling options for this command.
+    options->transform_subsample.add_subsample_opts_to_app( sub );
+
     // -------------------------------------------------------------------------
     //     Settings
     // -------------------------------------------------------------------------
@@ -188,6 +195,19 @@ void run_sync( SyncOptions const& options )
             }
         );
     }
+
+    // Before accessing the variant input, we need to add the filters to it.
+    options.variant_input.add_combined_filter_and_transforms(
+        options.filter_numerical.make_sample_filter()
+    );
+    options.variant_input.add_combined_filter_and_transforms(
+        options.filter_numerical.make_total_filter()
+    );
+
+    // Lastly, apply the subsampling. It is important that this happens after the above numercial
+    // filters above, as otherwise we might subsample to a lower read depth, and then want to apply
+    // a read depth filter, which would not work any more.
+    options.transform_subsample.add_subsample_transformation( options.variant_input );
 
     // If we want to create a gsync file, activate this in the input stream.
     // Needs to be set before any reading access to the stream.
