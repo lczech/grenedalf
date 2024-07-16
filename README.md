@@ -11,25 +11,24 @@
 
 ![grenedalf](/doc/logo/grenedalf.png?raw=true "grenedalf")
 
+
 Features
 -------------------
 
-grenedalf is a collection of commands for working with population genetic data,
-in particular from pool sequencing.
-Its main focus are statistical analyses such as Tajima's D and Fst.
+grenedalf is a collection of commands for working with pool sequencing population genetic data.
+Its main focus are statistical analyses such as Tajima's D and Fst, as well as convenience functions around pool sequencing data.
 The statistics follow the approaches of [PoPoolation](https://sourceforge.net/projects/popoolation/)
 and [PoPoolation2](https://sourceforge.net/projects/popoolation2/),
 as well as [poolfstat](https://cran.r-project.org/web/packages/poolfstat/index.html)
 and [npstat](https://github.com/lucaferretti/npstat). However, compared to those, grenedalf
 is significantly more scalable, more user friendly, and offers more settings and input file formats.
 
-[Feedback](https://github.com/lczech/grenedalf/issues) on functionality, interface, and features
-is highly appreciated!
 
 Setup
 -------------------
 
 We recommend to first try the pre-compiled binaries of the latest [Release](https://github.com/lczech/grenedalf/releases), by downloading the binary for your system from the "Assets" list below the release. If that does not work, grenedalf can be build from source as described [here](https://github.com/lczech/grenedalf/wiki/Setup).
+
 
 Usage and Documentation
 -------------------
@@ -44,6 +43,15 @@ See [**the Wiki pages**](https://github.com/lczech/grenedalf/wiki) for the list 
 
 <!-- # grenedalf
 Genome Analyses of Differential Allele Frequencies -->
+
+
+Support and Requests
+-------------------
+
+For **questions, bug reports, and feature requests**, please [open an issue](https://github.com/lczech/grenepipe/issues). Please do not send emails with questions or requests, as others might be having them as well, and so it is better to discuss them here where they can be found.
+
+Feedback on functionality, interface, and features is highly appreciated, as we are always open to discussing new statistics and tools that might be relevant for the community. If you need other pool sequencing statistics than the ones already offered here, please reach out - happy to explore the potential for a collaboration there! We have a lot of code infrastructure in grenedalf that takes care of all the basics, and so it would be nice to implement further statistics!
+
 
 Citation
 -------------------
