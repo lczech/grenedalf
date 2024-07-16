@@ -121,12 +121,12 @@ private:
 
     // Basic frequency table options
     CliOption<std::string> separator_char_ = "comma";
+    CliOption<std::string> usr_missing_;
     CliOption<double>      int_factor_;
     CliOption<bool>        frequency_is_ref_ = false;
 
     // Extra options
     bool add_extra_opts_ = true;
-    CliOption<std::string> usr_missing_;
     CliOption<std::string> usr_chr_name_;
     CliOption<std::string> usr_pos_name_;
     CliOption<std::string> usr_ref_name_;

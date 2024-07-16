@@ -115,7 +115,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "and their assigned group names in the second column. "
         "All samples in the same group are then merged into a grouped sample, and the group names "
         "are used as the new sample names for the output. Note that the `--pool-sizes` option "
-        "then need to contain the summed up pool sizes for each group."
+        "then need to contain the summed up pool sizes for each group, using the group names."
     );
     sample_group_merge_table_file_.option->group( group );
     sample_group_merge_table_file_.option->check( CLI::ExistingFile );
