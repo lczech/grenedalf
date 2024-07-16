@@ -67,6 +67,15 @@ CLI::Option* VariantFileFrequencyTableOptions::add_file_input_opt_to_app_(
     );
     separator_char_.option->needs( file_input_.option() );
 
+    // Missing value
+    usr_missing_.option = sub->add_option(
+        "--frequency-table-missing-value",
+        usr_missing_.value,
+        "Marker for denoting missing values in the table. By default, we use `.`, `nan`, and `na`."
+    );
+    usr_missing_.option->group( group );
+    usr_missing_.option->needs( file_input_.option() );
+
     // Int factor
     int_factor_.option = sub->add_option(
         "--frequency-table-depth-factor",
@@ -227,6 +236,20 @@ VariantFileFrequencyTableOptions::VariantInputStream VariantFileFrequencyTableOp
 ) const {
     using namespace genesis::population;
 
+    // Helper to see if an option is given, and good.
+    auto check_user_option_ = []( CliOption<std::string> const& opt ){
+        if( *opt.option ) {
+            if( opt.value.empty() ) {
+                throw CLI::ValidationError(
+                    opt.option->get_name(),
+                    "User-provided option cannot be empty."
+                );
+            }
+            return true;
+        }
+        return false;
+    };
+
     // Prepare the reader with our settings. Sep char is set twice - not needed, but okay.
     FrequencyTableInputStream reader;
     reader.separator_char( get_separator_char_() );
@@ -234,33 +257,36 @@ VariantFileFrequencyTableOptions::VariantInputStream VariantFileFrequencyTableOp
     if( *int_factor_.option ) {
         reader.int_factor( int_factor_.value );
     }
+    if( check_user_option_( usr_missing_ )) {
+        reader.missing_value( usr_missing_.value );
+    }
     if( reference_genome_ ) {
         reader.reference_genome( reference_genome_ );
     }
 
     // If provided, set the user specified header name fragments.
-    if( *usr_chr_name_.option ) {
+    if( check_user_option_( usr_chr_name_ )) {
         reader.header_chromosome_string( usr_chr_name_.value );
     }
-    if( *usr_pos_name_.option ) {
+    if( check_user_option_( usr_pos_name_ )) {
         reader.header_position_string( usr_pos_name_.value );
     }
-    if( *usr_ref_name_.option ) {
+    if( check_user_option_( usr_ref_name_ )) {
         reader.header_reference_base_string( usr_ref_name_.value );
     }
-    if( *usr_alt_name_.option ) {
+    if( check_user_option_( usr_alt_name_ )) {
         reader.header_alternative_base_string( usr_alt_name_.value );
     }
-    if( *usr_smp_ref_name_.option ) {
+    if( check_user_option_( usr_smp_ref_name_ )) {
         reader.header_sample_reference_count_substring( usr_smp_ref_name_.value );
     }
-    if( *usr_smp_alt_name_.option ) {
+    if( check_user_option_( usr_smp_alt_name_ )) {
         reader.header_sample_alternative_count_substring( usr_smp_alt_name_.value );
     }
-    if( *usr_smp_frq_name_.option ) {
+    if( check_user_option_( usr_smp_frq_name_ )) {
         reader.header_sample_frequency_substring( usr_smp_frq_name_.value );
     }
-    if( *usr_smp_cov_name_.option ) {
+    if( check_user_option_( usr_smp_cov_name_ )) {
         reader.header_sample_read_depth_substring( usr_smp_cov_name_.value );
     }
 
