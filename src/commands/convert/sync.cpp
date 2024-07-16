@@ -101,6 +101,15 @@ void setup_sync( CLI::App& app )
     );
     options->gapless.option->group( "Settings" );
 
+    // For user convenience, we also check if the general settings option for making
+    // the stream gapless is given, to improve the option description here.
+    auto make_gapless_opt = sub->get_option_no_throw( "--make-gapless" );
+    if( make_gapless_opt ) {
+        auto descr = options->gapless.option->get_description();
+        descr += " Note: This option is an alias for the more general `--make-gapless` option.";
+        options->gapless.option->description( descr );
+    }
+
     // Guess Reference Base
     options->guess_ref_base.option = sub->add_flag(
         "--guess-reference-base",

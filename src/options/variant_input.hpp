@@ -156,6 +156,16 @@ public:
     }
 
     /**
+     * @brief Return whether the stream is made gapless due to some setting.
+     *
+     * This option is set to its correct value only after get_stream() has been called.
+     */
+    bool gapless_stream() const
+    {
+        return gapless_stream_;
+    }
+
+    /**
      * @brief Transformations and filters for individual input sources.
      *
      * These can be added by the commands as needed for their processing, and are executed
@@ -320,6 +330,7 @@ private:
     // to avoid code repetition when adding and processing them here.
     std::vector<std::unique_ptr<VariantFileOptions>> input_files_;
     CliOption<std::string> multi_file_loci_set_ = "union";
+    CliOption<bool> make_gapless_stream_ = false;
 
     // Hidden options to set the Generic Input Stream block size for speed.
     CliOption<size_t> iterator_block_size_ = 8192;

@@ -243,7 +243,8 @@ private:
     ) const;
 
     VariantPositionWindowStream get_variant_window_stream_single_(
-        genesis::population::VariantInputStream& input
+        genesis::population::VariantInputStream& input,
+        bool is_gapless_stream
     ) const;
 
     VariantRegionWindowStream get_variant_window_stream_regions_(

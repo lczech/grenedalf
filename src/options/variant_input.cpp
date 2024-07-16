@@ -150,6 +150,26 @@ void VariantInputOptions::add_input_files_opts_to_app(
         CLI::IsMember( enum_map_keys( multi_file_contribution_type_map_ ), CLI::ignore_case )
     );
 
+    // Make gapless stream. If renamed, change it in the `sync` command as well,
+    // where we use the option name to imporove the option description there.
+    make_gapless_stream_.option = sub->add_flag(
+        "--make-gapless",
+        make_gapless_stream_.value,
+        "By default, we only operate on the positions for which there is data. "
+        "In particular, positions that are absent in the input are completely ignored; "
+        "they do not even show up in the `missing` column of output tables. "
+        "This is because for the statistics, data being absend or (marked as) missing "
+        "is merely a sementic distinction, but it does not change the results. "
+        "However, it might make processing with downstream tools easier if the output contains "
+        "all positions, for instance when using `single` windows. "
+        "With this option, all absent positions are filled in as missing data, so that they "
+        "show up in the `missing` column and as entries in single windows. "
+        "If a referene genome or dictionary is given, this might also include positions beyond "
+        "where there is input data, up until the length of each chromosome. "
+        "Note that this can lead to large ouput tables when processing single positions."
+    );
+    make_gapless_stream_.option->group( group );
+
     // Hidden options to set the Generic Input Stream block sizes for speed.
 
     // First for the main block size of the stream that is collecing all Variants,
@@ -678,6 +698,11 @@ void VariantInputOptions::conditionally_make_gapless_stream_() const
         );
         stream_ = make_variant_gapless_input_stream( stream_, mask_dict, region_filter );
         return;
+    }
+
+    // Also if the user provided the gapless option here.
+    if( make_gapless_stream_.value ) {
+        gapless_stream_ = true;
     }
 
     // Now we check if we want to make a gapless stream, e.g., by demand from a command.

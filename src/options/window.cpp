@@ -326,7 +326,7 @@ std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
         }
         case WindowType::kSingle: {
             result = genesis::utils::make_unique<VariantPositionWindowStream>(
-                get_variant_window_stream_single_( input_stream )
+                get_variant_window_stream_single_( input_stream, variant_input.gapless_stream() )
             );
             break;
         }
@@ -413,7 +413,7 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
         case WindowType::kSingle: {
             result = genesis::utils::make_unique<WindowViewStream>(
                 make_window_view_stream(
-                    get_variant_window_stream_single_( input_stream )
+                    get_variant_window_stream_single_( input_stream, variant_input.gapless_stream() )
                 )
             );
             break;
@@ -598,8 +598,19 @@ WindowOptions::get_variant_window_stream_queue_(
 
 WindowOptions::VariantPositionWindowStream
 WindowOptions::get_variant_window_stream_single_(
-    genesis::population::VariantInputStream& input
+    genesis::population::VariantInputStream& input,
+    bool is_gapless_stream
 ) const {
+    // If our input is meant to be gapless, we also do not want to filter for passing positions here.
+    // That will produce huge output, but well, it's want the user wants :-)
+    // As far as we can tell, this is the only type of window that needs this;
+    // all other window types behave exactly the same, except that they also are counting
+    // the missing positions properly when a gapless stream is given.
+    if( is_gapless_stream ) {
+        return genesis::population::make_default_position_window_stream(
+            input.begin(), input.end()
+        );
+    }
     return genesis::population::make_passing_variant_position_window_stream(
         input.begin(), input.end()
     );
