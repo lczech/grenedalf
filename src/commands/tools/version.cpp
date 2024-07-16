@@ -78,7 +78,8 @@ void run_version( VersionOptions const& options )
     LOG_BOLD;
     LOG_BOLD << "grenedalf version: " << grenedalf_version();
     LOG_BOLD;
-    LOG_BOLD << genesis::utils::Options::get().info_compile_time();
+    LOG_BOLD << genesis::utils::info_print_compiler();
+    LOG_BOLD << genesis::utils::info_print_hardware();
     LOG_BOLD;
     LOG_BOLD << "For citation information, call  `grenedalf tools citation`";
     LOG_BOLD << "For license information, call  `grenedalf tools license`";

@@ -321,7 +321,7 @@ void VariantInputOptions::prepare_stream_() const
 
     // Get and check the number of input files provided.
     size_t const file_count = get_input_file_count();
-    size_t const max_file_count = genesis::utils::info_max_file_count();
+    size_t const max_file_count = genesis::utils::info_process_max_file_count();
     size_t const file_count_margin = 10;
     if( max_file_count > 0 && file_count > max_file_count - file_count_margin ) {
         LOG_WARN << "In total, " <<  file_count << " input files are provided. However, the system "
