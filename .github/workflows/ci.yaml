@@ -245,8 +245,9 @@ jobs:
           #   compiler: llvm-10
           # - os: macos-12
           #   compiler: llvm-11
-          - os: macos-12
-            compiler: llvm-12
+          # Weird compiler errors
+          # - os: macos-12
+          #   compiler: llvm-12
           - os: macos-12
             compiler: llvm-13
           - os: macos-12
@@ -297,8 +298,8 @@ jobs:
           #   compiler: llvm-10
           # - os: macos-13
           #   compiler: llvm-11
-          - os: macos-13
-            compiler: llvm-12
+          # - os: macos-13
+          #   compiler: llvm-12
           - os: macos-13
             compiler: llvm-13
           - os: macos-13
@@ -371,6 +372,8 @@ jobs:
             compiler: apple
           - os: macos-14
             compiler: apple
+          - os: macos-latest
+            compiler: apple
 
     # ==========================================================================
     #     Steps
@@ -442,7 +445,8 @@ jobs:
 
           # For static builds, set the according CMake option
           export GRENEDALF_BUILD_STATIC=""
-          if [[ "${{ matrix.os }}" == "ubuntu-22.04" ]] && [[ "${{ matrix.compiler }}" == "gcc-13" ]]; then
+          # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] ; then
             export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
           fi
 
@@ -482,10 +486,13 @@ jobs:
       # We upload the static binaries for the most important systems.
       # These are the ones that we want to publish with release versions.
       - name: Upload Binaries
-        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        # If the Ubuntu binary here is changed, it needs to be changed above as well,
+        # to enable static building for that version!
+        # if: ( matrix.os == 'ubuntu-latest' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
+        if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.os }}
+          name: binary-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
             bin/grenedalf
 
@@ -493,17 +500,16 @@ jobs:
       #     Test
       # -------------------------------------------------------
 
-      # For the same versions that we use for the binaries above,
-      # we also run the test case, comparing grenedalf against our independent implementation.
-      # This covers Ubuntu and two Mac versions, so hopefully good enough.
+      # We also run the test case, comparing grenedalf against our independent implementation.
+      # This covers several OS and compiler combionations, so hopefully good enough.
       - name: Python Setup
-        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
 
       - name: Install Test Dependencies
-        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
           # Install the dependencies for the tests
           pip install -r test/pip.txt
@@ -513,16 +519,21 @@ jobs:
           python --version
 
       - name: Run Test
-        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
-          cd test
+          cd ./test
           ./run.sh
           cd ..
 
+          # We need to manually compress the test result files here, as there are many files,
+          # and we run into https://github.com/actions/upload-artifact/issues/485
+          tar -czf ./test.tar.gz ./test
+
       - name: Upload Tests
-        if: (  matrix.os == 'ubuntu-22.04' && matrix.compiler == 'gcc-13' ) || matrix.compiler == 'apple'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: test-${{ matrix.os }}
+          name: test-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
-            test
+            # test
+            ./test.tar.gz
