@@ -10,8 +10,7 @@ We offer several flavors of FST to correct for those:
 
 For details on the statistics and the derivation of the estimators, please refer to our [publication](https://arxiv.org/abs/2306.11622) and in particular our [equations document](https://github.com/lczech/pool-seq-pop-gen-stats).
 
-We recommend to use one of our two estimators, as they are correctly account for the noises of Pool-seq.
-In simplified form (without the Pool-seq correction terms), the two variants are:
+We recommend to use one of our two estimators, as they are correctly accounting for the noises of Pool-seq. In simplified form (without the Pool-seq correction terms), the two variants are:
 
     FST_Nei = 1 - pi within / pi total
     FST_Hudson = 1 - pi within / pi between

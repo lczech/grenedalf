@@ -31,8 +31,9 @@ are interested in, please open an [issue](https://github.com/lczech/grenedalf/is
 
 # Colors
 
-For the options of this command, the single colors and the main gradient can be specified as follows.
+For the options of this command, the single colors and the main gradient can be specified as described [here](https://github.com/lczech/gappa/wiki/General-Usage). This documents the color usage of our tool gappa, but we use the same here in grenedalf. Generally we however recommend to keep the default colors, as they were designed to be working well for cathedral plots.
 
+<!--
 ## Single Colors
 
 Single colors can be specified
@@ -57,3 +58,4 @@ Depending on context, not all of these lists might be well suited; it does for e
 When specifying individual colors to build a custom gradient, the specified colors are evenly spaced out across the range of values, and then linearly interpolated to create the gradient. For example, a gradient from black to red to yellow could be specified as `--color-list "#000000,#ff0000,#ffff00"`.
 
 Our internal interpolation between colors to create a gradient (currently) is done linearly in RGB color space - this does not always yield the best looking results. We hence recommend to construct a gradient with several (5 or more) intermediate colors using external tools that operate in LCH space (e.g., [this gradient generator](https://colordesigner.io/gradient-generator)), and then use these intermediate colors as input. This way, we only need to interpolate between nearby similar colors in RGB, which works/looks better than RGB interpolation between vastly different colors.
+-->
