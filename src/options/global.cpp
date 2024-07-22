@@ -68,7 +68,8 @@ void GlobalOptions::add_to_subcommand( CLI::App& subcommand )
         // "--allow-file-overwriting",
         allow_file_overwriting_flag,
         opt_allow_file_overwriting.value,
-        "Allow to overwrite existing output files instead of aborting the command."
+        "Allow to overwrite existing output files instead of aborting the command. "
+        "By default, we abort if any output file already exists, to avoid overwriting by mistake."
     );
     opt_allow_file_overwriting.option->group( "Global Options" );
 
@@ -86,8 +87,8 @@ void GlobalOptions::add_to_subcommand( CLI::App& subcommand )
         opt_threads.value,
         "Number of threads to use for calculations. If not set, we guess a reasonable number of "
         "threads, by looking at the environmental variables (1) `OMP_NUM_THREADS` (OpenMP) and "
-        "(2) `SLURM_CPUS_PER_TASK` (slurm), as well as (3) the hardware concurrency, taking "
-        "hyperthreads into account, in the given order of precedence."
+        "(2) `SLURM_CPUS_PER_TASK` (slurm), as well as (3) the hardware concurrency (number of "
+        "CPU cores), taking hyperthreads into account, in the given order of precedence."
     );
     opt_threads.option->group( "Global Options" );
 

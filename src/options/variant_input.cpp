@@ -828,9 +828,9 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
         stream.add_on_enter_observer(
             [ this ]( Variant const& variant ) mutable {
                 auto const var_base = genesis::utils::to_upper( variant.reference_base );
-                auto const ref_base = get_reference_genome()->get_base(
-                    variant.chromosome, variant.position
-                );
+                auto const ref_base = genesis::utils::to_upper(
+                    get_reference_genome()->get_base( variant.chromosome, variant.position
+                ));
                 if( var_base != 'N' && ref_base != 'N' && var_base != ref_base ) {
                     ++num_mismatch_bases_;
                 }
