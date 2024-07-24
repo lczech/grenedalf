@@ -56,7 +56,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
 
     // Rename samples option.
     rename_samples_.option = sub->add_option(
-        "--rename-samples-file",
+        "--rename-samples-list",
         rename_samples_.value,
         "Allows to rename samples, by providing a file that lists the old and new sample names, "
         "one per line, separating old and new names by a tab.\n"
@@ -81,7 +81,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "tab-separated list given on the command line (in a typical shell, this list has to be "
         "enclosed in quotation marks), or (2) a file with one sample name per line. "
         "If no sample filter is provided, all samples in the input file are used. "
-        "The option is applied after potentially renaming the samples with `--rename-samples-file`."
+        "The option is applied after potentially renaming the samples with `--rename-samples-list`."
     );
     filter_samples_include_.option->group( group );
 
@@ -93,7 +93,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "tab-separated list given on the command line (in a typical shell, this list has to be "
         "enclosed in quotation marks), or (2) a file with one sample name per line. "
         "If no sample filter is provided, all samples in the input file are used. "
-        "The option is applied after potentially renaming the samples with `--rename-samples-file`."
+        "The option is applied after potentially renaming the samples with `--rename-samples-list`."
     );
     filter_samples_exclude_.option->group( group );
 
@@ -103,7 +103,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
 
     // We allow to in-place merge samples that the user determines belong to the same group.
     sample_group_merge_table_file_.option = sub->add_option(
-        "--sample-group-merge-table-file",
+        "--sample-group-merge-table",
         sample_group_merge_table_file_.value,
         "When the input contains multiple samples (either within a single input file, or by "
         "providing multiple input files), these can be grouped into new samples, by summing up "
@@ -111,7 +111,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "having merged the raw fastq files or the mapped sam/bam files of the samples, that is, "
         "all reads from those samples are treated as if they were a single sample. "
         "For this grouping, the option takes a simple table file (comma- or tab-separated), "
-        "with the sample names (potentially after the above renaming) in the first column, "
+        "with the sample names (after the above renaming, if provided) in the first column, "
         "and their assigned group names in the second column. "
         "All samples in the same group are then merged into a grouped sample, and the group names "
         "are used as the new sample names for the output. Note that the `--pool-sizes` option "

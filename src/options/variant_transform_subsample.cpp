@@ -58,7 +58,7 @@ void VariantTransformSubsampleOptions::add_subsample_opts_to_app(
         "If they are below this value anyway, they are not changed. "
         "This transformation is useful to limit the maximum read depth. For instance, the diversity "
         "estimators for Theta Pi and Theta Watterson have terms that depend on read depth. "
-        "In particular when merging samples such as with `--sample-group-merge-table-file`, "
+        "In particular when merging samples such as with `--sample-group-merge-table`, "
         "having an upper limit can hence avoid long compute times. "
         "Furthermore, a very low Tajima's D, usually indicative of a selective sweep, may be found "
         "as an artifact in highly covered regions, as such regions have just more sequencing errors. "

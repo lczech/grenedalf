@@ -54,7 +54,7 @@ void VariantReferenceGenomeOptions::add_reference_genome_opts_to_app(
 
     // Add option for reading the reference genome.
     reference_genome_fasta_file_.option = sub->add_option(
-        "--reference-genome-fasta-file",
+        "--reference-genome-fasta",
         reference_genome_fasta_file_.value,
         "Provide a reference genome in `.fasta[.gz]` format. This allows to correctly assign the "
         "reference bases in file formats that do not store them, and serves as an integrity check "
@@ -66,7 +66,7 @@ void VariantReferenceGenomeOptions::add_reference_genome_opts_to_app(
 
     // Add option for reading a sequence dict.
     reference_genome_dict_file_.option = sub->add_option(
-        "--reference-genome-dict-file",
+        "--reference-genome-dict",
         reference_genome_dict_file_.value,
         "Provide a reference genome sequence dictionary in `.dict` format. It is used to determine "
         "the chromosome order and length, without having to provide the full reference genome."
@@ -76,7 +76,7 @@ void VariantReferenceGenomeOptions::add_reference_genome_opts_to_app(
 
     // Add option for reading a sequence fai.
     reference_genome_fai_file_.option = sub->add_option(
-        "--reference-genome-fai-file",
+        "--reference-genome-fai",
         reference_genome_fai_file_.value,
         "Provide a reference genome sequence dictionary in `.fai` format. It is used to determine "
         "the chromosome order and length, without having to provide the full reference genome."

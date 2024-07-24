@@ -122,7 +122,7 @@ void setup_frequency( CLI::App& app )
         "transition base of the reference ('A' <-> 'G' and 'C' <-> 'T'), "
         "which usually is not correct, and hence should be omitted from the output. "
         "Note: To at least set the reference bases, "
-        "consider providing the `--reference-genome-file` option."
+        "consider providing the `--reference-genome-fasta` option."
     )->group( "Settings" );
     options->omit_ref_alt_bases.option->excludes( options->omit_alt_bases.option );
     options->omit_alt_bases.option->excludes( options->omit_ref_alt_bases.option );
