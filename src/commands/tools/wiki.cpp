@@ -28,6 +28,7 @@
 #include "tools/version.hpp"
 
 #include "genesis/utils/core/fs.hpp"
+#include "genesis/utils/text/char.hpp"
 #include "genesis/utils/text/string.hpp"
 
 #include <algorithm>
@@ -35,6 +36,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 // =================================================================================================
@@ -186,6 +188,147 @@ bool add_markdown_content(
         LOG_MSG << " - No documentation markdown found: " << md_file;
     }
     return false;
+}
+
+/**
+ * @brief Check if a command has any options at all, and any required options.
+ */
+std::pair<bool, bool> command_has_options( CLI::App const& command )
+{
+    // We do not count the help option, so we need to manually check if there are any others.
+    bool has_options = false;
+    bool has_required_options = false;
+    for( auto const& opt : command.get_options() ) {
+        if( opt->get_name() != "-h,--help" && opt->get_name() != "--help" ) {
+            has_options = true;
+        }
+        if( opt->get_required() ) {
+            has_required_options = true;
+        }
+    }
+    return std::make_pair( has_options, has_required_options );
+}
+
+// -------------------------------------------------------------------------
+//     Add Command Header Synopsis
+// -------------------------------------------------------------------------
+
+void add_wiki_command_header_synopsis(
+    CLI::App const& command, std::ostream& os
+) {
+    // Get the usage line.
+    std::string usage = command.get_name();
+    auto parent = const_cast< CLI::App& >( command ).get_parent();
+    while( parent ) {
+        usage  = parent->get_name() + " " + usage;
+        parent = parent->get_parent();
+    }
+
+    // Write command header.
+    os << "**Synopsis:** " << command.get_description() << "\n\n";
+    os << "**Usage:** `" << usage;
+    if( command_has_options( command ).first ) {
+        os << " [options]";
+    }
+    if( ! command.get_subcommands({}).empty() ) {
+        if( command.get_require_subcommand_min() > 0 ) {
+            os << " subcommand";
+        } else {
+            os << " [subcommand]";
+        }
+    }
+    os << "`\n\n";
+    if( command_has_options( command ).second ) {
+        os << "**Required options:**\n\n";
+        for( auto const& opt : command.get_options() ) {
+            if( opt->get_required() ) {
+                os << "  * `" << opt->get_name() << "`\n";
+            }
+        }
+        os << "\n";
+    }
+    os << "Documentation for grenedalf " << grenedalf_version() << "\n\n";
+}
+
+// -------------------------------------------------------------------------
+//     Add Command Header TOC
+// -------------------------------------------------------------------------
+
+void add_wiki_command_header_toc(
+    std::string const& md_file
+) {
+    // Get the markdown for the command, and find all its headings.
+    using namespace genesis::utils;
+
+    std::stringstream os;
+    os << "**Table of contents:**\n\n";
+
+    // Helper to get the link for a given markdown header
+    auto get_link_from_header_ = []( std::string const& header )
+    {
+        auto const link = to_lower( replace_all( header, " ", "-" ));
+        return remove_all_chars_pred(
+            link,
+            []( char c ){
+                return !(is_alpha(c) || is_digit(c) || c == '-');
+            }
+        );
+    };
+
+    // Add markdown file content headers.
+    auto const md_lines = file_read_lines( md_file );
+    for( auto const& line : md_lines ) {
+        std::string suffix;
+
+        // Heading levels
+        if( starts_with( line, "# ", suffix )) {
+            os << "  * [" << suffix << "](#" << get_link_from_header_( suffix ) << ")\n";
+        }
+        if( starts_with( line, "## ", suffix )) {
+            os << "      * [" << suffix << "](#" << get_link_from_header_( suffix ) << ")\n";
+        }
+        if( starts_with( line, "### ", suffix )) {
+            os << "          * [" << suffix << "](#" << get_link_from_header_( suffix ) << ")\n";
+        }
+    }
+
+    // Now read the file as a string again, and replace the TOC.
+    auto md_content = file_read( md_file );
+    md_content = replace_all( md_content, "<!--TOC-->", os.str() );
+
+    // We do not want to use the normal file write function here,
+    // as it throws when the file already exists, which it always does here.
+    // file_write( md_content, md_file );
+    std::ofstream of( md_file );
+    of << md_content;
+    of.close();
+}
+
+// -------------------------------------------------------------------------
+//     Make Command Header
+// -------------------------------------------------------------------------
+
+void make_wiki_command_header(
+    CLI::App const& command, std::ostream& os
+) {
+    // Add the table header for the two-column layout. Best we can do in GitHub flavored markdown.
+    os << "<table border=\"0\">\n";
+    os << "<tr>\n";
+    os << "<td width=\"441\" valign=\"top\">\n\n";
+
+    add_wiki_command_header_synopsis( command, os );
+
+    // Now add the html for starting the second column.
+    os << "</td>\n";
+    os << "<td width=\"441\" valign=\"top\">\n\n";
+
+    // add_wiki_command_header_toc( wiki_options, command, os );
+    os << "<!--TOC-->\n";
+
+    // Finally, wrap up the two column table.
+    os << "</td>\n";
+    os << "</tr>\n";
+    os << "</table>\n\n";
 }
 
 // -------------------------------------------------------------------------
@@ -389,9 +532,6 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
     // User output.
     LOG_MSG << "Subcommand: " << command.get_name();
 
-    // Get stuff of this command.
-    auto const subcomms = command.get_subcommands({});
-
     // Open out file stream.
     std::string const out_file
         = dir_normalize_path( wiki_options.out_dir )
@@ -401,26 +541,6 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
         LOG_MSG << " - No existing wiki file!";
     }
     std::ofstream os( out_file );
-
-    // Get the usage line.
-    std::string usage = command.get_name();
-    auto parent = const_cast< CLI::App& >( command ).get_parent();
-    while( parent ) {
-        usage  = parent->get_name() + " " + usage;
-        parent = parent->get_parent();
-    }
-
-    // We do not count the help option, so we need to manually check if there are any others.
-    bool has_options = false;
-    bool has_required_options = false;
-    for( auto const& opt : command.get_options() ) {
-        if( opt->get_name() != "-h,--help" && opt->get_name() != "--help" ) {
-            has_options = true;
-        }
-        if( opt->get_required() ) {
-            has_required_options = true;
-        }
-    }
 
     // Write styles. --> Nope, not accepted by GitHub wiki...
     // os << "<style>\n";
@@ -446,41 +566,20 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
     // }
     // os << "</style>\n\n";
 
-    // Write command header.
-    os << "**Synopsis:** " << command.get_description() << "\n\n";
-    os << "**Usage:** `" << usage;
-    if( has_options ) {
-        os << " [options]";
-    }
-    if( ! subcomms.empty() ) {
-        if( command.get_require_subcommand_min() > 0 ) {
-            os << " subcommand";
-        } else {
-            os << " [subcommand]";
-        }
-    }
-    os << "`\n\n";
-    if( has_required_options ) {
-        os << "**Required options:**\n\n";
-        for( auto const& opt : command.get_options() ) {
-            if( opt->get_required() ) {
-                os << "  * `" << opt->get_name() << "`\n";
-            }
-        }
-        os << "\n";
-    }
-    os << "Documentation for grenedalf " << grenedalf_version() << "\n\n";
+    // Add a header, with synopsis, required options, and a table of contents.
+    make_wiki_command_header( command, os );
 
-    // Add markdown file content.
+    // Add markdown file content that contains the actual documentation.
     add_markdown_content( wiki_options, command.get_name(), os );
 
     // Print the options of the command.
-    if( has_options ) {
+    if( command_has_options( command ).first ) {
         os << "# Options\n\n";
         make_options_table( wiki_options, command, os );
     }
 
     // Print the subcommands of this command.
+    auto const subcomms = command.get_subcommands({});
     if( ! subcomms.empty() ) {
         os << "# Subommands\n\n";
         make_subcommands_table( subcomms, os );
@@ -494,7 +593,9 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
         os << cite_markdown( citation_list[ &command ], true, false );
     }
 
+    // Now close the file, and parse it again to add the TOC.
     os.close();
+    add_wiki_command_header_toc( out_file );
 }
 
 // -------------------------------------------------------------------------
