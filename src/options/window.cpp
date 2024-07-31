@@ -724,7 +724,10 @@ WindowOptions::GenomeWindowStream
 WindowOptions::get_variant_window_view_stream_genome_(
     genesis::population::VariantInputStream& input
 ) const {
-    return genesis::population::make_default_genome_window_stream(
+    assert( variant_input_ );
+    auto it = genesis::population::make_default_genome_window_stream(
         input.begin(), input.end()
     );
+    it.sequence_dict( variant_input_->get_reference_dict() );
+    return it;
 }

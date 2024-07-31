@@ -523,8 +523,7 @@ void write_to_output_files_(
     FstCommandState& state
 ) {
     // Get the results and check them.
-    auto const window_length = window.width();
-    auto const& window_fst = processor.get_result( window_length );
+    auto const& window_fst = processor.get_result( window, nullptr ); // TODO provided_loci
     internal_check(
         window_fst.size() == sample_pairs.size(),
         "Inconsistent size of window fst values and sample pairs."
@@ -541,7 +540,7 @@ void write_to_output_files_(
         );
 
         // Get the values to be printed here
-        pi_vectors = &processor.get_pi_vectors( window_length );
+        pi_vectors = &processor.get_pi_vectors( window, nullptr ); // TODO provided_loci
         internal_check( std::get<0>(*pi_vectors).size() == sample_pairs.size() );
         internal_check( std::get<1>(*pi_vectors).size() == sample_pairs.size() );
         internal_check( std::get<2>(*pi_vectors).size() == sample_pairs.size() );

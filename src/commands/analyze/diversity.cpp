@@ -382,7 +382,7 @@ void write_output_popoolation_line_(
     };
 
     // Get the results for the whole set of calculators.
-    auto const results = processor.get_result( window.width() );
+    auto const results = processor.get_result( window, nullptr ); // TODO provided_loci
     auto const total_stats = variant_filter_stats_category_counts(
         processor.get_filter_stats()
     );
@@ -479,7 +479,7 @@ void write_output_table_line_(
     }
 
     // Get the results for the whole set of calculators.
-    auto const results = processor.get_result( window.width() );
+    auto const results = processor.get_result( window, nullptr ); // TODO provided_loci
 
     // Write to all individual files for each sample and each value.
     for( size_t i = 0; i < processor.calculators().size(); ++i ) {
