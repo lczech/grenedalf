@@ -36,6 +36,7 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -54,8 +55,8 @@ public:
     //     Typedefs and Enums
     // -------------------------------------------------------------------------
 
-    using Variant = genesis::population::Variant;
-    using GenomeLocusSet = genesis::population::GenomeLocusSet;
+    using Variant            = genesis::population::Variant;
+    using GenomeLocusSet     = genesis::population::GenomeLocusSet;
     using VariantInputStream = genesis::population::VariantInputStream;
 
     // -------------------------------------------------------------------------
@@ -80,6 +81,16 @@ public:
         std::string const& group = "Masking Filters"
     );
 
+    void add_mask_filter_sample_opts_to_app(
+        CLI::App* sub,
+        std::string const& group = "Masking Filters"
+    );
+
+    void add_mask_filter_total_opts_to_app(
+        CLI::App* sub,
+        std::string const& group = "Masking Filters"
+    );
+
     // -------------------------------------------------------------------------
     //     Run Functions
     // -------------------------------------------------------------------------
@@ -87,28 +98,72 @@ public:
     /**
      * @brief Parse the region filter files, e.g., BED or GFF, and make a filter from them.
      */
-    void prepare_mask() const;
+    void prepare_masks() const;
+
+    /**
+     * @brief Get the sample masks, where set bits indicated positions that are masked out,
+     * mapped from sample names to their masks.
+     */
+    std::unordered_map<std::string, std::shared_ptr<GenomeLocusSet>> const& get_sample_masks() const
+    {
+        prepare_sample_masks_();
+        return sample_masks_;
+    }
 
     /**
      * @brief Get the mask, where set bits indicate positions that are masked out.
      */
-    std::shared_ptr<GenomeLocusSet> get_mask() const
+    std::shared_ptr<GenomeLocusSet> get_total_mask() const
     {
-        prepare_mask();
-        return mask_;
+        prepare_total_mask_();
+        return total_mask_;
     }
 
     /**
      * @brief Check that the mask fits with a given reference genome, if given.
      */
-    void check_mask_against_reference(
+    void check_masks_against_reference(
         std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
     ) const;
 
     /**
-     * @brief Create the tranform function to be applied to the stream for masking.
+     * @brief Check that the provided per-sample masks and the input sample names
+     * share their names, as otherwise, there is something off.
      */
-    std::function<void( genesis::population::Variant& )> make_mask_transform() const;
+    void check_sample_masks_name_list(
+        std::vector<std::string> const& sample_names
+    ) const;
+
+    /**
+     * @brief Create the tranform function to be applied to the stream for masking samples.
+     */
+    void add_sample_mask_transform_to_stream(
+        genesis::population::VariantInputStream& stream
+    ) const;
+
+    /**
+     * @brief Create the tranform function to be applied to the stream for masking the total.
+     */
+    void add_total_mask_transform_to_stream(
+        genesis::population::VariantInputStream& stream
+    ) const;
+
+    // -------------------------------------------------------------------------
+    //     Internal Run Functions
+    // -------------------------------------------------------------------------
+
+private:
+
+    void prepare_sample_masks_() const;
+    void prepare_total_mask_() const;
+
+    void check_sample_masks_name_list_(
+        std::vector<std::string> const& sample_names
+    ) const;
+    void check_reference_and_masks_compatibility_(
+        std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
+    ) const;
+    void check_inter_masks_compatibility_() const;
 
     // -------------------------------------------------------------------------
     //     Option Members
@@ -116,14 +171,21 @@ public:
 
 private:
 
-    // Filters for rows and columns
-    CliOption<std::string> filter_mask_bed_;
-    CliOption<std::string> filter_mask_fasta_;
-    CliOption<size_t>      filter_mask_fasta_min_ = 0;
-    CliOption<bool>        filter_mask_fasta_inv_ = false;
+    // Filters for each sample individually
+    CliOption<std::string> filter_mask_sample_bed_list_;
+    CliOption<std::string> filter_mask_sample_fasta_list_;
+    CliOption<size_t>      filter_mask_sample_fasta_min_ = 0;
+    CliOption<bool>        filter_mask_sample_fasta_inv_ = false;
 
-    // We keep the mask here. Bits that are set here are masked!
-    mutable std::shared_ptr<GenomeLocusSet> mask_;
+    // Filters for the whole variant
+    CliOption<std::string> filter_mask_total_bed_;
+    CliOption<std::string> filter_mask_total_fasta_;
+    CliOption<size_t>      filter_mask_total_fasta_min_ = 0;
+    CliOption<bool>        filter_mask_total_fasta_inv_ = false;
+
+    // We keep the masks here. Bits that are set here are masked!
+    mutable std::unordered_map<std::string, std::shared_ptr<GenomeLocusSet>> sample_masks_;
+    mutable std::shared_ptr<GenomeLocusSet> total_mask_;
 
 };
 

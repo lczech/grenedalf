@@ -299,8 +299,8 @@ void VariantInputOptions::prepare_inputs_() const
     // At the moment, for instance, we do not check that the region filters cover every position,
     // as that would only make sense for the fasta mask type region filter, which is kind of an
     // outlyer anyway.
-    // We do test the reference genome and mask file here though, if both are given.
-    mask_filter_options_.check_mask_against_reference( get_reference_dict() );
+    // We do test the reference genome and mask files here though, if both are given.
+    mask_filter_options_.check_masks_against_reference( get_reference_dict() );
 }
 
 // -------------------------------------------------------------------------
@@ -691,10 +691,24 @@ void VariantInputOptions::conditionally_make_gapless_stream_() const
     auto region_filter = region_filter_options_.get_region_filter();
 
     // If we have a mask file provided, we make this a gapless stream either way.
-    if( mask_filter_options_.get_mask() ) {
+    // We use the mask as the ref dict for the gapless stream, so that it can properly
+    // fill in all the gaps. As we check that this is strictly identical to the ref genome
+    // (if given), that works. But in case that no ref genome is given, we have to use this one.
+    if( mask_filter_options_.get_total_mask() ) {
         gapless_stream_ = true;
         auto const mask_dict = std::make_shared<SequenceDict>(
-            reference_locus_set_to_dict( *mask_filter_options_.get_mask() )
+            reference_locus_set_to_dict( *mask_filter_options_.get_total_mask() )
+        );
+        stream_ = make_variant_gapless_input_stream( stream_, mask_dict, region_filter );
+        return;
+    }
+
+    // Same for the samples masks. We here just use the first mask to make a ref dict that we
+    // can use for filling in the gaps. As they all need to be compatible, that works.
+    if( ! mask_filter_options_.get_sample_masks().empty() ) {
+        gapless_stream_ = true;
+        auto const mask_dict = std::make_shared<SequenceDict>(
+            reference_locus_set_to_dict( *mask_filter_options_.get_sample_masks().begin()->second )
         );
         stream_ = make_variant_gapless_input_stream( stream_, mask_dict, region_filter );
         return;
@@ -752,6 +766,13 @@ void VariantInputOptions::add_individual_filters_and_transforms_to_stream_(
         ));
     }
 
+    // If per-sample masks files are provided, we apply them here, per sample.
+    // This is done after the region filters above, so that we only need to check the mask
+    // for the positions that are not already removed from that anyway.
+    if( ! mask_filter_options_.get_sample_masks().empty() ) {
+        mask_filter_options_.add_sample_mask_transform_to_stream( stream );
+    }
+
     // Add the addtional filters and transformations that might have been set by the commands.
     for( auto const& func : individual_filters_and_transforms_ ) {
         stream.add_transform_filter( func );
@@ -774,9 +795,18 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
 
     // First we add the processing of the mask file, if one is given. This needs to happen on
     // the combined stream, after all region filtering, but before any numeric filters.
-    if( mask_filter_options_.get_mask() ) {
+    if( mask_filter_options_.get_total_mask() ) {
         internal_check( gapless_stream_, "Stream not set to be gapless" );
-        stream.add_transform( mask_filter_options_.make_mask_transform() );
+        mask_filter_options_.add_total_mask_transform_to_stream( stream );
+    }
+
+    // We here also are now ready to check the sample masks. This is a bit out of order here,
+    // as we are not adding a filter, but merely applying the check here.
+    // However, it needs to be done once the whole parallel stream is assembled though,
+    // so this seemed to be the cleanest place to add this check.
+    if( ! mask_filter_options_.get_sample_masks().empty() ) {
+        internal_check( gapless_stream_, "Stream not set to be gapless" );
+        mask_filter_options_.check_sample_masks_name_list( stream.data().sample_names );
     }
 
     // Add the addtional filters and transformations that might have been set by the commands.
