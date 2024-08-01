@@ -14,6 +14,11 @@ GRENEDALF="${SCRIPT_DIR}/../../bin/grenedalf"
 mkdir -p fst
 mkdir -p logs
 
+# Special case for our unbiased methods, where we need to set the window averaging policy
+if [[ "$method" == unbiased-* ]]; then
+    method="${method} --window-average-policy window-length"
+fi
+
 echo "Start `date`"
 START=$(date +%s.%N)
 
@@ -23,7 +28,6 @@ ${GRENEDALF} fst \
     --window-interval-width ${windowsize} \
     --pool-sizes ${poolsizes} \
     --method ${method} \
-    --window-average-policy "window-length" \
     --no-extra-columns \
     --out-dir "fst" \
     --file-suffix "-${outid}" \
