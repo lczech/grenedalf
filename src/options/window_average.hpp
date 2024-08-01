@@ -26,10 +26,14 @@
 
 #include "CLI/CLI.hpp"
 
+#include "options/variant_reference_genome.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/function/window_average.hpp"
+#include "genesis/population/genome_locus_set.hpp"
+#include "genesis/sequence/sequence_dict.hpp"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -66,7 +70,9 @@ public:
 
     CLI::Option* add_window_average_opt_to_app(
         CLI::App* sub,
-        std::string const& group = "Settings"
+        VariantReferenceGenomeOptions const& ref_genome_opts,
+        bool required = true,
+        std::string const& group = "Window Averaging"
     );
 
     // -------------------------------------------------------------------------
@@ -78,6 +84,24 @@ public:
      */
     genesis::population::WindowAveragePolicy get_window_average_policy() const;
 
+    /**
+     * @brief Get the user-provided loci for window averaging, or nullptr if not provided.
+     */
+    std::shared_ptr<genesis::population::GenomeLocusSet> get_provided_loci() const
+    {
+        prepare_provided_loci_();
+        return provided_loci_;
+    }
+
+    CliOption<std::string> const& get_window_average_policy_option() const
+    {
+        return window_average_policy_;
+    }
+
+private:
+
+    void prepare_provided_loci_() const;
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
@@ -85,6 +109,16 @@ public:
 private:
 
     CliOption<std::string> window_average_policy_;
+    CliOption<std::string> window_average_loci_bed_;
+    CliOption<bool>        window_average_loci_bed_inv_ = false;
+    CliOption<std::string> window_average_loci_fasta_;
+    CliOption<size_t>      window_average_loci_fasta_min_ = 0;
+    CliOption<bool>        window_average_loci_fasta_inv_ = false;
+
+    // We need a reference dict, for inverting bed files
+    VariantReferenceGenomeOptions const* ref_genome_opts_ = nullptr;
+
+    mutable std::shared_ptr<genesis::population::GenomeLocusSet> provided_loci_;
 
 };
 

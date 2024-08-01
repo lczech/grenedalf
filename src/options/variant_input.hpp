@@ -194,6 +194,14 @@ public:
     // -------------------------------------------------------------------------
 
     /**
+     * @brief Return the VariantReferenceGenomeOptions used for the input
+     */
+    VariantReferenceGenomeOptions const& get_variant_reference_genome_options() const
+    {
+        return reference_genome_options_;
+    }
+
+    /**
      * @brief Return the pointer to the reference genome, if provided, or nullptr.
      */
     std::shared_ptr<genesis::sequence::ReferenceGenome> get_reference_genome() const

@@ -71,6 +71,7 @@ std::vector<std::pair<std::string, FstProcessorOptions::FstMethod>> const fst_me
 
 void FstProcessorOptions::add_fst_processor_opts_to_app(
     CLI::App* sub,
+    VariantReferenceGenomeOptions const& ref_genome_opts,
     Params const& fst_processor_params,
     std::string const& group
 ) {
@@ -78,6 +79,13 @@ void FstProcessorOptions::add_fst_processor_opts_to_app(
     // -------------------------------------------------------------------------
     //     Basic Fst Settings
     // -------------------------------------------------------------------------
+
+    // Window averaging
+    if( fst_processor_params.with_window_average_policy ) {
+        window_average_policy.add_window_average_opt_to_app(
+            sub, ref_genome_opts, !fst_processor_params.with_all_methods
+        );
+    }
 
     // Settings: FST Method
     if( fst_processor_params.with_all_methods ) {
@@ -111,10 +119,7 @@ void FstProcessorOptions::add_fst_processor_opts_to_app(
     // which do need pool sizes, so then we require this to be provided.
     poolsizes.add_poolsizes_opt_to_app( sub, !fst_processor_params.with_all_methods, group );
 
-    // Window averaging
-    if( fst_processor_params.with_window_average_policy ) {
-        window_average_policy.add_window_average_opt_to_app( sub, group );
-    }
+    // Store for later
     params = fst_processor_params;
 
     // -------------------------------------------------------------------------
@@ -337,7 +342,7 @@ genesis::population::FstPoolProcessor FstProcessorOptions::get_fst_pool_processo
     using namespace genesis::population;
 
     // Get the method that we want to use.
-    auto const method = get_fst_method();
+    auto const method_value = get_fst_method();
 
     // Get all sample indices that we are actually interested in.
     // We do this so that pool sizes for samples that we ignore anyway do not need to be given.
@@ -350,15 +355,56 @@ genesis::population::FstPoolProcessor FstProcessorOptions::get_fst_pool_processo
 
     // Get the pool sizes for all samples that we are interested in.
     auto const needs_pool_sizes = (
-        method == FstMethod::kUnbiasedNei ||
-        method == FstMethod::kUnbiasedHudson ||
-        method == FstMethod::kKofler
+        method_value == FstMethod::kUnbiasedNei ||
+        method_value == FstMethod::kUnbiasedHudson ||
+        method_value == FstMethod::kKofler
     );
     auto const pool_sizes = (
         needs_pool_sizes
         ? poolsizes.get_pool_sizes( sample_names, used_samples )
         : std::vector<size_t>( sample_names.size(), 0 )
     );
+
+    // Check the window averaging setup
+    auto const needs_window_average_policy = (
+        method_value == FstMethod::kUnbiasedNei ||
+        method_value == FstMethod::kUnbiasedHudson
+    );
+    switch( method_value ) {
+        case FstMethod::kUnbiasedNei:
+        case FstMethod::kUnbiasedHudson: {
+            if(
+                ! window_average_policy.get_window_average_policy_option().option ||
+                !*window_average_policy.get_window_average_policy_option().option
+            ) {
+                throw CLI::ValidationError(
+                    method.option->get_name() + ", " +
+                    window_average_policy.get_window_average_policy_option().option->get_name(),
+                    "Window average policy option needs to be provided with " +
+                    method.option->get_name() + " " + method.value
+                );
+            }
+            break;
+        }
+        case FstMethod::kKofler:
+        case FstMethod::kKarlsson: {
+            if(
+                 window_average_policy.get_window_average_policy_option().option &&
+                *window_average_policy.get_window_average_policy_option().option
+            ) {
+                throw CLI::ValidationError(
+                    method.option->get_name() + ", " +
+                    window_average_policy.get_window_average_policy_option().option->get_name(),
+                    "Window average policy option cannot be used with " +
+                    method.option->get_name() + " " + method.value
+                );
+            }
+            break;
+        }
+        default: {
+            throw std::domain_error( "Internal error: Invalid FST method." );
+        }
+    }
 
     // For our unbiased and for Kofler, check that we got the right number of pool sizes.
     internal_check(
@@ -368,14 +414,14 @@ genesis::population::FstPoolProcessor FstProcessorOptions::get_fst_pool_processo
 
     // Get the window average policy to use for all processors.
     auto const win_avg_policy = (
-        params.with_window_average_policy
+        params.with_window_average_policy && needs_window_average_policy
         ? window_average_policy.get_window_average_policy()
         : params.fix_window_average_policy
     );
 
     // Make the type of processor that we need for the provided method.
     FstPoolProcessor processor;
-    switch( method ) {
+    switch( method_value ) {
         case FstMethod::kUnbiasedNei: {
             processor = make_fst_pool_processor<FstPoolCalculatorUnbiased>(
                 sample_pairs, pool_sizes, win_avg_policy,

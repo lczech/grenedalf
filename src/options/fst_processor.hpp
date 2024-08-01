@@ -26,13 +26,16 @@
 
 #include "CLI/CLI.hpp"
 
+#include "options/variant_reference_genome.hpp"
 #include "options/poolsizes.hpp"
 #include "options/window_average.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/function/fst_pool_processor.hpp"
 #include "genesis/population/function/window_average.hpp"
+#include "genesis/population/genome_locus_set.hpp"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <tuple>
@@ -95,16 +98,18 @@ public:
 
     void add_fst_processor_opts_to_app(
         CLI::App* sub,
+        VariantReferenceGenomeOptions const& ref_genome_opts,
         std::string const& group = "Settings"
     ) {
         // Yet again we need an overload due to the stupid compiler bug about
         // default constructed arguments, see https://stackoverflow.com/q/43819314/4184258
         Params params;
-        return add_fst_processor_opts_to_app( sub, params, group );
+        return add_fst_processor_opts_to_app( sub, ref_genome_opts, params, group );
     }
 
     void add_fst_processor_opts_to_app(
         CLI::App* sub,
+        VariantReferenceGenomeOptions const& ref_genome_opts,
         Params const& fst_processor_params,
         std::string const& group = "Settings"
     );
@@ -126,15 +131,20 @@ public:
         std::vector<std::pair<size_t, size_t>> const& sample_pairs
     ) const;
 
+    std::shared_ptr<genesis::population::GenomeLocusSet> get_provided_loci() const
+    {
+        return window_average_policy.get_provided_loci();
+    }
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
 
 private:
 
+    WindowAverageOptions   window_average_policy;
     CliOption<std::string> method = "unbiased-nei";
     PoolsizesOptions       poolsizes;
-    WindowAverageOptions   window_average_policy;
     Params                 params;
 
     CliOption<std::string> comparand = "";

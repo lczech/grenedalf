@@ -117,7 +117,9 @@ void setup_fst_cathedral( CLI::App& app )
     fst_processor_params.with_all_methods = false;
     fst_processor_params.with_window_average_policy = false;
     fst_processor_params.fix_window_average_policy = genesis::population::WindowAveragePolicy::kSum;
-    options->fst_processor.add_fst_processor_opts_to_app( sub, fst_processor_params );
+    options->fst_processor.add_fst_processor_opts_to_app(
+        sub, options->variant_input.get_variant_reference_genome_options(), fst_processor_params
+    );
 
     // Width
     options->cathedral_width.option = sub->add_option(

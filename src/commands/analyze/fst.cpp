@@ -102,7 +102,9 @@ void setup_fst( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Fst Processor
-    options->fst_processor.add_fst_processor_opts_to_app( sub );
+    options->fst_processor.add_fst_processor_opts_to_app(
+        sub, options->variant_input.get_variant_reference_genome_options()
+    );
 
     // Settings: Write pi tables
     options->write_pi_tables.option = sub->add_flag(
@@ -171,6 +173,10 @@ void setup_fst( CLI::App& app )
  */
 struct FstCommandState
 {
+    // Provided loci, if needed for window averaging
+    std::shared_ptr<genesis::population::GenomeLocusSet> provided_loci;
+
+    // Method for computing FST
     FstProcessorOptions::FstMethod method;
 
     // The output to write to, for per-window output.
@@ -523,7 +529,7 @@ void write_to_output_files_(
     FstCommandState& state
 ) {
     // Get the results and check them.
-    auto const& window_fst = processor.get_result( window, nullptr ); // TODO provided_loci
+    auto const& window_fst = processor.get_result( window, state.provided_loci );
     internal_check(
         window_fst.size() == sample_pairs.size(),
         "Inconsistent size of window fst values and sample pairs."
@@ -540,7 +546,7 @@ void write_to_output_files_(
         );
 
         // Get the values to be printed here
-        pi_vectors = &processor.get_pi_vectors( window, nullptr ); // TODO provided_loci
+        pi_vectors = &processor.get_pi_vectors( window, state.provided_loci );
         internal_check( std::get<0>(*pi_vectors).size() == sample_pairs.size() );
         internal_check( std::get<1>(*pi_vectors).size() == sample_pairs.size() );
         internal_check( std::get<2>(*pi_vectors).size() == sample_pairs.size() );
@@ -616,6 +622,7 @@ void run_fst( FstOptions const& options )
 
     // The state POD that stores the run objects in one place.
     FstCommandState state;
+    state.provided_loci   = options.fst_processor.get_provided_loci();
     state.method          = options.fst_processor.get_fst_method();
     state.is_all_to_all   = options.fst_processor.is_all_to_all();
     state.is_whole_genome = options.window.window_type() == WindowOptions::WindowType::kGenome;

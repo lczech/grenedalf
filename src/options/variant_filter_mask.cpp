@@ -33,7 +33,6 @@
 #include "genesis/population/format/vcf_input_stream.hpp"
 #include "genesis/population/function/functions.hpp"
 #include "genesis/population/function/genome_locus_set.hpp"
-#include "genesis/population/function/genome_locus_set.hpp"
 #include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
 #include "genesis/sequence/functions/dict.hpp"

@@ -72,6 +72,7 @@ tajima_d_denominator_policy_map = {
 
 void DiversityProcessorOptions::add_diversity_processor_opts_to_app(
     CLI::App* sub,
+    VariantReferenceGenomeOptions const& ref_genome_opts,
     std::string const& group
 ) {
 
@@ -80,8 +81,8 @@ void DiversityProcessorOptions::add_diversity_processor_opts_to_app(
     // -------------------------------------------------------------------------
 
     // Pool sizes and window averaging
+    window_average_policy.add_window_average_opt_to_app( sub, ref_genome_opts );
     poolsizes.add_poolsizes_opt_to_app( sub, true, group );
-    window_average_policy.add_window_average_opt_to_app( sub, group );
 
     // Settings: Tajima Denominator Policy
     tajima_d_denominator_policy.option = sub->add_option(

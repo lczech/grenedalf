@@ -88,7 +88,9 @@ void setup_diversity( CLI::App& app )
     // -------------------------------------------------------------------------
 
     // Diversity Processor
-    options->diversity_processor.add_diversity_processor_opts_to_app( sub );
+    options->diversity_processor.add_diversity_processor_opts_to_app(
+        sub, options->variant_input.get_variant_reference_genome_options()
+    );
 
     // Settings: Omit Empty Windows
     options->no_extra_columns.option = sub->add_flag(
@@ -162,6 +164,9 @@ void setup_diversity( CLI::App& app )
  */
 struct DiversityCommandState
 {
+    // Provided loci, if needed for window averaging
+    std::shared_ptr<genesis::population::GenomeLocusSet> provided_loci;
+
     // Which values are actually being computed?
     bool compute_theta_pi;
     bool compute_theta_wa;
@@ -192,6 +197,9 @@ DiversityCommandState prepare_output_data_(
     std::vector<std::string> const& sample_names
 ) {
     DiversityCommandState output;
+
+    // Provided loci, if needed for window averaging
+    output.provided_loci = options.diversity_processor.get_provided_loci();
 
     // Get the measures to compute. At least one of them will be active.
     output.compute_theta_pi = options.diversity_processor.compute_theta_pi();
@@ -382,7 +390,7 @@ void write_output_popoolation_line_(
     };
 
     // Get the results for the whole set of calculators.
-    auto const results = processor.get_result( window, nullptr ); // TODO provided_loci
+    auto const results = processor.get_result( window, output.provided_loci );
     auto const total_stats = variant_filter_stats_category_counts(
         processor.get_filter_stats()
     );
@@ -479,7 +487,7 @@ void write_output_table_line_(
     }
 
     // Get the results for the whole set of calculators.
-    auto const results = processor.get_result( window, nullptr ); // TODO provided_loci
+    auto const results = processor.get_result( window, output.provided_loci );
 
     // Write to all individual files for each sample and each value.
     for( size_t i = 0; i < processor.calculators().size(); ++i ) {

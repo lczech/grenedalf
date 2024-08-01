@@ -26,6 +26,7 @@
 
 #include "CLI/CLI.hpp"
 
+#include "options/variant_reference_genome.hpp"
 #include "options/poolsizes.hpp"
 #include "options/window_average.hpp"
 #include "tools/cli_option.hpp"
@@ -33,8 +34,10 @@
 #include "genesis/population/filter/sample_counts_filter_numerical.hpp"
 #include "genesis/population/filter/sample_counts_filter.hpp"
 #include "genesis/population/function/diversity_pool_processor.hpp"
+#include "genesis/population/genome_locus_set.hpp"
 
 #include <string>
+#include <memory>
 #include <utility>
 #include <tuple>
 #include <vector>
@@ -73,6 +76,7 @@ public:
 
     void add_diversity_processor_opts_to_app(
         CLI::App* sub,
+        VariantReferenceGenomeOptions const& ref_genome_opts,
         std::string const& group = "Settings"
     );
 
@@ -100,6 +104,11 @@ public:
         return ! no_tajima_d.value;
     }
 
+    std::shared_ptr<genesis::population::GenomeLocusSet> get_provided_loci() const
+    {
+        return window_average_policy.get_provided_loci();
+    }
+
     // -------------------------------------------------------------------------
     //     Option Members
     // -------------------------------------------------------------------------
@@ -113,8 +122,8 @@ private:
     CliOption<bool> no_tajima_d        = false;
 
     // General settings
-    PoolsizesOptions     poolsizes;
     WindowAverageOptions window_average_policy;
+    PoolsizesOptions     poolsizes;
 
     // Remnant settings. These are simply re-used from the numerical filters now.
     // Kept here for reference, just in case they are needed for later.
