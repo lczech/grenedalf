@@ -97,7 +97,7 @@ void VariantInputOptions::add_variant_input_opts_to_app(
         region_filter_options_.add_region_filter_opts_to_app( sub );
     }
     if( suboptions.with_mask_filter_opts ) {
-        mask_filter_options_.add_mask_filter_opts_to_app( sub );
+        mask_filter_options_.add_mask_filter_opts_to_app( sub, reference_genome_options_ );
     }
 }
 
@@ -300,7 +300,7 @@ void VariantInputOptions::prepare_inputs_() const
     // as that would only make sense for the fasta mask type region filter, which is kind of an
     // outlyer anyway.
     // We do test the reference genome and mask files here though, if both are given.
-    mask_filter_options_.check_masks_against_reference( get_reference_dict() );
+    mask_filter_options_.check_masks_against_reference();
 }
 
 // -------------------------------------------------------------------------

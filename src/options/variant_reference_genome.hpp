@@ -67,6 +67,11 @@ public:
         std::string const& group = "Input Settings"
     );
 
+    /**
+     * @brief Helper function to get a string of the option names.
+     */
+    std::string get_reference_option_names() const;
+
     // -------------------------------------------------------------------------
     //     Run Functions
     // -------------------------------------------------------------------------

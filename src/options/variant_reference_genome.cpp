@@ -94,6 +94,20 @@ void VariantReferenceGenomeOptions::add_reference_genome_opts_to_app(
     reference_genome_fai_file_.option->excludes( reference_genome_dict_file_.option );
 }
 
+std::string VariantReferenceGenomeOptions::get_reference_option_names() const
+{
+    if( !reference_genome_fasta_file_.option ) {
+        throw std::domain_error(
+            "Call to VariantReferenceGenomeOptions::get_reference_option_names() before being set up"
+        );
+    }
+
+    auto const n0 = reference_genome_fasta_file_.option->get_name();
+    auto const n1 = reference_genome_dict_file_.option->get_name();
+    auto const n2 = reference_genome_fai_file_.option->get_name();
+    return "`" + n0 + "`, `" + n1 + "`, `" + n2 + "`";
+}
+
 // =================================================================================================
 //      Run Functions
 // =================================================================================================

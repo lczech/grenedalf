@@ -54,21 +54,36 @@
 
 void VariantFilterMaskOptions::add_mask_filter_opts_to_app(
     CLI::App* sub,
+    VariantReferenceGenomeOptions const& ref_genome_opts,
     std::string const& group
 ) {
-    add_mask_filter_sample_opts_to_app( sub, group );
-    add_mask_filter_total_opts_to_app( sub, group );
+    add_mask_filter_sample_opts_to_app( sub, ref_genome_opts, group );
+    add_mask_filter_total_opts_to_app(  sub, ref_genome_opts, group );
 }
+
+// -------------------------------------------------------------------------------------------------
+//     Sample Masks
+// -------------------------------------------------------------------------------------------------
 
 void VariantFilterMaskOptions::add_mask_filter_sample_opts_to_app(
     CLI::App* sub,
+    VariantReferenceGenomeOptions const& ref_genome_opts,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
         filter_mask_sample_bed_list_.option == nullptr,
-        "Cannot use the same VariantFilterMaskOptions object multiple times."
+        "Cannot use the same VariantFilterMaskOptions object multiple times"
     );
+    internal_check(
+        !ref_genome_opts_ || ref_genome_opts_ == &ref_genome_opts,
+        "Cannot use the same VariantFilterMaskOptions with different VariantReferenceGenomeOptions"
+    );
+    ref_genome_opts_ = &ref_genome_opts;
+
+    // -------------------------------------------
+    //     BED
+    // -------------------------------------------
 
     // Add option for genomic mask filter by BED file.
     filter_mask_sample_bed_list_.option = sub->add_option(
@@ -83,6 +98,21 @@ void VariantFilterMaskOptions::add_mask_filter_sample_opts_to_app(
     );
     filter_mask_sample_bed_list_.option->check( CLI::ExistingFile );
     filter_mask_sample_bed_list_.option->group( group );
+
+    // Add inversion option for above mask option.
+    filter_mask_sample_bed_inv_.option = sub->add_flag(
+        "--filter-mask-samples-bed-invert",
+        filter_mask_sample_bed_inv_.value,
+        "When using `--filter-mask-samples-bed-list`, set this flag to invert the specified mask. "
+        "Needs one of " + ref_genome_opts_->get_reference_option_names() +
+        " to determine chromosome lengths."
+    );
+    filter_mask_sample_bed_inv_.option->group( group );
+    filter_mask_sample_bed_inv_.option->needs( filter_mask_sample_bed_list_.option );
+
+    // -------------------------------------------
+    //     FASTA
+    // -------------------------------------------
 
     // Add option for genomic mask filter by fasta-style mask file.
     filter_mask_sample_fasta_list_.option = sub->add_option(
@@ -105,7 +135,7 @@ void VariantFilterMaskOptions::add_mask_filter_sample_opts_to_app(
         "digits. All positions above that value are masked. The default is 0, meaning that only "
         "exactly the positons with value 0 will not be masked."
     );
-    filter_mask_sample_fasta_min_.option->check(CLI::Range(0,9));
+    filter_mask_sample_fasta_min_.option->check( CLI::Range(0,9 ));
     filter_mask_sample_fasta_min_.option->group( group );
     filter_mask_sample_fasta_min_.option->needs( filter_mask_sample_fasta_list_.option );
 
@@ -113,10 +143,9 @@ void VariantFilterMaskOptions::add_mask_filter_sample_opts_to_app(
     filter_mask_sample_fasta_inv_.option = sub->add_flag(
         "--filter-mask-samples-fasta-invert",
         filter_mask_sample_fasta_inv_.value,
-        "When using `--filter-mask-samples-fasta-list`, invert the mask."
+        "When using `--filter-mask-samples-fasta-list`, invert the mask. "
         "When this flag is set, the mask specified above is inverted."
     );
-    filter_mask_sample_fasta_inv_.option->check(CLI::Range(0,9));
     filter_mask_sample_fasta_inv_.option->group( group );
     filter_mask_sample_fasta_inv_.option->needs( filter_mask_sample_fasta_list_.option );
 
@@ -125,15 +154,29 @@ void VariantFilterMaskOptions::add_mask_filter_sample_opts_to_app(
     filter_mask_sample_fasta_list_.option->excludes( filter_mask_sample_bed_list_.option );
 }
 
+// -------------------------------------------------------------------------------------------------
+//     Total Masks
+// -------------------------------------------------------------------------------------------------
+
 void VariantFilterMaskOptions::add_mask_filter_total_opts_to_app(
     CLI::App* sub,
+    VariantReferenceGenomeOptions const& ref_genome_opts,
     std::string const& group
 ) {
     // Correct setup check.
     internal_check(
         filter_mask_total_bed_.option == nullptr,
-        "Cannot use the same VariantFilterMaskOptions object multiple times."
+        "Cannot use the same VariantFilterMaskOptions object multiple times"
     );
+    internal_check(
+        !ref_genome_opts_ || ref_genome_opts_ == &ref_genome_opts,
+        "Cannot use the same VariantFilterMaskOptions with different VariantReferenceGenomeOptions"
+    );
+    ref_genome_opts_ = &ref_genome_opts;
+
+    // -------------------------------------------
+    //     BED
+    // -------------------------------------------
 
     // Add option for genomic mask filter by BED file.
     filter_mask_total_bed_.option = sub->add_option(
@@ -154,6 +197,21 @@ void VariantFilterMaskOptions::add_mask_filter_total_opts_to_app(
     );
     filter_mask_total_bed_.option->check( CLI::ExistingFile );
     filter_mask_total_bed_.option->group( group );
+
+    // Add inversion option for above mask option.
+    filter_mask_total_bed_inv_.option = sub->add_flag(
+        "--filter-mask-total-bed-invert",
+        filter_mask_total_bed_inv_.value,
+        "When using `--filter-mask-total-bed`, set this flag to invert the specified mask. "
+        "Needs one of " + ref_genome_opts_->get_reference_option_names() +
+        " to determine chromosome lengths."
+    );
+    filter_mask_total_bed_inv_.option->group( group );
+    filter_mask_total_bed_inv_.option->needs( filter_mask_total_bed_.option );
+
+    // -------------------------------------------
+    //     FASTA
+    // -------------------------------------------
 
     // Add option for genomic mask filter by fasta-style mask file.
     filter_mask_total_fasta_.option = sub->add_option(
@@ -178,7 +236,7 @@ void VariantFilterMaskOptions::add_mask_filter_total_opts_to_app(
         "All positions above that value are masked. The default is 0, meaning that only exactly "
         "the positons with value 0 will not be masked."
     );
-    filter_mask_total_fasta_min_.option->check(CLI::Range(0,9));
+    filter_mask_total_fasta_min_.option->check( CLI::Range(0,9) );
     filter_mask_total_fasta_min_.option->group( group );
     filter_mask_total_fasta_min_.option->needs( filter_mask_total_fasta_.option );
 
@@ -190,7 +248,6 @@ void VariantFilterMaskOptions::add_mask_filter_total_opts_to_app(
         "as the equivalent in vcftools, but instead of specifying the file, this here is a flag. "
         "When it is set, the mask specified above is inverted."
     );
-    filter_mask_total_fasta_inv_.option->check(CLI::Range(0,9));
     filter_mask_total_fasta_inv_.option->group( group );
     filter_mask_total_fasta_inv_.option->needs( filter_mask_total_fasta_.option );
 
@@ -217,10 +274,9 @@ void VariantFilterMaskOptions::prepare_masks() const
 //     check_masks_against_reference
 // -------------------------------------------------------------------------
 
-void VariantFilterMaskOptions::check_masks_against_reference(
-    std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
-) const {
-    check_reference_and_masks_compatibility_( ref_dict );
+void VariantFilterMaskOptions::check_masks_against_reference() const
+{
+    check_reference_and_masks_compatibility_();
     check_inter_masks_compatibility_();
 }
 
@@ -303,7 +359,11 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
 {
     using namespace genesis;
     using namespace genesis::population;
+    using namespace genesis::sequence;
     using namespace genesis::utils;
+    internal_check(
+        ref_genome_opts_, "VariantFilterMaskOptions needs VariantReferenceGenomeOptions"
+    );
 
     // Not running again if we already have set up a filter (i.e., if the shared pointer has data).
     if( ! sample_masks_.empty() ) {
@@ -356,6 +416,18 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
 
     // Add the masks from bed files.
     if( *filter_mask_sample_bed_list_.option ) {
+        // We need a dict to invert
+        auto ref_dict = ref_genome_opts_->get_reference_dict();
+        if( filter_mask_sample_bed_inv_.value && !ref_dict ) {
+            throw CLI::ValidationError(
+                filter_mask_sample_bed_inv_.option->get_name(),
+                "Cannot invert BED mask without one of " +
+                ref_genome_opts_->get_reference_option_names() +
+                " being provided to determine the chromosome lengths"
+            );
+        }
+
+        // Read the files
         LOG_MSG2 << "Reading sample masks BED files " << filter_mask_sample_bed_list_.value;
         auto const sample_to_file = get_list_file_pairs_( filter_mask_sample_bed_list_ );
         for( auto const& sample_file_pair : sample_to_file ) {
@@ -364,6 +436,9 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
             sample_masks_[ sample_file_pair.first ] = std::make_shared<GenomeLocusSet>(
                 BedReader().read_as_genome_locus_set( from_file( sample_file_pair.second ))
             );
+            if( filter_mask_sample_bed_inv_.value ) {
+                sample_masks_[ sample_file_pair.first ]->invert( *ref_dict );
+            }
         }
     }
 
@@ -393,7 +468,11 @@ void VariantFilterMaskOptions::prepare_total_mask_() const
 {
     using namespace genesis;
     using namespace genesis::population;
+    using namespace genesis::sequence;
     using namespace genesis::utils;
+    internal_check(
+        ref_genome_opts_, "VariantFilterMaskOptions needs VariantReferenceGenomeOptions"
+    );
 
     // Not running again if we already have set up a filter (i.e., if the shared pointer has data).
     if( total_mask_ ) {
@@ -406,6 +485,18 @@ void VariantFilterMaskOptions::prepare_total_mask_() const
         total_mask_ = std::make_shared<GenomeLocusSet>(
             BedReader().read_as_genome_locus_set( from_file( filter_mask_total_bed_.value ))
         );
+        if( filter_mask_total_bed_inv_.value ) {
+            auto ref_dict = ref_genome_opts_->get_reference_dict();
+            if( !ref_dict ) {
+                throw CLI::ValidationError(
+                    filter_mask_total_bed_inv_.option->get_name(),
+                    "Cannot invert BED mask without one of " +
+                    ref_genome_opts_->get_reference_option_names() +
+                    " being provided to determine the chromosome lengths"
+                );
+            }
+            total_mask_->invert( *ref_dict );
+        }
     }
 
     // Add the mask from a fasta file.
@@ -483,12 +574,14 @@ void VariantFilterMaskOptions::check_sample_masks_name_list_(
 //     check_reference_and_masks_compatibility_
 // -------------------------------------------------------------------------
 
-void VariantFilterMaskOptions::check_reference_and_masks_compatibility_(
-    std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
-) const {
+void VariantFilterMaskOptions::check_reference_and_masks_compatibility_() const {
     using namespace genesis::sequence;
 
     // See if there is a ref dict at all to compare to.
+    internal_check(
+        ref_genome_opts_, "VariantFilterMaskOptions needs VariantReferenceGenomeOptions"
+    );
+    auto ref_dict = ref_genome_opts_->get_reference_dict();
     if( !ref_dict ) {
         return;
     }

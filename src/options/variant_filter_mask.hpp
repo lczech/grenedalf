@@ -26,6 +26,7 @@
 
 #include "CLI/CLI.hpp"
 
+#include "options/variant_reference_genome.hpp"
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/stream/variant_input_stream.hpp"
@@ -78,16 +79,19 @@ public:
 
     void add_mask_filter_opts_to_app(
         CLI::App* sub,
+        VariantReferenceGenomeOptions const& ref_genome_opts,
         std::string const& group = "Masking Filters"
     );
 
     void add_mask_filter_sample_opts_to_app(
         CLI::App* sub,
+        VariantReferenceGenomeOptions const& ref_genome_opts,
         std::string const& group = "Masking Filters"
     );
 
     void add_mask_filter_total_opts_to_app(
         CLI::App* sub,
+        VariantReferenceGenomeOptions const& ref_genome_opts,
         std::string const& group = "Masking Filters"
     );
 
@@ -122,9 +126,7 @@ public:
     /**
      * @brief Check that the mask fits with a given reference genome, if given.
      */
-    void check_masks_against_reference(
-        std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
-    ) const;
+    void check_masks_against_reference() const;
 
     /**
      * @brief Check that the provided per-sample masks and the input sample names
@@ -160,9 +162,7 @@ private:
     void check_sample_masks_name_list_(
         std::vector<std::string> const& sample_names
     ) const;
-    void check_reference_and_masks_compatibility_(
-        std::shared_ptr<genesis::sequence::SequenceDict> ref_dict
-    ) const;
+    void check_reference_and_masks_compatibility_() const;
     void check_inter_masks_compatibility_() const;
 
     // -------------------------------------------------------------------------
@@ -173,15 +173,20 @@ private:
 
     // Filters for each sample individually
     CliOption<std::string> filter_mask_sample_bed_list_;
+    CliOption<bool>        filter_mask_sample_bed_inv_ = false;
     CliOption<std::string> filter_mask_sample_fasta_list_;
     CliOption<size_t>      filter_mask_sample_fasta_min_ = 0;
     CliOption<bool>        filter_mask_sample_fasta_inv_ = false;
 
     // Filters for the whole variant
     CliOption<std::string> filter_mask_total_bed_;
+    CliOption<bool>        filter_mask_total_bed_inv_ = false;
     CliOption<std::string> filter_mask_total_fasta_;
     CliOption<size_t>      filter_mask_total_fasta_min_ = 0;
     CliOption<bool>        filter_mask_total_fasta_inv_ = false;
+
+    // We need a reference dict, for verification, and for inverting bed files
+    VariantReferenceGenomeOptions const* ref_genome_opts_ = nullptr;
 
     // We keep the masks here. Bits that are set here are masked!
     mutable std::unordered_map<std::string, std::shared_ptr<GenomeLocusSet>> sample_masks_;
