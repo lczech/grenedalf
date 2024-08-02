@@ -117,7 +117,7 @@ void VariantFilterMaskOptions::add_mask_filter_sample_opts_to_app(
     filter_mask_sample_fasta_list_.option = sub->add_option(
         "--filter-mask-samples-fasta-list",
         filter_mask_sample_fasta_list_.value,
-        "For each sample, genomic positions to mask, as a FASTA-like mask file.\n"
+        "For each sample, genomic positions to mask, as a FASTA-like mask file."
         "\nSee the below `--filter-mask-total-fasta` for details. Here, individual FASTA files can "
         "be provided for each sample, for fine-grained control over the masking. The option takes "
         "a path to a file that contains a comma- or tab-separated list of sample names and "
