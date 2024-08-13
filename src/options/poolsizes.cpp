@@ -45,7 +45,8 @@ void PoolsizesOptions::add_poolsizes_opt_to_app(
     pool_sizes_opt_.option = sub->add_option(
         "--pool-sizes",
         pool_sizes_opt_.value,
-        "Pool sizes for all samples that are used (not filtered out). Either "
+        "Pool sizes for all samples that are used (not filtered out). These are the number of "
+        "haploids, so 100 diploid individuals correspond to a pool size of 200. Either "
         "\n(1) a single pool size that is used for all samples, specified on the command line, or "
         "\n(2) a path to a file that contains a comma- or tab-separated list of sample names and "
         "pool sizes, with one name/size pair per line, in any order of lines."
