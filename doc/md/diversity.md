@@ -8,7 +8,7 @@ We compute three common estimators that correct for these noises:
   * Theta Watterson
   * Tajima's D
 
-For details on the statistics and the derivation of the estimators, please refer to our [publication](https://arxiv.org/abs/2306.11622) and in particular our [equations document](https://github.com/lczech/pool-seq-pop-gen-stats).
+For details on the statistics and the derivation of the estimators, please refer to our [publication](https://doi.org/10.1093/bioinformatics/btae508) and in particular our [equations document](https://github.com/lczech/pool-seq-pop-gen-stats).
 
 As described there, we recommend to be careful when numerically interpreting Tajima's D for Pool seq data, as the estimator is not well suited to work well with the noises introduced by the nested sampling process.
 

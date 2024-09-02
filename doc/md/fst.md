@@ -8,7 +8,7 @@ We offer several flavors of FST to correct for those:
   * A re-implementation of the "Kofler" estimator of PoPoolation2.
   * A re-implementation of the Karlsson estimator as described in PoPoolation2.
 
-For details on the statistics and the derivation of the estimators, please refer to our [publication](https://arxiv.org/abs/2306.11622) and in particular our [equations document](https://github.com/lczech/pool-seq-pop-gen-stats).
+For details on the statistics and the derivation of the estimators, please refer to our [publication](https://doi.org/10.1093/bioinformatics/btae508) and in particular our [equations document](https://github.com/lczech/pool-seq-pop-gen-stats).
 
 We recommend to use one of our two estimators, as they are correctly accounting for the noises of Pool-seq. In simplified form (without the Pool-seq correction terms), the two variants are:
 
