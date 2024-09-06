@@ -32,7 +32,7 @@
 
 inline std::string grenedalf_version()
 {
-    return "v0.6.0"; // #GRENEDALF_VERSION#
+    return "v0.6.1"; // #GRENEDALF_VERSION#
 }
 
 inline std::string grenedalf_header()
