@@ -60,6 +60,6 @@ Please find the preprint here:
 
 > grenedalf: population genetic statistics for the next generation of pool sequencing.<br />
 > Lucas Czech, Jeffrey P. Spence, Moisés Expósito-Alonso.<br />
-> Bioinformatics, 2024. [DOI:10.1093/bioinformatics/btae508](https://doi.org/10.1093/bioinformatics/btae508)
+> Bioinformatics, 2024. doi:[10.1093/bioinformatics/btae508](https://doi.org/10.1093/bioinformatics/btae508)
 
 Each command also prints out the relevant references for that command. Then, the command [`grenedalf citation`](https://github.com/lczech/grenedalf/wiki/Subcommand:-citation) can be used to obtain details on those references.
