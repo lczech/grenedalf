@@ -370,39 +370,41 @@ genesis::population::FstPoolProcessor FstProcessorOptions::get_fst_pool_processo
         method_value == FstMethod::kUnbiasedNei ||
         method_value == FstMethod::kUnbiasedHudson
     );
-    switch( method_value ) {
-        case FstMethod::kUnbiasedNei:
-        case FstMethod::kUnbiasedHudson: {
-            if(
-                ! window_average_policy.get_window_average_policy_option().option ||
-                !*window_average_policy.get_window_average_policy_option().option
-            ) {
-                throw CLI::ValidationError(
-                    method.option->get_name() + ", " +
-                    window_average_policy.get_window_average_policy_option().option->get_name(),
-                    "Window average policy option needs to be provided with " +
-                    method.option->get_name() + " " + method.value
-                );
+    if( params.with_window_average_policy ) {
+        switch( method_value ) {
+            case FstMethod::kUnbiasedNei:
+            case FstMethod::kUnbiasedHudson: {
+                if(
+                    ! window_average_policy.get_window_average_policy_option().option ||
+                    !*window_average_policy.get_window_average_policy_option().option
+                ) {
+                    throw CLI::ValidationError(
+                        method.option->get_name() + ", " +
+                        window_average_policy.get_window_average_policy_option().option->get_name(),
+                        "Window average policy option needs to be provided with " +
+                        method.option->get_name() + " " + method.value
+                    );
+                }
+                break;
             }
-            break;
-        }
-        case FstMethod::kKofler:
-        case FstMethod::kKarlsson: {
-            if(
-                 window_average_policy.get_window_average_policy_option().option &&
-                *window_average_policy.get_window_average_policy_option().option
-            ) {
-                throw CLI::ValidationError(
-                    method.option->get_name() + ", " +
-                    window_average_policy.get_window_average_policy_option().option->get_name(),
-                    "Window average policy option cannot be used with " +
-                    method.option->get_name() + " " + method.value
-                );
+            case FstMethod::kKofler:
+            case FstMethod::kKarlsson: {
+                if(
+                    window_average_policy.get_window_average_policy_option().option &&
+                    *window_average_policy.get_window_average_policy_option().option
+                ) {
+                    throw CLI::ValidationError(
+                        method.option->get_name() + ", " +
+                        window_average_policy.get_window_average_policy_option().option->get_name(),
+                        "Window average policy option cannot be used with " +
+                        method.option->get_name() + " " + method.value
+                    );
+                }
+                break;
             }
-            break;
-        }
-        default: {
-            throw std::domain_error( "Internal error: Invalid FST method." );
+            default: {
+                throw std::domain_error( "Internal error: Invalid FST method." );
+            }
         }
     }
 
