@@ -56,7 +56,7 @@ Feedback on functionality, interface, and features is highly appreciated, as we 
 Citation
 -------------------
 
-Please find the preprint here:
+Please find the publication here:
 
 > grenedalf: population genetic statistics for the next generation of pool sequencing.<br />
 > Lucas Czech, Jeffrey P. Spence, Moisés Expósito-Alonso.<br />
