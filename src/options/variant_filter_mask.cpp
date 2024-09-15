@@ -416,7 +416,7 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
     // Add the masks from bed files.
     if( *filter_mask_sample_bed_list_.option ) {
         // We need a dict to invert
-        auto ref_dict = ref_genome_opts_->get_reference_dict();
+        auto const ref_dict = ref_genome_opts_->get_reference_dict();
         if( filter_mask_sample_bed_inv_.value && !ref_dict ) {
             throw CLI::ValidationError(
                 filter_mask_sample_bed_inv_.option->get_name(),
@@ -433,7 +433,10 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
             LOG_MSG2 << "  - " << sample_file_pair.first << ": " << sample_file_pair.second;
             assert( sample_masks_( sample_file_pair.first ).count() == 0 );
             sample_masks_[ sample_file_pair.first ] = std::make_shared<GenomeLocusSet>(
-                BedReader().read_as_genome_locus_set( from_file( sample_file_pair.second ))
+                BedReader().read_as_genome_locus_set(
+                    from_file( sample_file_pair.second ),
+                    ref_dict
+                )
             );
             if( filter_mask_sample_bed_inv_.value ) {
                 sample_masks_[ sample_file_pair.first ]->invert( *ref_dict );
@@ -481,11 +484,14 @@ void VariantFilterMaskOptions::prepare_total_mask_() const
     // Add the mask from a bed file.
     if( *filter_mask_total_bed_.option ) {
         LOG_MSG2 << "Reading mask BED file " << filter_mask_total_bed_.value;
+        auto const ref_dict = ref_genome_opts_->get_reference_dict();
         total_mask_ = std::make_shared<GenomeLocusSet>(
-            BedReader().read_as_genome_locus_set( from_file( filter_mask_total_bed_.value ))
+            BedReader().read_as_genome_locus_set(
+                from_file( filter_mask_total_bed_.value ),
+                ref_dict
+            )
         );
         if( filter_mask_total_bed_inv_.value ) {
-            auto ref_dict = ref_genome_opts_->get_reference_dict();
             if( !ref_dict ) {
                 throw CLI::ValidationError(
                     filter_mask_total_bed_inv_.option->get_name(),
