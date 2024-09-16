@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+authors:
+  - family-names: "Czech"
+    given-names: "Lucas"
+    orcid: "https://orcid.org/0000-0002-1340-9644"
+  - family-names: "Spence"
+    given-names: "Jeffrey P"
+    orcid: "https://orcid.org/0000-0002-3199-1447"
+  - family-names: "Expósito-Alonso"
+    given-names: "Moisés"
+    orcid: "https://orcid.org/0000-0001-5711-0700"
+title: "grenedalf: population genetic statistics for the next generation of pool sequencing"
+doi: 10.1093/bioinformatics/btae508
+url: https://doi.org/10.1093/bioinformatics/btae508
+preferred-citation:
+  authors:
+    - family-names: "Czech"
+      given-names: "Lucas"
+      orcid: "https://orcid.org/0000-0002-1340-9644"
+    - family-names: "Spence"
+      given-names: "Jeffrey P"
+      orcid: "https://orcid.org/0000-0002-3199-1447"
+    - family-names: "Expósito-Alonso"
+      given-names: "Moisés"
+      orcid: "https://orcid.org/0000-0001-5711-0700"
+  title: "grenedalf: population genetic statistics for the next generation of pool sequencing"
+  doi: 10.1093/bioinformatics/btae508
+  url: https://doi.org/10.1093/bioinformatics/btae508
+  type: article-journal
+  journal: "Bioinformatics"
+  pages: btae508
+  year: 2024
+  volume: 40
+  issue: 8
