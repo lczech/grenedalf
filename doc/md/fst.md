@@ -18,7 +18,7 @@ We recommend to use one of our two estimators, as they are correctly accounting 
 Our recommendation is to use the Hudson estimator with a cutoff for low frequencies (either via `--filter-total-snp-min-count` or `--filter-total-snp-min-frequency`), see for instance [10.1101/gr.154831.113](https://doi.org/10.1101/gr.154831.113) for a rationale.
 <!-- > Bhatia, G. et al. "Estimating and interpreting FST: The impact of rare variants". **Genome Research**, 2013. https://doi.org/10.1101/gr.154831.113 -->
 
-The values per window are computed using the window averaging as described [here](../wiki/Windowing#window-averaging-policy), in order to scale the results per base pair.
+The values per window are computed using the window averaging as described [here](../wiki/Windowing#window-averaging-policy), in order to scale the results per base pair. Note that by default, no filtering is applied to the data. That includes missing positions - we leave it open to the user to decide how they want to deal with those (i.e., which exact filter settings are fitting for their purposes). Without any filtering however, this can lead to an inflation of negative values of FST, see [here](https://github.com/lczech/grenedalf/issues/32). We hence recommend to apply some form of numerical filter when missing data is present.
 
 <!-- we expect NaN if poolsize is 1. -->
 
