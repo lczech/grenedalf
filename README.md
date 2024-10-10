@@ -48,7 +48,7 @@ Genome Analyses of Differential Allele Frequencies -->
 Support and Requests
 -------------------
 
-For **questions, bug reports, and feature requests**, please [open an issue](https://github.com/lczech/grenepipe/issues). Please do not send emails with questions or requests, as others might be having them as well, and so it is better to discuss them here where they can be found.
+For **questions, bug reports, and feature requests**, please [open an issue](https://github.com/lczech/grenedalf/issues). Please do not send emails with questions or requests, as others might be having them as well, and so it is better to discuss them here where they can be found.
 
 Feedback on functionality, interface, and features is highly appreciated, as we are always open to discussing new statistics and tools that might be relevant for the community. If you need other pool sequencing statistics than the ones already offered here, please reach out - happy to explore the potential for a collaboration there! We have a lot of code infrastructure in grenedalf that takes care of all the basics, and so it would be nice to implement further statistics!
 
