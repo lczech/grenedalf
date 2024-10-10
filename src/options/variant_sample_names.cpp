@@ -106,7 +106,7 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
         "--sample-group-merge-table",
         sample_group_merge_table_file_.value,
         "When the input contains multiple samples (either within a single input file, or by "
-        "providing multiple input files), these can be grouped into new samples, by summing up "
+        "providing multiple input files), these can be merged into new samples, by summing up "
         "their nucleotide base counts at each position. This has essentially the same effect as "
         "having merged the raw fastq files or the mapped sam/bam files of the samples, that is, "
         "all reads from those samples are treated as if they were a single sample. "
