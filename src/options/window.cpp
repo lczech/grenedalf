@@ -141,7 +141,7 @@ void WindowOptions::add_window_opts_to_app(
         "When using `" + window_type_.option->get_name() + " interval`: "
         "Stride between windows along the chromosome, that is how far to move to get to the next "
         "window. If set to 0 (default), this is set to the same value as the `" +
-        interval_width_.option->get_name() + "`."
+        interval_width_.option->get_name() + "`, in which case windows do not overlap."
     );
     interval_stride_.option->group( group );
 

@@ -76,7 +76,7 @@ void VariantTransformSubsampleOptions::add_subsample_opts_to_app(
         "When using `--subsample-max-read-depth`, decide which method to use. The default `subscale` "
         "simply re-scales the base counts to the given max read depth, and hence maintains the "
         "allele frequencies (within integer precision). We recommend to use this to subsample to, "
-        "e.g., a max read depth of 10,000, which is a good compromise in most cases."
+        "e.g., a max read depth of 10,000, which is a good compromise in most cases. "
         "The two alternative options re-sample instead, with and without replacement, by drawing "
         "from a multinomial or multivariate hypergeometric distribution, respectively, based on "
         "the original counts of the sample."
