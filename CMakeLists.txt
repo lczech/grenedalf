@@ -168,7 +168,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/tools/cmake/DownloadDependency.cmake" )
 # These are replaced by tools/cmake/update_dependencies.sh to the hashes that are currently checked out.
 # Thus, do not replace the hashes manually!
 SET( CLI11_COMMIT_HASH "5cb3efabce007c3a0230e4cc2e27da491c646b6c" ) #CLI11_COMMIT_HASH#
-SET( genesis_COMMIT_HASH "059e5b50a33c2826edd931435c11661c7a5b0985" ) #genesis_COMMIT_HASH#
+SET( genesis_COMMIT_HASH "f1a5fb82d4b59706e8dbf60d41d094b88022fc94" ) #genesis_COMMIT_HASH#
 
 # Call the github download function, which takes four arguments:
 #  - LIBPATH    : Path to the libracy dir where dependencies are stored.
@@ -188,7 +188,10 @@ endif (APPLE)
 #   Dependencies Settings
 # --------------------------------------------------------------------------------------------------
 
-# Force to set te options used for genesis. Bit cumbersome in cmake...
+# Force to set the options used for genesis. Bit cumbersome in cmake...
+# For now, grenedalf is always compiled with C++11, so we deactivate
+# the genesis auto detection of the highest available C++ standard here.
+set(GENESIS_CPP_STANDARD "11" CACHE BOOL "Use OpenMP." FORCE)
 set(GENESIS_USE_OPENMP OFF CACHE BOOL "Use OpenMP." FORCE)
 
 # Add Genesis as dependency.
