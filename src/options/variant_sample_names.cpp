@@ -58,8 +58,8 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
     rename_samples_.option = sub->add_option(
         "--rename-samples-list",
         rename_samples_.value,
-        "Allows to rename samples, by providing a file that lists the old and new sample names, "
-        "one per line, separating old and new names by a tab.\n"
+        "Allows to rename samples, by providing a file that lists the original and new sample names, "
+        "one per line, separating original and new names by a comma or tab.\n"
         "By default, we use sample names as provided in the input files. Some file types however do "
         "not contain sample names, such as (m)pileup or sync files (unless the non-standard sync "
         "header line is provided). For such file types, sample names are automatically assigned "
@@ -143,20 +143,21 @@ void VariantSampleNamesOptions::rename_samples( std::vector<std::string>& sample
     std::unordered_set<std::string> uniq_new_names;
     auto const lines = file_read_lines( rename_samples_.value );
     for( auto const& line : lines ) {
-        auto const parts = split( line, "\t" );
+        auto const parts = split( line, ",\t" );
         if( parts.size() != 2 ) {
             throw CLI::ValidationError(
                 rename_samples_.option->get_name() + "(" + rename_samples_.value + ")",
-                "Sample renaming list contains invalid lines. We expect an old and a new sample "
-                "name, split by a tab character, but instead found \"" + line + "\""
+                "Sample renaming list contains invalid lines. We expect an original and a new sample "
+                "name, split by a comma or tab character, but instead found \"" + line + "\"" +
+                ( parts.size() > 2 ? ", which contains multiple separator chars." : "." )
             );
         }
 
-        // Check for uniqueness of old and new sample names.
+        // Check for uniqueness of original and new sample names.
         if( rename_map.count( parts[0] ) > 0 ) {
             throw CLI::ValidationError(
                 rename_samples_.option->get_name() + "(" + rename_samples_.value + ")",
-                "Sample renaming list contains duplicate entries for old sample name \"" +
+                "Sample renaming list contains duplicate entries for original sample name \"" +
                 parts[0] + "\""
             );
         }
@@ -175,7 +176,7 @@ void VariantSampleNamesOptions::rename_samples( std::vector<std::string>& sample
     assert( rename_map.size() == lines.size() );
     assert( uniq_new_names.size() == lines.size() );
 
-    // Now rename, using the map. While doing so, we do duplication check of the old names as well,
+    // Now rename, using the map. While doing so, we do duplication check of the original names as well,
     // just to be on the save side. Also, we keep track of all possibilities here,
     // for user convenience and error checking.
     std::unordered_set<std::string> uniq_old_names;
@@ -213,14 +214,14 @@ void VariantSampleNamesOptions::rename_samples( std::vector<std::string>& sample
             << sample_names.size() << " sample names.";
     if( same_old_and_new_name > 0 ) {
         LOG_WARN << "Out of those, " << same_old_and_new_name << " names contained identical "
-                 << "entries for the old and new name, which hence did not change anything.";
+                 << "entries for the original and new name, which hence did not change anything.";
     }
     if( not_in_map > 0 ) {
-        LOG_WARN << "Did not find old and new name pair for " << not_in_map << " samples "
+        LOG_WARN << "Did not find original and new name pair for " << not_in_map << " samples "
                  << "in the rename list, which where hence not renamed.";
     }
     if( rename_map.size() > 0 ) {
-        LOG_WARN << "Rename list contains " << rename_map.size() << " entries whose old name "
+        LOG_WARN << "Rename list contains " << rename_map.size() << " entries whose original name "
                  << "is not a sample name of the input samples, and which were hence not used.";
     }
 }
