@@ -158,7 +158,7 @@ void VariantInputOptions::add_input_files_opts_to_app(
         "By default, we only operate on the positions for which there is data. "
         "In particular, positions that are absent in the input are completely ignored; "
         "they do not even show up in the `missing` column of output tables. "
-        "This is because for the statistics, data being absend or (marked as) missing "
+        "This is because for the statistics, data being absent or (marked as) missing "
         "is merely a sementic distinction, but it does not change the results. "
         "However, it might make processing with downstream tools easier if the output contains "
         "all positions, for instance when using `single` windows. "
