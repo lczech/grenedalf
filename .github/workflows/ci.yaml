@@ -32,7 +32,9 @@ jobs:
         # We later set all other combinations that we want explicitly.
 
         os:
-          - ubuntu-latest
+          # ubuntu latest fails the setup due to some liblzma issue...
+          # - ubuntu-latest
+          - ubuntu-24.04
           - macos-latest
 
         compiler:
@@ -361,10 +363,6 @@ jobs:
         # 2: clang on ubuntu 22 is not properly set up, we need libtinfo5,
         #    see https://github.com/aminya/setup-cpp/issues/149
         run: |
-          if [[ ${{ matrix.os }} == ubuntu-latest ]] ; then
-            sudo apt-get update
-            sudo apt-get install -y liblzma5
-          fi
           sudo apt-get install autoconf automake zlib1g-dev libbz2-dev liblzma-dev
           if [[ ${{ matrix.os }} != ubuntu-24.04 ]] && [[ ${{ matrix.os }} != ubuntu-latest ]] ; then
             sudo apt-get install libtinfo5
@@ -400,7 +398,8 @@ jobs:
           # For static builds, set the according CMake option
           export GRENEDALF_BUILD_STATIC=""
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] ; then
+          # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] ; then
+          if [[ "${{ matrix.os }}" == "ubuntu-24.04" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
             export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
           fi
 
@@ -442,8 +441,8 @@ jobs:
       - name: Upload Binaries
         # If the Ubuntu binary here is changed, it needs to be changed above as well,
         # to enable static building for that version!
-        # if: ( matrix.os == 'ubuntu-latest' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
-        if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
+        if: ( matrix.os == 'ubuntu-24.04' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
+        # if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.compiler }}
