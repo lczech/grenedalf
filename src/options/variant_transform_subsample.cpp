@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2024 Lucas Czech
+    Copyright (C) 2020-2025 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,14 +98,14 @@ void VariantTransformSubsampleOptions::add_subsample_opts_to_app(
 //     add_transform_subsample_filter
 // -------------------------------------------------------------------------
 
-void VariantTransformSubsampleOptions::add_subsample_transformation(
+bool VariantTransformSubsampleOptions::add_subsample_transformation(
     VariantInputOptions const& variant_input
 ) const {
     using namespace genesis::population;
 
     // Nothing to do.
     if( ! max_read_depth_.option || ! *max_read_depth_.option || max_read_depth_.value == 0 ) {
-        return;
+        return false;
     }
 
     // Add a transformation to the variant stream.
@@ -140,4 +140,5 @@ void VariantTransformSubsampleOptions::add_subsample_transformation(
             "Invalid value."
         );
     }
+    return true;
 }

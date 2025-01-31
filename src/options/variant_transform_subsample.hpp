@@ -3,7 +3,7 @@
 
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2024 Lucas Czech
+    Copyright (C) 2020-2025 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,7 +72,14 @@ public:
     //     Run Functions
     // -------------------------------------------------------------------------
 
-    void add_subsample_transformation( VariantInputOptions const& variant_input ) const;
+    /**
+     * @brief Add the transformation to a Variant input.
+     *
+     * If the user specified one of the options for subsampling, this adds the transformation to
+     * the input stream, and returns true. If the user did not specify any subsampling options,
+     * this function does nothing to the stream, and returns false.
+     */
+    bool add_subsample_transformation( VariantInputOptions const& variant_input ) const;
 
     // TODO add rescaling as well?
 

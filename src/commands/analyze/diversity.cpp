@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2024 Lucas Czech
+    Copyright (C) 2020-2025 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -576,7 +576,18 @@ void run_diversity( DiversityOptions const& options )
     // Lastly, apply the subsampling. It is important that this happens after the above numercial
     // filters above, as otherwise we might subsample to a lower read depth, and then want to apply
     // a read depth filter, which would not work any more.
-    options.transform_subsample.add_subsample_transformation( options.variant_input );
+    // However, in this case, we might subsample to lower read counts that are below the threshold
+    // of, e.g., the Tajuma D minimum count. So, we then apply the filter again, so that the lower
+    // count filters get applied again. This is super ugly, but should work.
+    // See also https://github.com/lczech/grenedalf/issues/38
+    if( options.transform_subsample.add_subsample_transformation( options.variant_input )) {
+        options.variant_input.add_combined_filter_and_transforms(
+            options.filter_numerical.make_sample_filter()
+        );
+        options.variant_input.add_combined_filter_and_transforms(
+            options.filter_numerical.make_total_filter( total_filter )
+        );
+    }
 
     // Get all samples names from the input file, and make a processor for them.
     auto const& sample_names = options.variant_input.sample_names();
