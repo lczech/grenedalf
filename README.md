@@ -1,12 +1,13 @@
 [![Bioconda install](https://img.shields.io/conda/vn/bioconda/grenedalf)](https://anaconda.org/bioconda/grenedalf)
 [![Downloads](https://img.shields.io/conda/dn/bioconda/grenedalf)](https://anaconda.org/bioconda/grenedalf)
 [![Release](https://img.shields.io/github/v/release/lczech/grenedalf.svg)](https://github.com/lczech/grenedalf/releases)
-[![CI](https://github.com/lczech/grenedalf/workflows/CI/badge.svg?branch=master)](https://github.com/lczech/grenedalf/actions)
-[![Softwipe Score](https://img.shields.io/badge/softwipe-9.0/10.0-blue)](https://github.com/adrianzap/softwipe/wiki/Code-Quality-Benchmark)
 ![Language](https://img.shields.io/badge/language-C%2B%2B11-lightgrey.svg)
+[![Softwipe Score](https://img.shields.io/badge/softwipe-9.0/10.0-blue)](https://github.com/adrianzap/softwipe/wiki/Code-Quality-Benchmark)
+[![CI](https://github.com/lczech/grenedalf/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/lczech/grenedalf/actions/workflows/ci.yaml)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](http://www.gnu.org/licenses/gpl.html)
+[![DOI](https://img.shields.io/badge/doi-10.1093%2Fbioinformatics%2Fbtaa070-blue)](https://doi.org/10.1093/bioinformatics/btae508)
+<!-- [![CI](https://github.com/lczech/grenedalf/workflows/CI/badge.svg?branch=master)](https://github.com/lczech/grenedalf/actions) -->
 <!-- [![Platforms](https://img.shields.io/conda/pn/bioconda/grenedalf)](https://anaconda.org/bioconda/grenedalf) -->
-<!-- [![DOI](https://img.shields.io/badge/doi-10.1093%2Fbioinformatics%2Fbtaa070-blue)](https://doi.org/10.1093/bioinformatics/btaa070) -->
 <!-- [![Build Status](https://travis-ci.org/lczech/grenedalf.svg?branch=master)](https://travis-ci.org/lczech/grenedalf) -->
 
 ![grenedalf](/doc/logo/grenedalf.png?raw=true "grenedalf")
