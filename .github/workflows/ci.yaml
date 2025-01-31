@@ -414,7 +414,7 @@ jobs:
         #    see https://github.com/aminya/setup-cpp/issues/149
         run: |
           sudo apt-get install autoconf automake zlib1g-dev libbz2-dev liblzma-dev
-          if [[ ${{ matrix.os }} != ubuntu-24.04 ]] ; then
+          if [[ ${{ matrix.os }} != ubuntu-24.04 ]] && [[ ${{ matrix.os }} != ubuntu-latest ]] ; then
               sudo apt-get install libtinfo5
           fi
 
