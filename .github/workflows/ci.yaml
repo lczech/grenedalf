@@ -397,7 +397,7 @@ jobs:
           export GRENEDALF_BUILD_STATIC=""
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] ; then
-            export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
+            # export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
           # fi
 
           cmake -S . -B ./build ${GRENEDALF_BUILD_STATIC}
@@ -437,9 +437,12 @@ jobs:
       # These are the ones that we want to publish with release versions.
       - name: Upload Binaries
         # If the Ubuntu binary here is changed, it needs to be changed above as well,
-        # to enable static building for that version!
+        # to enable static building for that version! --> Update: Not doing static build
+        # on Ubuntu any more, because of liblzma, which fails with static linking.
+        # We likely do not need static binaries on ubuntu anyway - should be easy enough to compile.
         # if: ( matrix.os == 'ubuntu-latest' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
-        if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
+        # if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
+        if: matrix.compiler == 'apple'
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.compiler }}
