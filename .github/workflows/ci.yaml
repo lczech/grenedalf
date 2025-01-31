@@ -32,9 +32,7 @@ jobs:
         # We later set all other combinations that we want explicitly.
 
         os:
-          # ubuntu latest fails the setup due to some liblzma issue...
-          # - ubuntu-latest
-          - ubuntu-24.04
+          - ubuntu-latest
           - macos-latest
 
         compiler:
@@ -399,9 +397,8 @@ jobs:
           export GRENEDALF_BUILD_STATIC=""
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] ; then
-          if [[ "${{ matrix.os }}" == "ubuntu-24.04" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
-            export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
-          fi
+          #   export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
+          # fi
 
           cmake -S . -B ./build ${GRENEDALF_BUILD_STATIC}
 
@@ -441,8 +438,8 @@ jobs:
       - name: Upload Binaries
         # If the Ubuntu binary here is changed, it needs to be changed above as well,
         # to enable static building for that version!
-        if: ( matrix.os == 'ubuntu-24.04' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
-        # if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
+        # if: ( matrix.os == 'ubuntu-latest' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
+        if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.compiler }}
