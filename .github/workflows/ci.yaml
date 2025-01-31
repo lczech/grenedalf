@@ -397,7 +397,7 @@ jobs:
           export GRENEDALF_BUILD_STATIC=""
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           # if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] ; then
-          #   export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
+            export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
           # fi
 
           cmake -S . -B ./build ${GRENEDALF_BUILD_STATIC}
