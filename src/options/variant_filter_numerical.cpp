@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2024 Lucas Czech
+    Copyright (C) 2020-2025 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ void VariantFilterNumericalOptions::add_sample_count_filter_opts_to_app(
     }
 
     // Add deletions count limit
-    sample_del_count.option = sub->add_flag(
+    sample_del_count.option = sub->add_option(
         "--filter-sample-deletions-limit",
         sample_del_count.value,
         "Maximum number of deletions at a position before being filtered out. If this is set to "
@@ -217,7 +217,7 @@ void VariantFilterNumericalOptions::add_total_read_depth_filter_opts_to_app(
     }
 
     // Add deletions count limit
-    total_del_count.option = sub->add_flag(
+    total_del_count.option = sub->add_option(
         "--filter-total-deletions-limit",
         total_del_count.value,
         "Maximum number of deletions at a position before being filtered out, summed across all "
