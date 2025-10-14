@@ -1,6 +1,6 @@
 /*
     grenedalf - Genome Analyses of Differential Allele Frequencies
-    Copyright (C) 2020-2024 Lucas Czech
+    Copyright (C) 2020-2025 Lucas Czech
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ void DiversityProcessorOptions::add_diversity_processor_opts_to_app(
         "the Achaz (2008) correction of Tajima's D, following its adaptation by PoPoolation. "
         "With pool seq data, there is no simple way to obtain a statistic that is numerically "
         "comparable to the classic Tajima's D with individual data. Hence, all of the below are "
-        "simplicications that introduce some bias."
+        "simplifications that introduce some bias."
         "\n(1) `empirical-min-read-depth`: Use the lowest empirical read depth found in each window, "
         "and the pool size, to compute the expected number of individuals sequenced. "
         "This is a conservative estimator that we recommend by default."

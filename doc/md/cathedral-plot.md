@@ -31,7 +31,7 @@ are interested in, please open an [issue](https://github.com/lczech/grenedalf/is
 
 # Colors
 
-For the options of this command, the single colors and the main gradient can be specified as described [here](https://github.com/lczech/gappa/wiki/General-Usage). This documents the color usage of our tool gappa, but we use the same here in grenedalf. Generally we however recommend to keep the default colors, as they were designed to be working well for cathedral plots.
+For the options of this command, the single colors and the main gradient can be specified as described [here](https://github.com/lczech/gappa/wiki/Colors). This documents the color usage of our tool gappa, but we use the same here in grenedalf. Generally we however recommend to keep the default colors, as they were designed to be working well for cathedral plots.
 
 <!--
 ## Single Colors
