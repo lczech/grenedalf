@@ -33,7 +33,8 @@ jobs:
 
         os:
           - ubuntu-latest
-          - macos-latest
+          # Needs CMake >= 3.5
+          # - macos-latest
 
         compiler:
           - gcc
@@ -238,12 +239,13 @@ jobs:
           #     AppleClang
           # -------------------------------
 
-          - os: macos-14
-            compiler: apple
-          - os: macos-15
-            compiler: apple
-          - os: macos-latest
-            compiler: apple
+          # Needs CMake >= 3.5
+          # - os: macos-14
+          #   compiler: apple
+          # - os: macos-15
+          #   compiler: apple
+          # - os: macos-latest
+          #   compiler: apple
 
     # ==========================================================================
     #     Steps
