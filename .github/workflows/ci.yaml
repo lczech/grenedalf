@@ -61,66 +61,9 @@ jobs:
         include:
 
           # -------------------------------
-          #     Ubuntu 20.04
-          # -------------------------------
-
-          - os: ubuntu-20.04
-            compiler: gcc-7
-          - os: ubuntu-20.04
-            compiler: gcc-8
-          - os: ubuntu-20.04
-            compiler: gcc-9
-          - os: ubuntu-20.04
-            compiler: gcc-10
-          # Setup fails
-          # - os: ubuntu-20.04
-          #   compiler: gcc-11
-          # - os: ubuntu-20.04
-          #   compiler: gcc-12
-          - os: ubuntu-20.04
-            compiler: gcc-13
-          # Too new
-          # - os: ubuntu-20.04
-          #   compiler: gcc-14
-          - os: ubuntu-20.04
-            compiler: llvm-6
-          - os: ubuntu-20.04
-            compiler: llvm-7
-          - os: ubuntu-20.04
-            compiler: llvm-8
-          # Weird segfault
-          # - os: ubuntu-20.04
-          #   compiler: llvm-9
-          - os: ubuntu-20.04
-            compiler: llvm-10
-          - os: ubuntu-20.04
-            compiler: llvm-11
-          - os: ubuntu-20.04
-            compiler: llvm-12
-          - os: ubuntu-20.04
-            compiler: llvm-13
-          - os: ubuntu-20.04
-            compiler: llvm-14
-          - os: ubuntu-20.04
-            compiler: llvm-15
-          # Setup fails
-          # - os: ubuntu-20.04
-          #   compiler: llvm-16
-          - os: ubuntu-20.04
-            compiler: llvm-17
-          # Setup fails
-          # - os: ubuntu-20.04
-          #   compiler: llvm-18
-
-          # -------------------------------
           #     Ubuntu 22.04
           # -------------------------------
 
-          # Too old
-          # - os: ubuntu-22.04
-          #   compiler: gcc-7
-          # - os: ubuntu-22.04
-          #   compiler: gcc-8
           - os: ubuntu-22.04
             compiler: gcc-9
           - os: ubuntu-22.04
@@ -134,15 +77,8 @@ jobs:
           # Setup fails
           # - os: ubuntu-22.04
           #   compiler: gcc-14
-          - os: ubuntu-22.04
-            compiler: llvm-6
-          - os: ubuntu-22.04
-            compiler: llvm-7
-          - os: ubuntu-22.04
-            compiler: llvm-8
-          # Weird segfault
           # - os: ubuntu-22.04
-          #   compiler: llvm-9
+          #   compiler: gcc-15
           - os: ubuntu-22.04
             compiler: llvm-10
           - os: ubuntu-22.04
@@ -159,19 +95,17 @@ jobs:
             compiler: llvm-16
           - os: ubuntu-22.04
             compiler: llvm-17
-          # Setup fails
-          # - os: ubuntu-22.04
-          #   compiler: llvm-18
+          - os: ubuntu-22.04
+            compiler: llvm-18
+          - os: ubuntu-22.04
+            compiler: llvm-19
+          - os: ubuntu-22.04
+            compiler: llvm-20
 
           # -------------------------------
           #     Ubuntu 24.04
           # -------------------------------
 
-          # Too old
-          # - os: ubuntu-24.04
-          #   compiler: gcc-7
-          # - os: ubuntu-24.04
-          #   compiler: gcc-8
           - os: ubuntu-24.04
             compiler: gcc-9
           - os: ubuntu-24.04
@@ -186,138 +120,124 @@ jobs:
             compiler: gcc-14
           # Setup fails
           # - os: ubuntu-24.04
-          #   compiler: llvm-6
-          # - os: ubuntu-24.04
-          #   compiler: llvm-7
-          # - os: ubuntu-24.04
-          #   compiler: llvm-8
-          # - os: ubuntu-24.04
-          #   compiler: llvm-9
-          # - os: ubuntu-24.04
-          #   compiler: llvm-10
-          # - os: ubuntu-24.04
-          #   compiler: llvm-11
-          # - os: ubuntu-24.04
-          #   compiler: llvm-12
-          # - os: ubuntu-24.04
-          #   compiler: llvm-13
-          # - os: ubuntu-24.04
-          #   compiler: llvm-14
-          # - os: ubuntu-24.04
-          #   compiler: llvm-15
-          # - os: ubuntu-24.04
-          #   compiler: llvm-16
-          # - os: ubuntu-24.04
-          #   compiler: llvm-17
+          #   compiler: gcc-15
+          - os: ubuntu-24.04
+            compiler: llvm-10
+          - os: ubuntu-24.04
+            compiler: llvm-11
+          - os: ubuntu-24.04
+            compiler: llvm-12
+          - os: ubuntu-24.04
+            compiler: llvm-13
+          - os: ubuntu-24.04
+            compiler: llvm-14
+          - os: ubuntu-24.04
+            compiler: llvm-15
+          - os: ubuntu-24.04
+            compiler: llvm-16
+          - os: ubuntu-24.04
+            compiler: llvm-17
           - os: ubuntu-24.04
             compiler: llvm-18
-
-          # -------------------------------
-          #     MacOS 13
-          # -------------------------------
-
-          # Setup fails
-          # - os: macos-13
-          #   compiler: gcc-7
-          # - os: macos-13
-          #   compiler: gcc-8
-          - os: macos-13
-            compiler: gcc-9
-          - os: macos-13
-            compiler: gcc-10
-          - os: macos-13
-            compiler: gcc-11
-          - os: macos-13
-            compiler: gcc-12
-          # Weird compiler errors
-          # - os: macos-13
-          #   compiler: gcc-13
-          - os: macos-13
-            compiler: gcc-14
-          # Setup fails
-          # - os: macos-13
-          #   compiler: llvm-6
-          # - os: macos-13
-          #   compiler: llvm-7
-          # - os: macos-13
-          #   compiler: llvm-8
-          # - os: macos-13
-          #   compiler: llvm-9
-          # Weird compiler errors
-          # - os: macos-13
-          #   compiler: llvm-10
-          # - os: macos-13
-          #   compiler: llvm-11
-          # - os: macos-13
-          #   compiler: llvm-12
-          - os: macos-13
-            compiler: llvm-13
-          - os: macos-13
-            compiler: llvm-14
-          - os: macos-13
-            compiler: llvm-15
-          # Setup fails
-          # - os: macos-13
-          #   compiler: llvm-16
-          # - os: macos-13
-          #   compiler: llvm-17
-          # - os: macos-13
-          #   compiler: llvm-18
+          - os: ubuntu-24.04
+            compiler: llvm-19
+          - os: ubuntu-24.04
+            compiler: llvm-20
 
           # -------------------------------
           #     MacOS 14
           # -------------------------------
 
-          # Setup fails for all
-          # - os: macos-14
-          #   compiler: gcc-7
-          # - os: macos-14
-          #   compiler: gcc-8
-          # - os: macos-14
-          #   compiler: gcc-9
-          # - os: macos-14
-          #   compiler: gcc-10
-          # - os: macos-14
-          #   compiler: gcc-11
-          # - os: macos-14
-          #   compiler: gcc-12
-          # - os: macos-14
-          #   compiler: gcc-13
-          # - os: macos-14
-          #   compiler: gcc-14
-          # - os: macos-14
-          #   compiler: llvm-6
-          # - os: macos-14
-          #   compiler: llvm-7
-          # - os: macos-14
-          #   compiler: llvm-8
-          # - os: macos-14
+          - os: macos-14
+            compiler: gcc-11
+          - os: macos-14
+            compiler: gcc-12
+          - os: macos-14
+            compiler: gcc-13
+          - os: macos-14
+            compiler: gcc-14
+          - os: macos-14
+            compiler: gcc-15
+          # Compiler does not support C++17 ?!
+          # - os: macos-13
           #   compiler: llvm-9
-          # - os: macos-14
+          # - os: macos-13
           #   compiler: llvm-10
-          # - os: macos-14
+          # - os: macos-13
           #   compiler: llvm-11
+          # Building in arm?!
           # - os: macos-14
           #   compiler: llvm-12
           # - os: macos-14
           #   compiler: llvm-13
-          # - os: macos-14
-          #   compiler: llvm-14
-          # - os: macos-14
-          #   compiler: llvm-15
-          # - os: macos-14
-          #   compiler: llvm-16
-          # - os: macos-14
-          #   compiler: llvm-17
+          - os: macos-14
+            compiler: llvm-14
+          - os: macos-14
+            compiler: llvm-15
+          - os: macos-14
+            compiler: llvm-16
+          - os: macos-14
+            compiler: llvm-17
+          # Known bug, see above
           # - os: macos-14
           #   compiler: llvm-18
+          # - os: macos-14
+          #   compiler: llvm-19
+          # - os: macos-14
+          #   compiler: llvm-20
+
+          # -------------------------------
+          #     MacOS 15
+          # -------------------------------
+
+          # Compiler does not support C++17 ?!
+          # - os: macos-15
+          #   compiler: gcc-11
+          # - os: macos-15
+          #   compiler: gcc-12
+          # - os: macos-15
+          #   compiler: gcc-13
+          # - os: macos-15
+          #   compiler: gcc-14
+          # - os: macos-15
+          #   compiler: gcc-15
+          # Not able to compile a simple test program ?!
+          # - os: macos-15
+          #   compiler: llvm-6
+          # - os: macos-15
+          #   compiler: llvm-7
+          # - os: macos-15
+          #   compiler: llvm-8
+          # - os: macos-15
+          #   compiler: llvm-9
+          # - os: macos-15
+          #   compiler: llvm-10
+          # - os: macos-15
+          #   compiler: llvm-11
+          # Setup does not install make ?!
+          # - os: macos-15
+          #   compiler: llvm-12
+          # - os: macos-15
+          #   compiler: llvm-13
+          - os: macos-15
+            compiler: llvm-14
+          - os: macos-15
+            compiler: llvm-15
+          - os: macos-15
+            compiler: llvm-16
+          - os: macos-15
+            compiler: llvm-17
+          - os: macos-15
+            compiler: llvm-18
+          - os: macos-15
+            compiler: llvm-19
+          - os: macos-15
+            compiler: llvm-20
 
           # -------------------------------
           #     AppleClang
           # -------------------------------
 
-          - os: macos-13
-            compiler: apple
           - os: macos-14
             compiler: apple
           - os: macos-15
@@ -339,7 +259,7 @@ jobs:
 
       - name: Setup C++
         # Reference: https://github.com/marketplace/actions/setup-cpp-c-c
-        uses: aminya/setup-cpp@v0.37.0
+        uses: aminya/setup-cpp@v1.7.1
         if: ${{ matrix.compiler != 'apple' && matrix.os != 'macos-latest' }}
         with:
           compiler: ${{ matrix.compiler }}
