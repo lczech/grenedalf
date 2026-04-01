@@ -81,11 +81,13 @@ CLI::Option* VariantFileFrequencyTableOptions::add_file_input_opt_to_app_(
         "--frequency-table-depth-factor",
         int_factor_.value,
         "For frequency table input that only contains allele frequencies, without any information "
-        "on read depth, we need to transform those frequencies into counts for our internal processing. "
-        "This number is multiplied by the frequency to obtain these pseudo-counts. By default, "
-        "we use 1000000, to get a reasonable interger approximation of the floating point frequency. "
-        "This is of course above any typical read depth, but allows for more accurate counts when "
-        "using for instance haplotype-corrected frequencies such as those from HAF-pipe."
+        "on read depth, we need to transform those frequencies into counts for our internal processing. This number is multiplied by the frequency to obtain these pseudo-counts.\n"
+        "By default, we use 1000, to get a reasonable interger approximation of the floating point "
+        "frequency. This is above most typical read depths, but allows for more accurate counts. "
+        "When using haplotype-corrected frequencies such as those from HAF-pipe, "
+        "set this value to the \"effective coverage\" as estimated by HAF-pipe.\n"
+        "Higher values are also possible, but note that the `diversity` estimates have runtime "
+        "and memory requirements that depends on this value."
     );
     int_factor_.option->group( group );
     int_factor_.option->transform( CLI::PositiveNumber );
