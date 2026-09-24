@@ -28,26 +28,26 @@
 
 #include "genesis/population/function/fst_cathedral.hpp"
 #include "genesis/population/function/fst_pool_calculator.hpp"
-#include "genesis/population/function/fst_pool_functions.hpp"
+#include "genesis/population/function/fst_pool_function.hpp"
 #include "genesis/population/function/fst_pool_karlsson.hpp"
 #include "genesis/population/function/fst_pool_kofler.hpp"
 #include "genesis/population/function/fst_pool_processor.hpp"
 #include "genesis/population/function/fst_pool_unbiased.hpp"
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/plotting/cathedral_plot.hpp"
-#include "genesis/utils/containers/matrix.hpp"
-#include "genesis/utils/containers/matrix/operators.hpp"
-#include "genesis/utils/containers/matrix/writer.hpp"
-#include "genesis/utils/containers/transform_iterator.hpp"
-#include "genesis/utils/core/algorithm.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/std.hpp"
-#include "genesis/utils/threading/thread_functions.hpp"
-#include "genesis/utils/threading/thread_pool.hpp"
-#include "genesis/utils/formats/json/document.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/container/matrix.hpp"
+#include "genesis/util/container/matrix/operator.hpp"
+#include "genesis/util/container/matrix/writer.hpp"
+#include "genesis/util/container/transform_iterator.hpp"
+#include "genesis/util/core/algorithm.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/std.hpp"
+#include "genesis/util/threading/thread_function.hpp"
+#include "genesis/util/threading/thread_pool.hpp"
+#include "genesis/util/format/json/document.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -180,7 +180,6 @@ void setup_fst_cathedral( CLI::App& app )
 void run_fst_cathedral( FstCathedralOptions const& options )
 {
     using namespace genesis::population;
-    using namespace genesis::utils;
 
     // Check that none of the output files exist.
     options.file_output.check_output_files_nonexistence( "cathedral-plot-*", "csv" );
@@ -269,7 +268,7 @@ void run_fst_cathedral( FstCathedralOptions const& options )
         // Compute and store all of them in files, for this chromosome.
         // This is the expensive part of the computation, which calculates the value for each
         // pixel of the plot. Hence, we parallelize this loop over sample pairs (the records).
-        genesis::utils::parallel_for_each(
+        genesis::util::threading::parallel_for_each(
             records.begin(), records.end(),
             [&]( FstCathedralPlotRecord& record ){
                 // Compute the matrix

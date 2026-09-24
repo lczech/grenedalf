@@ -30,12 +30,12 @@
 #include "genesis/population/format/genome_region_reader.hpp"
 #include "genesis/population/format/gff_reader.hpp"
 #include "genesis/population/format/map_bim_reader.hpp"
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/std.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/std.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cassert>
 #include <memory>
@@ -313,25 +313,25 @@ std::unique_ptr<VariantWindowStream> WindowOptions::get_variant_window_stream(
     std::unique_ptr<VariantWindowStream> result;
     switch( window_type() ) {
         case WindowType::kInterval: {
-            result = genesis::utils::make_unique<VariantIntervalWindowStream>(
+            result = std::make_unique<VariantIntervalWindowStream>(
                 get_variant_window_stream_interval_( input_stream )
             );
             break;
         }
         case WindowType::kQueue: {
-            result = genesis::utils::make_unique<VariantQueueWindowStream>(
+            result = std::make_unique<VariantQueueWindowStream>(
                 get_variant_window_stream_queue_( input_stream )
             );
             break;
         }
         case WindowType::kSingle: {
-            result = genesis::utils::make_unique<VariantPositionWindowStream>(
+            result = std::make_unique<VariantPositionWindowStream>(
                 get_variant_window_stream_single_( input_stream, variant_input.gapless_stream() )
             );
             break;
         }
         case WindowType::kRegions: {
-            result = genesis::utils::make_unique<VariantRegionWindowStream>(
+            result = std::make_unique<VariantRegionWindowStream>(
                 get_variant_window_stream_regions_( input_stream )
             );
             break;
@@ -395,7 +395,7 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
     std::unique_ptr<VariantWindowViewStream> result;
     switch( window_type() ) {
         case WindowType::kInterval: {
-            result = genesis::utils::make_unique<WindowViewStream>(
+            result = std::make_unique<WindowViewStream>(
                 make_window_view_stream(
                     get_variant_window_stream_interval_( input_stream )
                 )
@@ -403,7 +403,7 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
             break;
         }
         case WindowType::kQueue: {
-            result = genesis::utils::make_unique<WindowViewStream>(
+            result = std::make_unique<WindowViewStream>(
                 make_window_view_stream(
                     get_variant_window_stream_queue_( input_stream )
                 )
@@ -411,7 +411,7 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
             break;
         }
         case WindowType::kSingle: {
-            result = genesis::utils::make_unique<WindowViewStream>(
+            result = std::make_unique<WindowViewStream>(
                 make_window_view_stream(
                     get_variant_window_stream_single_( input_stream, variant_input.gapless_stream() )
                 )
@@ -419,7 +419,7 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
             break;
         }
         case WindowType::kRegions: {
-            result = genesis::utils::make_unique<WindowViewStream>(
+            result = std::make_unique<WindowViewStream>(
                 make_window_view_stream(
                     get_variant_window_stream_regions_( input_stream )
                 )
@@ -427,13 +427,13 @@ std::unique_ptr<VariantWindowViewStream> WindowOptions::get_variant_window_view_
             break;
         }
         case WindowType::kChromosomes: {
-            result = genesis::utils::make_unique<ChromosomeWindowStream>(
+            result = std::make_unique<ChromosomeWindowStream>(
                 get_variant_window_view_stream_chromosomes_( input_stream )
             );
             break;
         }
         case WindowType::kGenome: {
-            result = genesis::utils::make_unique<GenomeWindowStream>(
+            result = std::make_unique<GenomeWindowStream>(
                 get_variant_window_view_stream_genome_( input_stream )
             );
             break;
@@ -625,7 +625,7 @@ WindowOptions::get_variant_window_stream_regions_(
     genesis::population::VariantInputStream& input
 ) const {
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::io;
 
     // Create a region list to which we add all provided regions.
     auto region_list = std::make_shared<GenomeRegionList>();

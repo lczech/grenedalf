@@ -36,13 +36,13 @@
 #include "tools/cli_option.hpp"
 
 #include "genesis/population/stream/variant_input_stream.hpp"
-#include "genesis/population/stream/variant_input_stream_adapters.hpp"
-#include "genesis/population/stream/variant_input_stream_sources.hpp"
+#include "genesis/population/stream/variant_input_stream_adapter.hpp"
+#include "genesis/population/stream/variant_input_stream_source.hpp"
 #include "genesis/population/variant.hpp"
 #include "genesis/sequence/reference_genome.hpp"
 #include "genesis/sequence/sequence_dict.hpp"
-#include "genesis/utils/containers/generic_input_stream.hpp"
-#include "genesis/utils/containers/range.hpp"
+#include "genesis/util/container/generic_input_stream.hpp"
+#include "genesis/util/container/range.hpp"
 
 #include <functional>
 #include <memory>

@@ -23,9 +23,9 @@
 
 #include "tools/misc.hpp"
 
-#include "genesis/utils/core/info.hpp"
-#include "genesis/utils/core/options.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/core/info.hpp"
+#include "genesis/util/core/options.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -62,9 +62,9 @@ std::string format_columns(
 ) {
     // If std out is a terminal, we use its width for the maximal line length.
     unsigned long twidth = 0;
-    if( genesis::utils::info_stdout_is_terminal() ) {
+    if( genesis::util::core::info_stdout_is_terminal() ) {
         twidth = static_cast<unsigned long>(
-            genesis::utils::info_terminal_size().first
+            genesis::util::core::info_terminal_size().first
         );
     }
 
@@ -101,15 +101,15 @@ void write_columns(
         // If we have an actual useful width for the right column, wrap it.
         // Otherwise, we just put everything in one long line.
         if( right_w > 0 ) {
-            rcpy = genesis::utils::wrap( rcpy, right_w );
+            rcpy = genesis::util::text::wrap( rcpy, right_w );
         }
 
         // Indent and then trim again. The trimming removes the leading whitespace,
         // which we do not want, as we already inserted enough, and it removes
         // the trailing new line from the wrapping, which we do not want, as we output
         // one later anyway.
-        rcpy = genesis::utils::indent( rcpy, std::string( left_w, ' ' ));
-        rcpy = genesis::utils::trim( rcpy );
+        rcpy = genesis::util::text::indent( rcpy, std::string( left_w, ' ' ));
+        rcpy = genesis::util::text::trim( rcpy );
         out << rcpy;
     }
     out << "\n";

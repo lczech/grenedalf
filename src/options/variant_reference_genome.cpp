@@ -27,11 +27,11 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/function/variant_input_stream.hpp"
-#include "genesis/sequence/formats/fasta_reader.hpp"
-#include "genesis/sequence/functions/dict.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/sequence/format/fasta_reader.hpp"
+#include "genesis/sequence/function/dict.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -115,7 +115,7 @@ std::string VariantReferenceGenomeOptions::get_reference_option_names() const
 void VariantReferenceGenomeOptions::prepare_reference_() const
 {
     using namespace genesis::sequence;
-    using namespace genesis::utils;
+    using namespace genesis::util::io;
 
     // Check if we already ran this function (which can happen depending on the order in which
     // we downstream request this). As we always set the sequence_dict_ if there is any

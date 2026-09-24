@@ -28,26 +28,26 @@
 
 #include "genesis/population/plotting/cathedral_plot.hpp"
 #include "genesis/population/plotting/genome_heatmap.hpp"
-#include "genesis/utils/color/heat_map.hpp"
-#include "genesis/utils/formats/bmp/writer.hpp"
-#include "genesis/utils/formats/json/document.hpp"
-#include "genesis/utils/formats/svg/svg.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/color/heat_map.hpp"
+#include "genesis/util/format/bmp/writer.hpp"
+#include "genesis/util/format/json/document.hpp"
+#include "genesis/util/format/svg/svg.hpp"
+#include "genesis/util/text/string.hpp"
 
 // =================================================================================================
 //      Enum Mapping
 // =================================================================================================
 
-std::vector<std::pair<std::string, genesis::utils::HeatmapParameters::ColorNorm>> const color_norm_map = {
-    { "linear",      genesis::utils::HeatmapParameters::ColorNorm::kLinear },
-    { "logarithmic", genesis::utils::HeatmapParameters::ColorNorm::kLogarithmic },
-    // { "diverging",   genesis::utils::HeatmapParameters::ColorNorm::kDiverging },
+std::vector<std::pair<std::string, genesis::util::color::HeatmapParameters::ColorNorm>> const color_norm_map = {
+    { "linear",      genesis::util::color::HeatmapParameters::ColorNorm::kLinear },
+    { "logarithmic", genesis::util::color::HeatmapParameters::ColorNorm::kLogarithmic },
+    // { "diverging",   genesis::util::color::HeatmapParameters::ColorNorm::kDiverging },
 };
 
-std::vector<std::pair<std::string, genesis::utils::HeatmapParameters::NormalizationRange>> const color_norm_range_map = {
-    { "all", genesis::utils::HeatmapParameters::NormalizationRange::kAll },
-    { "row", genesis::utils::HeatmapParameters::NormalizationRange::kRow },
-    { "col", genesis::utils::HeatmapParameters::NormalizationRange::kCol },
+std::vector<std::pair<std::string, genesis::util::color::HeatmapParameters::NormalizationRange>> const color_norm_range_map = {
+    { "all", genesis::util::color::HeatmapParameters::NormalizationRange::kAll },
+    { "row", genesis::util::color::HeatmapParameters::NormalizationRange::kRow },
+    { "col", genesis::util::color::HeatmapParameters::NormalizationRange::kCol },
 };
 
 // =================================================================================================
@@ -171,7 +171,8 @@ void setup_cathedral_plot( CLI::App& app )
 void run_cathedral_plot( CathedralPlotOptions const& options )
 {
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::color;
+    using namespace genesis::util::format;
 
     // Check the out file target pattern, before we open any files.
     options.file_output.check_output_files_nonexistence(

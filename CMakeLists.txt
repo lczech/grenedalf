@@ -23,7 +23,7 @@
 #   CMake Init
 # --------------------------------------------------------------------------------------------------
 
-cmake_minimum_required (VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required (VERSION 3.14 FATAL_ERROR)
 
 # Fun with colors!
 if (NOT WIN32)
@@ -139,7 +139,12 @@ else ()
     ENDIF()
 endif ()
 
-set (CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -std=c++11 ${WARN_FLAGS}")
+# We use C++17, same as genesis.
+set (CMAKE_CXX_STANDARD          17)
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
+set (CMAKE_CXX_EXTENSIONS        OFF)
+
+set (CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} ${WARN_FLAGS}")
 set (CMAKE_CXX_FLAGS_DEBUG   "-O2 -DDEBUG -g -ggdb3 -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
 set (CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" )
 
@@ -168,7 +173,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/tools/cmake/DownloadDependency.cmake" )
 # These are replaced by tools/cmake/update_dependencies.sh to the hashes that are currently checked out.
 # Thus, do not replace the hashes manually!
 SET( CLI11_COMMIT_HASH "5cb3efabce007c3a0230e4cc2e27da491c646b6c" ) #CLI11_COMMIT_HASH#
-SET( genesis_COMMIT_HASH "f1a5fb82d4b59706e8dbf60d41d094b88022fc94" ) #genesis_COMMIT_HASH#
+SET( genesis_COMMIT_HASH "acfb18bc6f52ba5d200bb4a8475fc76f72f6e2fc" ) #genesis_COMMIT_HASH#
 
 # Call the github download function, which takes four arguments:
 #  - LIBPATH    : Path to the libracy dir where dependencies are stored.
@@ -189,10 +194,16 @@ endif (APPLE)
 # --------------------------------------------------------------------------------------------------
 
 # Force to set the options used for genesis. Bit cumbersome in cmake...
-# For now, grenedalf is always compiled with C++11, so we deactivate
+# grenedalf is always compiled with C++17, so we deactivate
 # the genesis auto detection of the highest available C++ standard here.
-set(GENESIS_CPP_STANDARD "11" CACHE BOOL "Use OpenMP." FORCE)
+set(GENESIS_CPP_STANDARD "17" CACHE STRING "C++ standard used by genesis." FORCE)
 set(GENESIS_USE_OPENMP OFF CACHE BOOL "Use OpenMP." FORCE)
+
+# Add CLI11 as dependency. It's header-only, so this is easy. Genesis also offers CLI11,
+# but in a different version. By providing the CLI11 target here before adding genesis,
+# genesis uses our version instead, so that we do not end up with two conflicting ones.
+add_library( CLI11 INTERFACE )
+target_include_directories( CLI11 SYSTEM INTERFACE "${PROJECT_SOURCE_DIR}/libs/CLI11/include" )
 
 # Add Genesis as dependency.
 add_subdirectory(${PROJECT_SOURCE_DIR}/libs/genesis)
@@ -215,9 +226,6 @@ set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GENESIS_EXE_LINKER_FLAG
 #     "${Esc}[0m" )
 # endif()
 
-# Add CLI11 as dependency. It's header-only, so this is easy.
-include_directories( SYSTEM "libs/CLI11/include" )
-
 # ------------------------------------------------------------------------------
 #   Sources
 # ------------------------------------------------------------------------------
@@ -231,7 +239,7 @@ include_directories( "src" )
 add_executable( grenedalf ${grenedalf_sources} )
 
 # Link it against Genesis, and against all dependencies of Genesis.
-target_link_libraries ( grenedalf ${GENESIS_LINK_LIBRARIES} )
+target_link_libraries ( grenedalf ${GENESIS_LINK_LIBRARIES} CLI11 )
 
 # We have to use LTO for grenedalf as well for some compilers to properly link, I think.
 if(GENESIS_HAS_LTO)

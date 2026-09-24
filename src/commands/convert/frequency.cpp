@@ -25,7 +25,7 @@
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 
 #include <unordered_set>
 

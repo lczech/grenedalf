@@ -25,14 +25,14 @@
 
 #include "options/global.hpp"
 
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/text/string.hpp"
-#include "genesis/utils/color/functions.hpp"
-#include "genesis/utils/color/list_diverging.hpp"
-#include "genesis/utils/color/list_misc.hpp"
-#include "genesis/utils/color/list_qualitative.hpp"
-#include "genesis/utils/color/list_sequential.hpp"
-#include "genesis/utils/color/names.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/text/string.hpp"
+#include "genesis/util/color/function.hpp"
+#include "genesis/util/color/list_diverging.hpp"
+#include "genesis/util/color/list_misc.hpp"
+#include "genesis/util/color/list_qualitative.hpp"
+#include "genesis/util/color/list_sequential.hpp"
+#include "genesis/util/color/name.hpp"
 
 #include <stdexcept>
 
@@ -42,7 +42,6 @@
 
 ColorMapOptions::ColorMapOptions()
 {
-    using namespace genesis::utils;
     over_color_option.value  = color_to_hex( color_map_.over_color() );
     under_color_option.value = color_to_hex( color_map_.under_color() );
     mask_color_option.value  = color_to_hex( color_map_.mask_color() );
@@ -215,9 +214,11 @@ void ColorMapOptions::add_mask_opt_to_app(
 //      Run Functions
 // =================================================================================================
 
-genesis::utils::ColorMap const& ColorMapOptions::color_map() const
+genesis::util::color::ColorMap const& ColorMapOptions::color_map() const
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::color;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // If map was already filled in previous call, just return it.
     if( ! color_map_.empty() ) {
@@ -293,12 +294,12 @@ genesis::utils::ColorMap const& ColorMapOptions::color_map() const
 //      Helper Functions
 // =================================================================================================
 
-genesis::utils::Color ColorMapOptions::resolve_color_string_(
+genesis::util::color::Color ColorMapOptions::resolve_color_string_(
     std::string const& color_str,
     std::string const& param_name
 ) const {
     try {
-        return genesis::utils::resolve_color_string( color_str );
+        return genesis::util::color::resolve_color_string( color_str );
     } catch( std::exception& ex ) {
         throw CLI::ValidationError(
             param_name, "Invalid color '" + color_str + "': " +
@@ -307,11 +308,11 @@ genesis::utils::Color ColorMapOptions::resolve_color_string_(
     }
 }
 
-std::vector<genesis::utils::Color> ColorMapOptions::resolve_color_list_(
+std::vector<genesis::util::color::Color> ColorMapOptions::resolve_color_list_(
     std::vector<std::string> const& list,
     std::string const& param_name
 ) const {
-    std::vector<genesis::utils::Color> result;
+    std::vector<genesis::util::color::Color> result;
 
     for( auto const& color_str : list ) {
         result.push_back( resolve_color_string_( color_str, param_name ));

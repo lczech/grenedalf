@@ -26,9 +26,9 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cassert>
 #include <stdexcept>

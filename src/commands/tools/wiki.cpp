@@ -27,9 +27,9 @@
 #include "tools/references.hpp"
 #include "tools/version.hpp"
 
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/text/char.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/text/char.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -173,7 +173,7 @@ std::vector<CLI::App const*> get_all_subcommands( CLI::App const* app )
 bool add_markdown_content(
     WikiOptions const& options, std::string const& md_file, std::ostream& os, bool add_header = false
 ) {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // Add markdown file content.
     std::string const fn = dir_normalize_path( options.md_dir ) + md_file + ".md";
@@ -258,7 +258,8 @@ void add_wiki_command_header_toc(
     std::string const& md_file
 ) {
     // Get the markdown for the command, and find all its headings.
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     std::stringstream os;
     os << "**Table of contents:**\n\n";
@@ -387,7 +388,7 @@ void make_options_table( WikiOptions const& wiki_options, CLI::App const& comman
         // Get option type, special flags and validator strings.
         auto formatter = dynamic_cast<CLI::Formatter const*>( command.get_formatter().get() );
         auto opt_str = formatter->make_option_opts( opt );
-        opt_str = genesis::utils::replace_all(
+        opt_str = genesis::util::text::replace_all(
             opt_str,
             command.get_formatter()->get_label("REQUIRED"),
             ""
@@ -408,14 +409,14 @@ void make_options_table( WikiOptions const& wiki_options, CLI::App const& comman
                 search = tn + "=" + opt->get_default_str();
             }
             if( !search.empty() ) {
-                opt_str = genesis::utils::replace_all( opt_str, search, tn );
+                opt_str = genesis::util::text::replace_all( opt_str, search, tn );
             }
         }
 
         // Now print to the output.
         tmp_os << "<dd>";
         if( ! opt_str.empty() ) {
-            tmp_os << "<code>" << genesis::utils::trim( opt_str ) << "</code><br />";
+            tmp_os << "<code>" << genesis::util::text::trim( opt_str ) << "</code><br />";
         }
         // tmp_os << "</dt>\n";
 
@@ -429,7 +430,7 @@ void make_options_table( WikiOptions const& wiki_options, CLI::App const& comman
         if( descr.substr( 0, 10 ) == "Required. " ) {
             descr = descr.substr( 10 );
         }
-        descr = genesis::utils::replace_all( descr, "\n", "<br />" );
+        descr = genesis::util::text::replace_all( descr, "\n", "<br />" );
         tmp_os << codify_markdown( descr ) << "</dd>\n";
         // tmp_os << " " << codify_markdown( descr ) << "</td></tr>\n";
         // tmp_os << " " << opt->get_description() << " |\n";
@@ -527,7 +528,7 @@ void make_subcommands_table(
 
 void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& command )
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // User output.
     LOG_MSG << "Subcommand: " << command.get_name();
@@ -604,7 +605,7 @@ void make_wiki_command_page( WikiOptions const& wiki_options, CLI::App const& co
 
 void make_wiki_home_page( WikiOptions const& options )
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // Make Home page.
     LOG_MSG << "Home";
@@ -674,7 +675,7 @@ void make_wiki_home_page( WikiOptions const& options )
 
 void make_wiki_sidebar( WikiOptions const& options )
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // Make Sidebar page.
     LOG_MSG << "Sidebar";

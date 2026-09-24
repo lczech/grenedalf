@@ -26,8 +26,8 @@
 #include "tools/references.hpp"
 #include "tools/version.hpp"
 
-#include "genesis/utils/core/options.hpp"
-#include "genesis/utils/io/base64.hpp"
+#include "genesis/util/core/options.hpp"
+#include "genesis/util/text/base64.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -78,8 +78,8 @@ void run_version( VersionOptions const& options )
     LOG_BOLD;
     LOG_BOLD << "grenedalf version: " << grenedalf_version();
     LOG_BOLD;
-    LOG_BOLD << genesis::utils::info_print_compiler();
-    LOG_BOLD << genesis::utils::info_print_hardware();
+    LOG_BOLD << genesis::util::core::info_print_compiler();
+    LOG_BOLD << genesis::util::core::info_print_hardware();
     LOG_BOLD;
     LOG_BOLD << "For citation information, call  `grenedalf tools citation`";
     LOG_BOLD << "For license information, call  `grenedalf tools license`";
@@ -132,5 +132,5 @@ void run_ee()
     auto const seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine engine( seed );
     std::shuffle( qs.begin(), qs.end(), engine );
-    LOG_BOLD << genesis::utils::base64_decode_string( qs[0] );
+    LOG_BOLD << genesis::util::text::base64_decode_string( qs[0] );
 }

@@ -27,10 +27,10 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/function/variant_input_stream.hpp"
-#include "genesis/population/stream/variant_input_stream_adapters.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/population/stream/variant_input_stream_adapter.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -131,7 +131,8 @@ void VariantSampleNamesOptions::add_sample_name_opts_to_app(
 
 void VariantSampleNamesOptions::rename_samples( std::vector<std::string>& sample_names ) const
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // If the option is not set or used, we do no renaming.
     if( ! rename_samples_.option || ! *rename_samples_.option ) {
@@ -291,7 +292,8 @@ void VariantSampleNamesOptions::add_sample_name_filter(
 void VariantSampleNamesOptions::apply_sample_group_merging(
     genesis::population::VariantInputStream& stream
 ) const {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // If the option is not set or used, we do no grouping.
     if( ! sample_group_merge_table_file_.option || ! *sample_group_merge_table_file_.option ) {
@@ -353,7 +355,8 @@ void VariantSampleNamesOptions::apply_sample_group_merging(
 std::vector<std::string> VariantSampleNamesOptions::process_sample_name_list_option_(
     std::string const& list
 ) const {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // If the input is a file, read it line by line as sample names.
     // Otherwise, split by comma or tab.

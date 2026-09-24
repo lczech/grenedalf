@@ -33,7 +33,7 @@
 #include "tools/references.hpp"
 #include "tools/version.hpp"
 
-#include "genesis/utils/core/exception.hpp"
+#include "genesis/util/core/exception.hpp"
 
 #include <memory>
 #include <sstream>
@@ -63,9 +63,9 @@ int main( int argc, char** argv )
     // -------------------------------------------------------------------------
 
     // Activate logging.
-    genesis::utils::Logging::log_to_stdout();
-    genesis::utils::Logging::details.level = false;
-    // genesis::utils::Logging::details.time = true;
+    genesis::util::core::Logging::log_to_stdout();
+    genesis::util::core::Logging::details.level = false;
+    // genesis::util::core::Logging::details.time = true;
 
     // -------------------------------------------------------------------------
     //     App Setup
@@ -142,7 +142,7 @@ int main( int argc, char** argv )
             LOG_BOLD << message;
         }
 
-    } catch( genesis::utils::ExistingFileError const& error ) {
+    } catch( genesis::util::core::ExistingFileError const& error ) {
 
         // Special case for existing files: This is very common, and we want a nice and useful
         // error messsage for this one!
@@ -153,7 +153,7 @@ int main( int argc, char** argv )
         ;
         LOG_BOLD << message;
         LOG_BOLD;
-        throw genesis::utils::ExistingFileError( message, error.filename() );
+        throw genesis::util::core::ExistingFileError( message, error.filename() );
 
     } catch( std::exception const& error ) {
 
@@ -172,6 +172,6 @@ int main( int argc, char** argv )
     }
 
     // Close all logging, and return the exit code.
-    genesis::utils::Logging::clear();
+    genesis::util::core::Logging::clear();
     return exit_code;
 }

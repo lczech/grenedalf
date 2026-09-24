@@ -26,9 +26,9 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -65,7 +65,7 @@ std::vector<size_t> PoolsizesOptions::get_pool_sizes(
     std::vector<std::string> const& sample_names,
     std::vector<bool> const& sample_filter
 ) const {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // Internal error check.
     if( ! sample_filter.empty() && sample_filter.size() != sample_names.size() ) {
@@ -116,7 +116,7 @@ std::vector<size_t> PoolsizesOptions::get_pool_sizes(
 
 size_t PoolsizesOptions::convert_poolsize_( std::string const& str ) const
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::text;
 
     // Convert a pool size to a number, or throw.
     try {
@@ -137,7 +137,8 @@ size_t PoolsizesOptions::convert_poolsize_( std::string const& str ) const
 
 std::unordered_map<std::string, size_t> PoolsizesOptions::read_pool_size_map_from_file_() const
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // Read the file line by line and process.
     auto const lines = file_read_lines( pool_sizes_opt_.value );

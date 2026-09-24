@@ -25,10 +25,10 @@
 #include "options/global.hpp"
 #include "tools/cli_setup.hpp"
 
-#include "genesis/population/function/functions.hpp"
-#include "genesis/sequence/functions/quality.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/population/function/function.hpp"
+#include "genesis/sequence/function/quality.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <array>
@@ -201,7 +201,7 @@ enum class SimulateFormat
 
 SimulateFormat get_format( SimulateOptions const& options )
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::text;
 
     if( to_lower( options.format.value ) == "pileup" ) {
         return SimulateFormat::kPileup;
@@ -217,7 +217,7 @@ SimulateFormat get_format( SimulateOptions const& options )
  */
 std::vector<std::pair<size_t,size_t>> get_read_depths_( SimulateOptions const& options )
 {
-    using namespace genesis::utils;
+    using namespace genesis::util::text;
 
     auto const vals = split( options.read_depths.value, ",\t" );
     auto result = std::vector<std::pair<size_t,size_t>>( vals.size() );
@@ -272,7 +272,6 @@ char allele_to_char_( size_t a )
 void run_simulate( SimulateOptions const& options )
 {
     using namespace genesis::sequence;
-    using namespace genesis::utils;
 
     // -------------------------------------------------------------------------
     //     Set up and checks

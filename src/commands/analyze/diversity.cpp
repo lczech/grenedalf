@@ -27,19 +27,19 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/function/diversity_pool_calculator.hpp"
-#include "genesis/population/function/diversity_pool_functions.hpp"
+#include "genesis/population/function/diversity_pool_function.hpp"
 #include "genesis/population/filter/sample_counts_filter_numerical.hpp"
 #include "genesis/population/filter/sample_counts_filter.hpp"
 #include "genesis/population/filter/variant_filter_numerical.hpp"
 #include "genesis/population/filter/variant_filter.hpp"
-#include "genesis/population/function/functions.hpp"
-#include "genesis/population/window/functions.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/population/function/function.hpp"
+#include "genesis/population/window/function.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cassert>
 
 using namespace genesis::population;
-using namespace genesis::utils;
+using namespace genesis::util::io;
 
 // =================================================================================================
 //      Setup
@@ -360,7 +360,7 @@ void write_output_popoolation_line_(
     // data value again, so that we don't have to switch to get it.
     // Format: "2R	19500	0	0.000	na" or "A	1500	101	1.000	1.920886709" for example.
     auto write_popoolation_line_ = [](
-        std::shared_ptr<genesis::utils::BaseOutputTarget>& ofs,
+        std::shared_ptr<genesis::util::io::BaseOutputTarget>& ofs,
         VariantWindowView const& window,
         VariantFilterCategoryStats const& variant_stats,
         SampleCountsFilterCategoryStats const& sample_stats,

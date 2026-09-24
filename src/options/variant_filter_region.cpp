@@ -33,11 +33,12 @@
 #include "genesis/population/format/map_bim_reader.hpp"
 #include "genesis/population/format/vcf_common.hpp"
 #include "genesis/population/format/vcf_input_stream.hpp"
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/function/genome_locus_set.hpp"
 #include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
-#include "genesis/utils/io/input_source.hpp"
+#include "genesis/util/bit/bitvector/function.hpp"
+#include "genesis/util/io/input_source.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -196,7 +197,8 @@ void VariantFilterRegionOptions::prepare_region_filters() const
 {
     using namespace genesis;
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::io;
+    using namespace genesis::util::text;
 
     // Not running again if we already have set up a filter (i.e., if the shared pointer has data).
     if( region_filter_ ) {
@@ -289,7 +291,7 @@ void VariantFilterRegionOptions::prepare_region_filters() const
                 ++full_chr;
             } else {
                 ++spec_chr;
-                spec_pos += bv.count();
+                spec_pos += pop_count( bv );
             }
         }
         auto const chr_cnt = region_filter_->chromosome_count();
@@ -313,7 +315,7 @@ void VariantFilterRegionOptions::prepare_region_filters() const
                 LOG_MSG2 << " - Chromosome \"" << chr_name << "\" fully included";
             } else {
                 LOG_MSG2 << " - Chromosome \"" << chr_name << "\" with "
-                         << bv.count() << " specified positions";
+                         << pop_count( bv ) << " specified positions";
             }
         }
     }

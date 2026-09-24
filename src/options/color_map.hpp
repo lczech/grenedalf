@@ -28,8 +28,8 @@
 
 #include "tools/cli_option.hpp"
 
-#include "genesis/utils/color/color.hpp"
-#include "genesis/utils/color/map.hpp"
+#include "genesis/util/color/color.hpp"
+#include "genesis/util/color/map.hpp"
 
 #include <limits>
 #include <memory>
@@ -113,7 +113,7 @@ public:
     /**
      * @brief Get the color map with all settings applied that were provided by the user.
      */
-    genesis::utils::ColorMap const& color_map() const;
+    genesis::util::color::ColorMap const& color_map() const;
 
     // -------------------------------------------------------------------------
     //     Helper Functions
@@ -125,7 +125,7 @@ private:
      * @brief Helper function that wraps the genesis function of the same name,
      * but offers a nicer error feedback.
      */
-    genesis::utils::Color resolve_color_string_(
+    genesis::util::color::Color resolve_color_string_(
         std::string const& color_str,
         std::string const& param_name
     ) const;
@@ -133,7 +133,7 @@ private:
     /**
      * @brief Same as resolve_color_string_(), but for a whole list of colors.
      */
-    std::vector<genesis::utils::Color> resolve_color_list_(
+    std::vector<genesis::util::color::Color> resolve_color_list_(
         std::vector<std::string> const& list,
         std::string const& param_name
     ) const;
@@ -146,7 +146,7 @@ private:
 
     // We internally build a proper color map with all the options,
     // and then hand this over to where it is needed.
-    mutable genesis::utils::ColorMap color_map_;
+    mutable genesis::util::color::ColorMap color_map_;
 
 public:
 

@@ -23,11 +23,11 @@
 
 #include "options/file_output.hpp"
 
-#include "genesis/utils/core/exception.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/options.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/core/exception.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/options.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include "options/global.hpp"
 #include "tools/misc.hpp"
@@ -142,7 +142,7 @@ CLI::Option* FileOutputOptions::add_filefix_opt_(
         true
     );
     target_opt->check([fixname]( std::string const& fix ){
-        if( ! genesis::utils::is_valid_filename( fix ) ) {
+        if( ! genesis::util::core::is_valid_filename( fix ) ) {
             return std::string(
                 "File " + fixname + " contains invalid characters (`<>:\"\\/|?*`), non-printable " +
                 "characters, or surrounding whitespace."
@@ -192,7 +192,7 @@ std::string FileOutputOptions::get_output_filename(
     // so that empty extensions also work without introducing extra dots).
     // We then simply assert that the extension has no further dots, which we can do,
     // as we are the only ones setting extensions in this program (the user cannot chose them).
-    auto const dir = ( with_dir ? genesis::utils::dir_normalize_path( out_dir_ ) : "" );
+    auto const dir = ( with_dir ? genesis::util::core::dir_normalize_path( out_dir_ ) : "" );
     auto const ext = ( extension.empty() || extension[0] == '.' ) ? extension : "." + extension;
     internal_check( ext.size() < 2 || ext[1] != '.', "Extension contains multiple leading dots." );
 
@@ -230,12 +230,13 @@ void FileOutputOptions::check_output_files_nonexistence(
 void FileOutputOptions::check_output_files_nonexistence(
     std::vector<std::pair<std::string, std::string>> const& infixes_and_extensions
 ) const {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // Shortcut: if the dir is not created yet, there cannot be any existing files in it.
     // We do this check here, so that we can be sure later in this function that the dir
     // is there, so that listing it contents etc actually works.
-    if( ! genesis::utils::dir_exists( out_dir_ ) ) {
+    if( ! genesis::util::core::dir_exists( out_dir_ ) ) {
         return;
     }
 
@@ -245,7 +246,7 @@ void FileOutputOptions::check_output_files_nonexistence(
     // Helper function for reporting existing files
     auto report_file_ = [&]( std::string const& path ){
         // If we allow overwriting, only warn about the files.
-        if( genesis::utils::Options::get().allow_file_overwriting() ) {
+        if( genesis::util::core::Options::get().allow_file_overwriting() ) {
             if( warned_names.count( path ) == 0 ) {
                 if( count_substring_occurrences( path, "*" ) > 0 ) {
                     LOG_WARN << "Warning: Output files with the target pattern already exist "
@@ -260,7 +261,7 @@ void FileOutputOptions::check_output_files_nonexistence(
                 warned_names.emplace( path );
             }
         } else {
-            throw genesis::utils::ExistingFileError(
+            throw genesis::util::core::ExistingFileError(
                 "Output file already exists: " + path + "\nUse " + allow_file_overwriting_flag +
                 " to allow grenedalf to overwrite the file.",
                 path
@@ -295,10 +296,11 @@ void FileOutputOptions::check_output_files_nonexistence(
 //      Output Targets
 // =================================================================================================
 
-std::shared_ptr<genesis::utils::BaseOutputTarget> FileOutputOptions::get_output_target(
+std::shared_ptr<genesis::util::io::BaseOutputTarget> FileOutputOptions::get_output_target(
     std::string const& infix, std::string const& extension
 ) const {
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::io;
 
     // Create dir if needed. This might create the dir also in cases were something fails later,
     // so we end up with an empty dir. This is however common in many other programs as well,

@@ -30,9 +30,9 @@
 #include "tools/references.hpp"
 #include "tools/version.hpp"
 
-#include "genesis/utils/core/algorithm.hpp"
-#include "genesis/utils/text/string.hpp"
-#include "genesis/utils/tools/date_time.hpp"
+#include "genesis/util/core/algorithm.hpp"
+#include "genesis/util/text/string.hpp"
+#include "genesis/util/tool/date_time.hpp"
 
 #include <stdexcept>
 #include <unordered_set>
@@ -130,7 +130,7 @@ void print_option_values( CLI::App const* subcommand )
         // Do not add options in the hidden group, using two ways to specify this.
         if(
             option->get_group().empty() ||
-            genesis::utils::to_lower( option->get_group() ) == "hidden"
+            genesis::util::text::to_lower( option->get_group() ) == "hidden"
         ) {
             continue;
         }
@@ -157,7 +157,7 @@ void print_citations( std::vector<std::string> const& citations )
 {
     // TODO The following command might not be the correct one if we re-indroduce the module structure.
     LOG_BOLD << "Run the following command to get the references that need to be cited:";
-    LOG_BOLD << "`grenedalf citation " << genesis::utils::join( citations, " " ) << "`";
+    LOG_BOLD << "`grenedalf citation " << genesis::util::text::join( citations, " " ) << "`";
     LOG_BOLD;
 }
 
@@ -177,7 +177,7 @@ std::function<void()> grenedalf_cli_callback(
     check_citations( citations );
 
     // If the genesis/grenedalf citation is not present, add it to the front!
-    if( ! genesis::utils::contains( citations, "Czech2023-grenedalf" )) {
+    if( ! genesis::util::core::contains( citations, "Czech2023-grenedalf" )) {
         citations.insert( citations.begin(), "Czech2023-grenedalf" );
     }
 
@@ -206,8 +206,8 @@ std::function<void()> grenedalf_cli_callback(
         print_citations( citations );
 
         LOG_MSG << "Started "
-                << genesis::utils::current_date() << " "
-                << genesis::utils::current_time()
+                << genesis::util::current_date() << " "
+                << genesis::util::current_time()
         ;
         LOG_BOLD;
 
@@ -216,8 +216,8 @@ std::function<void()> grenedalf_cli_callback(
 
         LOG_BOLD;
         LOG_MSG << "Finished "
-                << genesis::utils::current_date() << " "
-                << genesis::utils::current_time()
+                << genesis::util::current_date() << " "
+                << genesis::util::current_time()
         ;
     };
 }

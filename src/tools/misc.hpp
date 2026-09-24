@@ -28,7 +28,7 @@
 
 #include "CLI/CLI.hpp"
 
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <iosfwd>
 #include <string>
@@ -116,9 +116,9 @@ template<class T>
 T get_enum_map_value( std::vector<std::pair<std::string, T>> const& map, std::string const& key )
 {
     // Case insensitive comparison.
-    auto const key_lower = genesis::utils::to_lower( key );
+    auto const key_lower = genesis::util::text::to_lower( key );
     for( auto const& kv : map ) {
-        if( genesis::utils::to_lower( kv.first ) == key_lower ) {
+        if( genesis::util::text::to_lower( kv.first ) == key_lower ) {
             return kv.second;
         }
     }

@@ -27,7 +27,7 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/format/frequency_table_input_stream.hpp"
-#include "genesis/population/stream/variant_input_stream_sources.hpp"
+#include "genesis/population/stream/variant_input_stream_source.hpp"
 
 #include <cassert>
 #include <stdexcept>

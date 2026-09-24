@@ -28,18 +28,18 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/function/fst_pool_calculator.hpp"
-#include "genesis/population/function/fst_pool_functions.hpp"
+#include "genesis/population/function/fst_pool_function.hpp"
 #include "genesis/population/function/fst_pool_karlsson.hpp"
 #include "genesis/population/function/fst_pool_kofler.hpp"
 #include "genesis/population/function/fst_pool_unbiased.hpp"
-#include "genesis/population/function/functions.hpp"
-#include "genesis/utils/containers/matrix/operators.hpp"
-#include "genesis/utils/core/algorithm.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/std.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/population/function/function.hpp"
+#include "genesis/util/container/matrix/operator.hpp"
+#include "genesis/util/core/algorithm.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/std.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -207,14 +207,16 @@ struct pair_hash {
     std::size_t operator () (const std::pair<T1,T2> &p) const {
         auto h1 = std::hash<T1>{}(p.first);
         auto h2 = std::hash<T2>{}(p.second);
-        return genesis::utils::hash_combine( h1, h2 );
+        return genesis::util::core::hash_combine( h1, h2 );
     }
 };
 
 std::vector<std::pair<size_t, size_t>> FstProcessorOptions::get_sample_pairs(
     std::vector<std::string> const& sample_names
 ) const {
-    using namespace genesis::utils;
+    using namespace genesis::util::container;
+    using namespace genesis::util::core;
+    using namespace genesis::util::text;
 
     // We here build a vector of pairs, in order to keep the order of pairs as specified.
     // This is important, as otherwise our assignmen of which samples and pairs belong

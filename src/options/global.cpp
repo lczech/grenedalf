@@ -25,8 +25,9 @@
 
 #include "tools/version.hpp"
 
-#include "genesis/utils/core/info.hpp"
+#include "genesis/util/core/info.hpp"
 
+#include <cassert>
 #include <thread>
 
 // =================================================================================================
@@ -36,7 +37,7 @@
 void GlobalOptions::initialize( int const argc, char const* const* argv )
 {
     // By default, use the hardware threads, taking hypterthreding into account
-    opt_threads.value = genesis::utils::guess_number_of_threads();
+    opt_threads.value = genesis::util::core::guess_number_of_threads();
 
     // If hardware value is not available, just use 1 thread.
     // This is executed if the call to the above function fails.
@@ -45,7 +46,7 @@ void GlobalOptions::initialize( int const argc, char const* const* argv )
     }
 
     // Set verbosity to max, just in case.
-    genesis::utils::Logging::max_level( genesis::utils::Logging::LoggingLevel::kDebug4 );
+    genesis::util::core::Logging::max_level( genesis::util::core::Logging::LoggingLevel::kDebug4 );
 
     // Store all arguments in the array.
     command_line_.clear();
@@ -111,7 +112,7 @@ void GlobalOptions::run_global()
 {
     // If user did not provide number, use hardware value (taking care of hyperthreads as well).
     if( opt_threads.value == 0 ) {
-        opt_threads.value = genesis::utils::guess_number_of_threads();
+        opt_threads.value = genesis::util::core::guess_number_of_threads();
     }
 
     // If hardware value is not available, just use 1 thread.
@@ -120,28 +121,31 @@ void GlobalOptions::run_global()
         opt_threads.value = 1;
     }
 
-    // Initialize the global thread pool. We use one fewer than the number of specified thread
-    // here, as we need to acount for the main thread doing work as well. We have implemented
-    // a type of proactive future that also does work from the pool when waiting for results,
-    // meaning that the main thread will also participate in the pool.
-    genesis::utils::Options::get().init_global_thread_pool( opt_threads.value - 1 );
+    // Initialize the global thread pool. Genesis creates one fewer thread in the pool than the
+    // number of threads provided here, as the main thread is doing work as well: We have
+    // implemented a type of proactive future that also does work from the pool when waiting for
+    // results, meaning that the main thread will also participate in the pool. Also note that
+    // genesis would interpret a value of 0 as "guess the number of threads", but we have already
+    // taken care of that above, so that the value here is always at least 1.
+    assert( opt_threads.value > 0 );
+    genesis::util::core::Options::get().init_global_thread_pool( opt_threads.value );
 
     // Allow to overwrite files. Has to be done before adding the log file (coming below),
     // as this might already fail if the log file exists.
     if( opt_allow_file_overwriting.value ) {
-        genesis::utils::Options::get().allow_file_overwriting( true );
+        genesis::util::core::Options::get().allow_file_overwriting( true );
     }
 
     // Set log file.
     if( ! opt_log_file.value.empty() ) {
-        genesis::utils::Logging::log_to_file( opt_log_file.value );
+        genesis::util::core::Logging::log_to_file( opt_log_file.value );
     }
 
     // Set verbosity level for logging output.
     if( opt_verbose.value ) {
-        genesis::utils::Logging::max_level( genesis::utils::Logging::LoggingLevel::kMessage2 );
+        genesis::util::core::Logging::max_level( genesis::util::core::Logging::LoggingLevel::kMessage2 );
     } else {
-        genesis::utils::Logging::max_level( genesis::utils::Logging::LoggingLevel::kMessage1 );
+        genesis::util::core::Logging::max_level( genesis::util::core::Logging::LoggingLevel::kMessage1 );
     }
 }
 

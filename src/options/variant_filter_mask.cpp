@@ -31,15 +31,15 @@
 #include "genesis/population/format/bed_reader.hpp"
 #include "genesis/population/format/vcf_common.hpp"
 #include "genesis/population/format/vcf_input_stream.hpp"
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/function/genome_locus_set.hpp"
 #include "genesis/population/function/genome_region.hpp"
 #include "genesis/population/genome_region.hpp"
-#include "genesis/sequence/functions/dict.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/io/input_source.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/sequence/function/dict.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/io/input_source.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -359,7 +359,9 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::sequence;
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
+    using namespace genesis::util::io;
+    using namespace genesis::util::text;
     internal_check(
         ref_genome_opts_, "VariantFilterMaskOptions needs VariantReferenceGenomeOptions"
     );
@@ -431,7 +433,7 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
         auto const sample_to_file = get_list_file_pairs_( filter_mask_sample_bed_list_ );
         for( auto const& sample_file_pair : sample_to_file ) {
             LOG_MSG2 << "  - " << sample_file_pair.first << ": " << sample_file_pair.second;
-            assert( sample_masks_( sample_file_pair.first ).count() == 0 );
+            assert( sample_masks_.count( sample_file_pair.first ) == 0 );
             sample_masks_[ sample_file_pair.first ] = std::make_shared<GenomeLocusSet>(
                 BedReader().read_as_genome_locus_set(
                     from_file( sample_file_pair.second ),
@@ -450,7 +452,7 @@ void VariantFilterMaskOptions::prepare_sample_masks_() const
         auto const sample_to_file = get_list_file_pairs_( filter_mask_sample_fasta_list_ );
         for( auto const& sample_file_pair : sample_to_file ) {
             LOG_MSG2 << "  - " << sample_file_pair.first << ": " << sample_file_pair.second;
-            assert( sample_masks_( sample_file_pair.first ).count() == 0 );
+            assert( sample_masks_.count( sample_file_pair.first ) == 0 );
             sample_masks_[ sample_file_pair.first ] = std::make_shared<GenomeLocusSet>(
                 read_mask_fasta(
                     from_file( sample_file_pair.second ),
@@ -471,7 +473,7 @@ void VariantFilterMaskOptions::prepare_total_mask_() const
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::sequence;
-    using namespace genesis::utils;
+    using namespace genesis::util::io;
     internal_check(
         ref_genome_opts_, "VariantFilterMaskOptions needs VariantReferenceGenomeOptions"
     );

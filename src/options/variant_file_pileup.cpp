@@ -29,8 +29,8 @@
 #include "genesis/population/format/simple_pileup_common.hpp"
 #include "genesis/population/format/simple_pileup_input_stream.hpp"
 #include "genesis/population/format/simple_pileup_reader.hpp"
-#include "genesis/population/stream/variant_input_stream_sources.hpp"
-#include "genesis/sequence/functions/quality.hpp"
+#include "genesis/population/stream/variant_input_stream_source.hpp"
+#include "genesis/sequence/function/quality.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -118,7 +118,7 @@ VariantFilePileupOptions::VariantInputStream VariantFilePileupOptions::get_strea
     try {
         size_t const max_guess_lines = 100;
         auto const guess_enc = guess_pileup_quality_encoding(
-            genesis::utils::from_file( filename ), max_guess_lines
+            genesis::util::io::from_file( filename ), max_guess_lines
         );
         if( ! compatible_quality_encodings( guess_enc, user_enc )) {
             LOG_WARN << pileup_quality_encoding_.option->get_name() << " set to "

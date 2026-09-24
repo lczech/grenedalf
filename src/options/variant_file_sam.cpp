@@ -28,7 +28,7 @@
 
 #include "genesis/population/format/sam_flags.hpp"
 #include "genesis/population/format/sam_variant_input_stream.hpp"
-#include "genesis/population/stream/variant_input_stream_sources.hpp"
+#include "genesis/population/stream/variant_input_stream_source.hpp"
 
 #include <cassert>
 #include <unordered_set>

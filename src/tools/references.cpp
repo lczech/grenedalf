@@ -23,7 +23,7 @@
 
 #include "tools/references.hpp"
 
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <sstream>
@@ -136,7 +136,7 @@ std::string cite_authors( Citation const& entry, bool first_last, std::string co
             authors.push_back( author.last + ", " + author.first );
         }
     }
-    return genesis::utils::join( authors, delim );
+    return genesis::util::text::join( authors, delim );
 }
 
 void check_all_citations()

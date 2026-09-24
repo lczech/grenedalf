@@ -27,22 +27,22 @@
 #include "tools/misc.hpp"
 
 #include "genesis/population/function/fst_pool_calculator.hpp"
-#include "genesis/population/function/fst_pool_functions.hpp"
+#include "genesis/population/function/fst_pool_function.hpp"
 #include "genesis/population/function/fst_pool_karlsson.hpp"
 #include "genesis/population/function/fst_pool_kofler.hpp"
 #include "genesis/population/function/fst_pool_processor.hpp"
 #include "genesis/population/function/fst_pool_unbiased.hpp"
-#include "genesis/population/function/functions.hpp"
-#include "genesis/utils/containers/matrix.hpp"
-#include "genesis/utils/containers/matrix/operators.hpp"
-#include "genesis/utils/containers/matrix/writer.hpp"
-#include "genesis/utils/containers/transform_iterator.hpp"
-#include "genesis/utils/core/algorithm.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/std.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/population/function/function.hpp"
+#include "genesis/util/container/matrix.hpp"
+#include "genesis/util/container/matrix/operator.hpp"
+#include "genesis/util/container/matrix/writer.hpp"
+#include "genesis/util/container/transform_iterator.hpp"
+#include "genesis/util/core/algorithm.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/std.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -182,10 +182,10 @@ struct FstCommandState
     // The output to write to, for per-window output.
     // The pi ones are only used when using fst unbiased nei or hudson,
     // and when the respective option is set.
-    std::shared_ptr<::genesis::utils::BaseOutputTarget> fst_output_target;
-    std::shared_ptr<::genesis::utils::BaseOutputTarget> pi_within_output_target;
-    std::shared_ptr<::genesis::utils::BaseOutputTarget> pi_between_output_target;
-    std::shared_ptr<::genesis::utils::BaseOutputTarget> pi_total_output_target;
+    std::shared_ptr<::genesis::util::io::BaseOutputTarget> fst_output_target;
+    std::shared_ptr<::genesis::util::io::BaseOutputTarget> pi_within_output_target;
+    std::shared_ptr<::genesis::util::io::BaseOutputTarget> pi_between_output_target;
+    std::shared_ptr<::genesis::util::io::BaseOutputTarget> pi_total_output_target;
 
     // How many windows were actually used, and how many skipped due to only containing nan.
     size_t used_count = 0;
@@ -267,7 +267,7 @@ void prepare_output_files_(
 
     // Helper function to write the header of our per-window file formats
     auto open_file_and_write_header_ = [&](
-        std::shared_ptr<::genesis::utils::BaseOutputTarget>& target,
+        std::shared_ptr<::genesis::util::io::BaseOutputTarget>& target,
         std::string const& value_name
     ) {
         // Make an output target, i.e., get the file name, and open the file
@@ -319,7 +319,7 @@ void prepare_output_files_(
 void write_total_stats_(
     FstOptions const& options,
     genesis::population::VariantFilterStats const& variant_filter_stats,
-    std::shared_ptr<genesis::utils::BaseOutputTarget>& target
+    std::shared_ptr<genesis::util::io::BaseOutputTarget>& target
 ) {
     using namespace genesis::population;
 
@@ -354,7 +354,7 @@ void write_total_stats_(
 void write_sample_stats_(
     FstOptions const& options,
     genesis::population::SampleCountsFilterStats const& sample_counts_filter_stats,
-    std::shared_ptr<genesis::utils::BaseOutputTarget>& target
+    std::shared_ptr<genesis::util::io::BaseOutputTarget>& target
 ) {
     using namespace genesis::population;
 
@@ -392,7 +392,8 @@ void write_pairwise_value_list_(
     std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::io;
+    using namespace genesis::util::text;
 
     // Get basic options.
     auto const& sample_names = options.variant_input.sample_names();
@@ -452,7 +453,9 @@ void write_pairwise_value_matrix_(
     std::vector<double> const& values,
     std::vector<std::pair<size_t, size_t>> const& sample_pairs
 ) {
-    using namespace genesis::utils;
+    using namespace genesis::util::container;
+    using namespace genesis::util::io;
+    using namespace genesis::util::text;
 
     // Get basic options.
     auto const& sample_names = options.variant_input.sample_names();
@@ -484,7 +487,7 @@ void write_output_line_(
     ::genesis::population::FstPoolProcessor const& processor,
     VariantWindowView const& window,
     std::vector<double> const& values,
-    std::shared_ptr<genesis::utils::BaseOutputTarget>& target
+    std::shared_ptr<genesis::util::io::BaseOutputTarget>& target
 ) {
     internal_check(
         processor.calculators().size() == values.size(),
@@ -618,7 +621,6 @@ void write_to_output_files_(
 void run_fst( FstOptions const& options )
 {
     using namespace genesis::population;
-    using namespace genesis::utils;
 
     // The state POD that stores the run objects in one place.
     FstCommandState state;

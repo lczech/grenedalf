@@ -35,19 +35,19 @@
 #include "genesis/population/filter/sample_counts_filter.hpp"
 #include "genesis/population/filter/variant_filter_positional.hpp"
 #include "genesis/population/filter/variant_filter.hpp"
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/function/genome_locus_set.hpp"
 #include "genesis/population/function/variant_input_stream.hpp"
-#include "genesis/sequence/functions/dict.hpp"
-#include "genesis/utils/core/algorithm.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/core/info.hpp"
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/options.hpp"
-#include "genesis/utils/core/std.hpp"
-#include "genesis/utils/text/char.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/sequence/function/dict.hpp"
+#include "genesis/util/core/algorithm.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/core/info.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/options.hpp"
+#include "genesis/util/core/std.hpp"
+#include "genesis/util/text/char.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -121,11 +121,11 @@ void VariantInputOptions::add_input_files_opts_to_app(
     // Add input file type options. This is the only point where we explicitly state
     // which file types we want to add. If we want to make some of them optional later for
     // certain commands - here is the place to do so.
-    input_files_.emplace_back( genesis::utils::make_unique<VariantFileSamOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantFilePileupOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantFileSyncOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantFileVcfOptions>() );
-    input_files_.emplace_back( genesis::utils::make_unique<VariantFileFrequencyTableOptions>() );
+    input_files_.emplace_back( std::make_unique<VariantFileSamOptions>() );
+    input_files_.emplace_back( std::make_unique<VariantFilePileupOptions>() );
+    input_files_.emplace_back( std::make_unique<VariantFileSyncOptions>() );
+    input_files_.emplace_back( std::make_unique<VariantFileVcfOptions>() );
+    input_files_.emplace_back( std::make_unique<VariantFileFrequencyTableOptions>() );
 
     // Now add all command line arguments of these file types to the CLI app,
     // in the order in which we added them above.
@@ -311,7 +311,7 @@ void VariantInputOptions::prepare_stream_() const
 {
     using namespace genesis;
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // Checks for internal correct setup
     if( static_cast<bool>( stream_ )) {
@@ -321,7 +321,7 @@ void VariantInputOptions::prepare_stream_() const
 
     // Get and check the number of input files provided.
     size_t const file_count = get_input_file_count();
-    size_t const max_file_count = genesis::utils::info_process_max_file_count();
+    size_t const max_file_count = genesis::util::core::info_process_max_file_count();
     size_t const file_count_margin = 10;
     if( max_file_count > 0 && file_count > max_file_count - file_count_margin ) {
         LOG_WARN << "In total, " <<  file_count << " input files are provided. However, the system "
@@ -373,7 +373,7 @@ void VariantInputOptions::prepare_stream_( size_t first, size_t last ) const
 {
     using namespace genesis;
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::core;
 
     // Boundary checks, just in case. Should be done correctly internally already.
     size_t const file_count = get_input_file_count();
@@ -510,7 +510,6 @@ void VariantInputOptions::prepare_stream_multiple_files_() const
 {
     using namespace genesis;
     using namespace genesis::population;
-    using namespace genesis::utils;
 
     // Assert that this function is only called in a context where the data is not yet prepared.
     internal_check(
@@ -556,7 +555,6 @@ void VariantInputOptions::prepare_stream_multiple_files_( size_t first, size_t l
 {
     using namespace genesis;
     using namespace genesis::population;
-    using namespace genesis::utils;
 
     // Assert correct usage.
     size_t const file_count = get_input_file_count();
@@ -857,8 +855,8 @@ void VariantInputOptions::add_combined_filters_and_transforms_to_stream_(
     if( get_reference_genome() ) {
         stream.add_on_enter_observer(
             [ this ]( Variant const& variant ) mutable {
-                auto const var_base = genesis::utils::to_upper( variant.reference_base );
-                auto const ref_base = genesis::utils::to_upper(
+                auto const var_base = genesis::util::text::to_upper( variant.reference_base );
+                auto const ref_base = genesis::util::text::to_upper(
                     get_reference_genome()->get_base( variant.chromosome, variant.position
                 ));
                 if( var_base != 'N' && ref_base != 'N' && var_base != ref_base ) {

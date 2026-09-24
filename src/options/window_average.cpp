@@ -26,15 +26,15 @@
 #include "options/global.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/text/string.hpp"
 #include "genesis/population/format/bed_reader.hpp"
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/function/genome_locus_set.hpp"
-#include "genesis/sequence/functions/dict.hpp"
-#include "genesis/utils/core/fs.hpp"
-#include "genesis/utils/io/input_source.hpp"
-#include "genesis/utils/text/convert.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/sequence/function/dict.hpp"
+#include "genesis/util/core/fs.hpp"
+#include "genesis/util/io/input_source.hpp"
+#include "genesis/util/text/convert.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -241,7 +241,7 @@ void WindowAverageOptions::prepare_provided_loci_() const
     using namespace genesis;
     using namespace genesis::population;
     using namespace genesis::sequence;
-    using namespace genesis::utils;
+    using namespace genesis::util::io;
     internal_check(
         ref_genome_opts_, "WindowAverageOptions needs VariantReferenceGenomeOptions"
     );

@@ -26,12 +26,12 @@
 #include "tools/cli_setup.hpp"
 #include "tools/misc.hpp"
 
-#include "genesis/population/function/functions.hpp"
+#include "genesis/population/function/function.hpp"
 #include "genesis/population/plotting/genome_heatmap.hpp"
 #include "genesis/population/plotting/heatmap_colorization.hpp"
-#include "genesis/utils/math/statistics.hpp"
-#include "genesis/utils/color/list_diverging.hpp"
-#include "genesis/utils/color/list_sequential.hpp"
+#include "genesis/util/math/statistic.hpp"
+#include "genesis/util/color/list_diverging.hpp"
+#include "genesis/util/color/list_sequential.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -286,7 +286,7 @@ double compute_frequency_(
     genesis::population::Variant const& variant
 ) {
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::math;
 
     // Get the main allele of the variant, that is, the reference base, or the major allele,
     // depending on the setting. If this is N, there is no frequency to compute.
@@ -385,7 +385,7 @@ double compute_frequency_(
 void run_afs_heatmap( AfsHeatmapOptions const& options )
 {
     using namespace genesis::population;
-    using namespace genesis::utils;
+    using namespace genesis::util::color;
 
     options.file_output.check_output_files_nonexistence( "afs-heatmap", "svg" );
     if( options.individual_bmps.value ) {
@@ -432,7 +432,7 @@ void run_afs_heatmap( AfsHeatmapOptions const& options )
     // -------------------------------------------------------------------------
 
     // TODO
-    auto colorization = HeatmapColorization( color_list_blues() );
+    auto colorization = HeatmapColorization( color_list_sequential( ColorListSequential::kBlues ));
     colorization.log_scale( true );
     colorization.color_map().mask_color( Color(1,1,1) );
     colorization.color_map().under_color( Color(1,1,1) );

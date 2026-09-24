@@ -29,9 +29,9 @@
 #include "tools/cli_option.hpp"
 #include "tools/version.hpp"
 
-#include "genesis/utils/core/logging.hpp"
-#include "genesis/utils/core/options.hpp"
-#include "genesis/utils/threading/thread_pool.hpp"
+#include "genesis/util/core/logging.hpp"
+#include "genesis/util/core/options.hpp"
+#include "genesis/util/threading/thread_pool.hpp"
 
 #include <string>
 #include <vector>
@@ -93,12 +93,12 @@ public:
     /**
      * @brief Get the global thread pool to use for computations.
      *
-     * Simply forwards to genesis::utils::Options::global_thread_pool(),
+     * Simply forwards to genesis::util::core::Options::global_thread_pool(),
      * but provided here for convenience and in case that we later need to change the pool.
      */
-    std::shared_ptr<genesis::utils::ThreadPool> thread_pool() const
+    std::shared_ptr<genesis::util::threading::ThreadPool> thread_pool() const
     {
-        return genesis::utils::Options::get().global_thread_pool();
+        return genesis::util::core::Options::get().global_thread_pool();
     }
 
     // -------------------------------------------------------------------------

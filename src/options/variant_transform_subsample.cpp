@@ -28,7 +28,7 @@
 
 #include "genesis/population/function/subsample.hpp"
 #include "genesis/population/function/variant_input_stream.hpp"
-#include "genesis/utils/text/string.hpp"
+#include "genesis/util/text/string.hpp"
 
 #include <stdexcept>
 #include <string>
@@ -111,7 +111,7 @@ bool VariantTransformSubsampleOptions::add_subsample_transformation(
     // Add a transformation to the variant stream.
     // We need to use a bool return value in the lambdas,
     // as that's expected by the VariantInputOptions.
-    auto const method = genesis::utils::to_lower( method_.value );
+    auto const method = genesis::util::text::to_lower( method_.value );
     auto const max_read_depth = max_read_depth_.value;
     if( method == "subscale" ) {
         variant_input.add_combined_filter_and_transforms(

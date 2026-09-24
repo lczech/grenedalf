@@ -146,7 +146,7 @@ public:
     /**
      * @brief Get the file names of the provided files, i.e., without directory and ending.
      *
-     * This function calls genesis::utils::file_basename() and genesis::utils::file_filename() for
+     * This function calls genesis::util::core::file_basename() and genesis::util::core::file_filename() for
      * all paths. The result is for example useful for user output.
      */
     std::vector<std::string> base_file_names() const;
