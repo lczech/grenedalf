@@ -17,6 +17,11 @@ jobs:
 
   ci:
     runs-on: ${{ matrix.os }}
+
+    # The explicit combinations in the matrix below do not set a build type; default to release.
+    env:
+      BUILD_TYPE: ${{ matrix.build_type || 'RELEASE' }}
+
     strategy:
       fail-fast: false
 
@@ -28,17 +33,22 @@ jobs:
       # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
 
       matrix:
-        # Need dummy entries for the matrix to pick up the variables.
-        # We later set all other combinations that we want explicitly.
+        # Base entries: the latest OS and compiler versions, which are floating and hence
+        # automatically keep up with new releases. These are built in release and debug mode,
+        # where debug mode additionally turns warnings into errors, and activates assertions
+        # and the debug mode of the standard library, to catch issues in the tests below.
+        # All other combinations are set explicitly below, and are built in release mode.
 
         os:
           - ubuntu-latest
-          # Needs CMake >= 3.5
-          # - macos-latest
 
         compiler:
           - gcc
           - llvm
+
+        build_type:
+          - RELEASE
+          - DEBUG
 
         # -------------------------------------------------------
         #     include
@@ -53,6 +63,17 @@ jobs:
         # Older compilers (gcc-9, llvm < 13) and MacOS 14 do not work any more with our C++17 setup.
 
         include:
+
+          # -------------------------------
+          #     MacOS latest
+          # -------------------------------
+
+          - os: macos-latest
+            compiler: apple-clang
+            build_type: RELEASE
+          - os: macos-latest
+            compiler: apple-clang
+            build_type: DEBUG
 
           # -------------------------------
           #     Ubuntu 22.04
@@ -184,16 +205,10 @@ jobs:
       - name: Setup C++
         # Reference: https://github.com/marketplace/actions/setup-cpp-c-c
         uses: aminya/setup-cpp@v1.7.1
-        if: ${{ matrix.compiler != 'apple' && matrix.os != 'macos-latest' }}
         with:
           compiler: ${{ matrix.compiler }}
           cmake: true
           make: true
-
-      - name: Setup C++ - AppleClang
-        if: matrix.compiler == 'apple'
-        run: |
-          brew install cmake
 
       # -------------------------------------------------------
       #     Dependencies
@@ -244,7 +259,7 @@ jobs:
             # export GRENEDALF_BUILD_STATIC="-DGRENEDALF_BUILD_STATIC=ON"
           # fi
 
-          cmake -S . -B ./build ${GRENEDALF_BUILD_STATIC}
+          cmake -S . -B ./build -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ${GRENEDALF_BUILD_STATIC}
 
       # -------------------------------------------------------
       #     Build
@@ -269,7 +284,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: logs-${{ matrix.os }}-${{ matrix.compiler }}
+          name: logs-${{ matrix.os }}-${{ matrix.compiler }}-${{ env.BUILD_TYPE }}
           path: |
             build/**/*.log
 
@@ -286,7 +301,7 @@ jobs:
         # We likely do not need static binaries on ubuntu anyway - should be easy enough to compile.
         # if: ( matrix.os == 'ubuntu-latest' && matrix.compiler == 'gcc' ) || matrix.compiler == 'apple'
         # if: matrix.os == 'ubuntu-latest' || matrix.compiler == 'apple'
-        if: matrix.compiler == 'apple-clang'
+        if: matrix.compiler == 'apple-clang' && env.BUILD_TYPE == 'RELEASE'
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.compiler }}
@@ -298,15 +313,13 @@ jobs:
       # -------------------------------------------------------
 
       # We also run the test case, comparing grenedalf against our independent implementation.
-      # This covers several OS and compiler combionations, so hopefully good enough.
+      # This is done for all OS and compiler combinations, in release as well as debug mode.
       - name: Python Setup
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: '3.12'
 
       - name: Install Test Dependencies
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
           # Install the dependencies for the tests
           pip install -r test/pip.txt
@@ -316,21 +329,23 @@ jobs:
           python --version
 
       - name: Run Test
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
           cd ./test
           ./run.sh
-          cd ..
 
+      - name: Compress Tests
+        if: always()
+        run: |
           # We need to manually compress the test result files here, as there are many files,
           # and we run into https://github.com/actions/upload-artifact/issues/485
+          # Done in a separate step, so that we also get the files when the tests fail.
           tar -czf ./test.tar.gz ./test
 
       - name: Upload Tests
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-${{ matrix.os }}-${{ matrix.compiler }}
+          name: test-${{ matrix.os }}-${{ matrix.compiler }}-${{ env.BUILD_TYPE }}
           path: |
             # test
             ./test.tar.gz

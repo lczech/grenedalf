@@ -134,7 +134,9 @@ else ()
     # Furthermore, in debug mode, we also want all warnings to be errors, so that we do not miss them
     # In release, this might hinder users to successfully build genesis if any warnings remain
     # or occur only on their compiler, so let's avoid trouble for them.
-    IF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+    # CMake build types are case-insensitive, so we also accept `Debug` etc here.
+    string( TOUPPER "${CMAKE_BUILD_TYPE}" GRENEDALF_BUILD_TYPE_UPPER )
+    IF(GRENEDALF_BUILD_TYPE_UPPER STREQUAL "DEBUG")
         set (WARN_FLAGS "${WARN_FLAGS} -Werror")
     ENDIF()
 endif ()

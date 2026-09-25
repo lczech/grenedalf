@@ -144,6 +144,7 @@ def plot_corr(
 # we set the success flag to 1 (false), indicating failure in the return value of the script.
 success = 0
 def eval_corr( title, xlabel, ylabel, x, y ):
+    global success
     # print(title, xlabel, ylabel)
 
     # Prepare the data frame. Similar to the plotting above.
